@@ -32,3 +32,4 @@ __pycache__/
 
 # Zoo / Zo internal
 .zo/
+.vercel

@@ -33,6 +33,47 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.setHeader('Cache-Control', 's-maxage=180, stale-while-revalidate=600')
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
+  // mode=firms — FIRMS fire detections
+  if (req.query.mode === "firms") {
+    res.setHeader("Access-Control-Allow-Origin", "*")
+    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600")
+    const apiKey = req.query.key || process.env.FIRMS_KEY || "08be3187f8c1526e0fd30249ee2c3374"
+    const dayRange = Math.max(parseInt(req.query.days) || 2, 2)
+    const ZONES = [{label:"Ukraine",country:"Ukraine",bbox:[46.5,52.5,32.0,40.5]},{label:"Gaza",country:"Palestine",bbox:[31.2,31.7,34.2,34.6]},{label:"Lebanon",country:"Lebanon",bbox:[33.0,34.7,35.0,37.0]},{label:"Syria",country:"Syria",bbox:[32.5,37.5,35.5,42.5]},{label:"Yemen",country:"Yemen",bbox:[12.5,19.0,42.5,54.5]},{label:"Sudan",country:"Sudan",bbox:[13.0,17.0,31.0,36.5]},{label:"Myanmar",country:"Myanmar",bbox:[21.0,26.0,94.0,98.5]},{label:"Sahel",country:"Mali",bbox:[10.0,20.0,-5.5,5.0]},{label:"Ethiopia",country:"Ethiopia",bbox:[11.5,16.5,36.5,43.5]},{label:"Iran",country:"Iran",bbox:[25.0,40.0,44.0,63.5]},{label:"Pakistan",country:"Pakistan",bbox:[32.0,37.5,69.0,75.0]},{label:"Somalia",country:"Somalia",bbox:[1.0,12.0,40.5,51.5]},{label:"Nigeria",country:"Nigeria",bbox:[10.0,14.5,10.0,15.5]},{label:"Libya",country:"Libya",bbox:[22.0,33.5,9.5,25.5]},{label:"Afghanistan",country:"Afghanistan",bbox:[29.0,38.5,60.5,75.0]},{label:"Iraq",country:"Iraq",bbox:[29.0,37.5,38.5,48.5]},{label:"Colombia",country:"Colombia",bbox:[1.5,12.5,-78.0,-66.0]},{label:"Haiti",country:"Haiti",bbox:[17.5,20.5,-74.5,-71.5]}]
+    const results = []
+    await Promise.allSettled(ZONES.map(async zone => {
+      const [minLat,maxLat,minLng,maxLng] = zone.bbox
+      const fires = []
+      for (const src of ["VIIRS_SNPP_NRT","VIIRS_NOAA20_NRT","MODIS_NRT"]) {
+        try {
+          const r = await fetch(`https://firms.modaps.eosdis.nasa.gov/api/area/csv/${apiKey}/${src}/${minLng},${minLat},${maxLng},${maxLat}/${dayRange}`, {signal:AbortSignal.timeout(10000),headers:{"User-Agent":"NEXUS/1.0"}})
+          if (!r.ok) continue
+          const lines = (await r.text()).trim().split("\n")
+          if (lines.length < 2) continue
+          const h = lines[0].split(",").map(x=>x.trim().replace(/"/g,""))
+          const latI=h.indexOf("latitude"), lngI=h.indexOf("longitude"), briI=h.indexOf("bright_ti4")!==-1?h.indexOf("bright_ti4"):h.indexOf("brightness"), conI=h.indexOf("confidence"), datI=h.indexOf("acq_date"), satI=h.indexOf("satellite")
+          lines.slice(1).forEach(line => {
+            const v=line.split(",").map(x=>x.trim())
+            const lat=parseFloat(v[latI]), lng=parseFloat(v[lngI])
+            if (isNaN(lat)||isNaN(lng)) return
+            const bright=parseFloat(v[briI])||0, conf=v[conI]||"n", dateStr=v[datI]||"", sat=v[satI]||src
+            const seen = new Set();
+            const key=`${lat.toFixed(3)}_${lng.toFixed(3)}_${dateStr}`
+            if (seen.has(key)) return; seen.add(key)
+            fires.push({lat,lng,brightness:bright,confidence:conf,date:dateStr,satellite:sat,country:zone.country,zone:zone.label})
+          })
+        } catch {}
+      }
+      if (!fires.length) return
+      const top=fires.sort((a,b)=>b.brightness-a.brightness)[0]
+      const score=fires.length*2+(top?.brightness>450?10:top?.brightness>380?5:0)
+      let sev="low"
+      if(score>30)sev="critical"; else if(score>15)sev="high"; else if(score>5)sev="medium"
+      results.push({zone:zone.label,country:zone.country,count:fires.length,peakBrightness:top?.brightness||0,severity:sev})
+    }))
+    return res.status(200).json(results)
+  }
+
   // Hard deadlines — primary gets 38s, secondary gets remainder up to 52s
   const T0 = Date.now()
   const primaryDeadline = new Promise(r => setTimeout(r, 38000))
