@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vercel/
+
+# Environment (keys stay local)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Python (server files - we deploy separately)
+*.pyc
+__pycache__/
+*.db
+*.db-journal
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Zoo / Zo internal
+.zo/
