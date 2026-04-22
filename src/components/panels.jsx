@@ -743,3 +743,4 @@ function SSection({ title, children }) {
     </div>
   )
 }
+export default { SavedPanel, SettingsPanel }

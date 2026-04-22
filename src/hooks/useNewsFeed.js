@@ -133,7 +133,7 @@ async function fetchFeed(feed, proxyIdx = 0) {
   // This is the ONLY reliable path. Public proxies (allorigins, corsproxy) are
   // blocked by most news sites and frequently rate-limited.
   try {
-    const r = await fetch('/api/rss?url=' + encodeURIComponent(feed.url) + '&count=30', {
+    const r = await fetch('https://man44.zo.space/api/rss?url=' + encodeURIComponent(feed.url) + '&count=30', {
       signal: AbortSignal.timeout(12000)
     })
     if (r.ok) {

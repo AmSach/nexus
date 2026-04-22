@@ -17,7 +17,7 @@ async function runCheck(id, keys) {
   try {
     // ── Alerts ──────────────────────────────────────────────────────
     if (id === 'alerts') {
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+      const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(15000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status }
       const d = await r.json()
       const n = d?.alerts?.length || 0
@@ -26,14 +26,14 @@ async function runCheck(id, keys) {
 
     // ── Markets ──────────────────────────────────────────────────────
     if (id === 'polymarket') {
-      const r = await fetch('/api/polymarket', { signal: AbortSignal.timeout(12000) })
+      const r = await fetch('https://man44.zo.space/api/polymarket', { signal: AbortSignal.timeout(12000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = d?.markets?.length || 0
       return { status: n>0?'ok':'warn', detail: n+' markets', count:n, ms:ms() }
     }
     if (id === 'kalshi') {
-      const r = await fetch('/api/kalshi', { signal: AbortSignal.timeout(12000) })
+      const r = await fetch('https://man44.zo.space/api/kalshi', { signal: AbortSignal.timeout(12000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = d?.markets?.length || 0
@@ -42,7 +42,7 @@ async function runCheck(id, keys) {
 
     // ── Map / Satellite ──────────────────────────────────────────────
     if (id === 'satellite') {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const ships = d?.ships?.length || 0
@@ -57,7 +57,7 @@ async function runCheck(id, keys) {
     if (id === 'firms') {
       const firmKey = keys?.firms || ''
       if (!firmKey) return { status:'info', detail:'No FIRMS key in Settings → Satellite', ms:ms() }
-      const r = await fetch('/api/firms?key='+encodeURIComponent(firmKey)+'&days=1', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/firms?key='+encodeURIComponent(firmKey)+'&days=1', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = Array.isArray(d) ? d.length : 0
@@ -75,7 +75,7 @@ async function runCheck(id, keys) {
     if (id === 'gdacs') {
       // GDACS is CORS-blocked in browsers. Use /api/alerts which fetches it server-side.
       try {
-        const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+        const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(15000) })
         if (!r.ok) return { status:'error', detail:'HTTP '+r.status+' (via /api/alerts proxy)', ms:ms() }
         const d = await r.json()
         const n = d?.meta?.gdacs ?? d?.counts?.gdacs ?? (d?.alerts||[]).filter(a=>a.source==='GDACS').length
@@ -88,7 +88,7 @@ async function runCheck(id, keys) {
     // ── Intel Search Sources ─────────────────────────────────────────
     if (id === 'gdelt') {
       // GDELT needs to go through /api/intel or /api/gdelt
-      const r = await fetch('/api/intel?q=conflict&type=all', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/intel?q=conflict&type=all', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = d?.articles?.length||0
@@ -104,7 +104,7 @@ async function runCheck(id, keys) {
 
     if (id === 'opensanctions') {
       // OpenSanctions is CORS-blocked. Test via /api/intel which proxies it.
-      const r = await fetch('/api/intel?q=test&type=all', { signal: AbortSignal.timeout(20000) })
+      const r = await fetch('https://man44.zo.space/api/intel?q=test&type=all', { signal: AbortSignal.timeout(20000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = d?.sanctions?.length||d?.ofac?.length||0
@@ -169,7 +169,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'telegram') {
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'alerts API failed: '+r.status, ms:ms() }
       const d = await r.json()
       const tgSources = ['Intel Slava','War Translated','OSINT Defender','Conflict Monitor','Ukraine Now']
@@ -178,7 +178,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'promed') {
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'alerts API failed: '+r.status, ms:ms() }
       const d = await r.json()
       const pm = (d.alerts||[]).filter(a => (a.source||'').toLowerCase().includes('promed'))
@@ -187,7 +187,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'warships') {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'satellite API HTTP '+r.status+' — check /api/satellite', ms:ms() }
       const d = await r.json()
       // warships now embedded in satellite response (merged from fleet tracker)
@@ -201,7 +201,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'opensky_auth') {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'satellite API failed', ms:ms() }
       const d = await r.json()
       const civil = d?.aircraft?.length||0, mil = d?.milaircraft?.length||0
@@ -246,7 +246,7 @@ async function runCheck(id, keys) {
       if (!feed) return { status:'error', detail:'Unknown feed: '+id, ms:ms() }
       try {
         // Use server-side /api/rss to bypass browser CORS restrictions
-        const r = await fetch('/api/rss?url=' + encodeURIComponent(feed.url) + '&count=5', {
+        const r = await fetch('https://man44.zo.space/api/rss?url=' + encodeURIComponent(feed.url) + '&count=5', {
           signal: AbortSignal.timeout(12000)
         })
         if (!r.ok) return { status:'error', detail:'HTTP '+r.status+' via /api/rss — '+feed.name, ms:ms() }
@@ -286,7 +286,7 @@ async function runCheck(id, keys) {
     }
 
     if (['adsb_global','opensky_live','airplaneslive','kystdatahuset','digitraffic','barentswatch','vesselfinder','aprs_ships','fleet_live'].includes(id)) {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'satellite API failed: HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const DETAILS = {
@@ -306,7 +306,7 @@ async function runCheck(id, keys) {
     }
 
     if (['cisa_kev','nvd_cves','feodo','urlhaus','otx_av'].includes(id)) {
-      const r = await fetch('/api/threats', { signal: AbortSignal.timeout(20000) })
+      const r = await fetch('https://man44.zo.space/api/threats', { signal: AbortSignal.timeout(20000) })
       if (!r.ok) return { status:'error', detail:'threats API failed: HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const DETAILS = {
@@ -334,7 +334,7 @@ async function runCheck(id, keys) {
       }
       if (id === 'yahoo_finance') {
         try {
-          const r = await fetch('/api/fred?mode=quotes&symbols=SPY,QQQ,DX-Y.NYB', { signal: AbortSignal.timeout(10000) })
+          const r = await fetch('https://man44.zo.space/api/fred?mode=quotes&symbols=SPY,QQQ,DX-Y.NYB', { signal: AbortSignal.timeout(10000) })
           const d = await r.json().catch(()=>null)
           const quotes = d?.quotes || {}
           const spyPrice = quotes['SPY']?.price
@@ -352,7 +352,7 @@ async function runCheck(id, keys) {
       }
       if (id === 'fred_api') {
         try {
-          const r = await fetch('/api/fred', { signal: AbortSignal.timeout(15000) })
+          const r = await fetch('https://man44.zo.space/api/fred', { signal: AbortSignal.timeout(15000) })
           if (!r.ok) return { status:'error', detail:'FRED API failed: HTTP '+r.status, ms:ms() }
           const d = await r.json()
           const count = Object.keys(d).filter(k=>!k.startsWith('_')).length
@@ -388,7 +388,7 @@ async function runCheck(id, keys) {
     }
 
     if (['loitering_ac','chokepoint','seismic_nudet','iss_pos'].includes(id)) {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'satellite API failed', ms:ms() }
       const d = await r.json()
       const pa = d.preActionIndicators||[]
@@ -441,7 +441,7 @@ async function runCheck(id, keys) {
       ]
       const start = performance.now()
       const results = await Promise.allSettled(testFeeds.map(url =>
-        fetch('/api/rss?url='+encodeURIComponent(url)+'&count=5', { signal: AbortSignal.timeout(10000) })
+        fetch('https://man44.zo.space/api/rss?url='+encodeURIComponent(url)+'&count=5', { signal: AbortSignal.timeout(10000) })
           .then(r => r.json()).then(d => Array.isArray(d)?d.length:0).catch(()=>0)
       ))
       const counts = results.map(r => r.status==='fulfilled' ? r.value : 0)
@@ -463,7 +463,7 @@ async function runCheck(id, keys) {
 
     if (['sat_earthquakes','sat_volcanoes','sat_hurricanes','sat_floods',
          'sat_viirs','sat_sigmets','sat_notams','sat_conflict','sat_reliefweb'].includes(id)) {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'satellite API failed: HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const DETAILS = {
@@ -537,7 +537,7 @@ async function runCheck(id, keys) {
 
     if (id === 'aisstream') {
       // AISStream is CORS-blocked - check ship count from satellite
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = d?.ships?.length||0
@@ -559,7 +559,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'adsb') {
-      const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(25000) })
+      const r = await fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = d?.aircraft?.length||0
@@ -570,7 +570,7 @@ async function runCheck(id, keys) {
       // NWS requires User-Agent header — browsers can't set it. Route through /api/alerts
       // which fetches NWS server-side and includes nws count in the meta field.
       try {
-        const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+        const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(15000) })
         if (!r.ok) return { status:'error', detail:'HTTP '+r.status+' (via /api/alerts proxy)', ms:ms() }
         const d = await r.json()
         const n = d?.meta?.nws ?? d?.counts?.nws ?? (d?.alerts||[]).filter(a=>a.source==='NWS').length
@@ -581,7 +581,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'promed') {
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+      const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(15000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const promedItems = (d?.alerts||[]).filter(a=>a.source==='ProMED'||a.source==='WHO News').length
@@ -589,7 +589,7 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'liveuamap') {
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+      const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(15000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const luamItems = (d?.alerts||[]).filter(a=>a.source&&a.source.includes('Liveuamap')).length
@@ -598,7 +598,7 @@ async function runCheck(id, keys) {
 
     if (id === 'bno') {
       // BNO is CORS-blocked in browser - test via /api/alerts which proxies it server-side
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+      const r = await fetch('https://man44.zo.space/api/alerts', { signal: AbortSignal.timeout(15000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const bnoItems = (d?.alerts||[]).filter(a=>a.source==='BNO News').length
@@ -803,9 +803,9 @@ function DumpTab() {
     try {
       // Step 1: Fetch live data from all API endpoints in parallel
       const [satRes, alertsRes, signalsRes] = await Promise.allSettled([
-        fetch('/api/satellite', { signal: AbortSignal.timeout(25000) }).then(r => r.json()),
-        fetch('/api/alerts',    { signal: AbortSignal.timeout(15000) }).then(r => r.json()),
-        fetch('/api/signals',   { signal: AbortSignal.timeout(20000) }).then(r => r.json()).catch(()=>({})),
+        fetch('https://man44.zo.space/api/satellite', { signal: AbortSignal.timeout(25000) }).then(r => r.json()),
+        fetch('https://man44.zo.space/api/alerts',    { signal: AbortSignal.timeout(15000) }).then(r => r.json()),
+        fetch('https://man44.zo.space/api/signals',   { signal: AbortSignal.timeout(20000) }).then(r => r.json()).catch(()=>({})),
       ])
       setProgress('Reading all cached data from localStorage…')
 

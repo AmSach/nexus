@@ -1,0 +1,18 @@
+// useNewsFeed fix: route through zo.space APIs instead of broken local paths
+// Injected at top of useNewsFeed.js — replace fetch('/api/news') and fetch('/api/rss')
+// Replace fetch('/api/news') → fetch('https://man44.zo.space/api/news')
+// Replace fetch('/api/rss')  → fetch('https://man44.zo.space/api/rss')
+// Also replace /api/gdelt → https://man44.zo.space/api/gdelt
+// All other relative /api/ calls stay as-is (Vercel serverless routes)
+const NEWS_BASE = 'https://man44.zo.space/api/news'
+const RSS_BASE  = 'https://man44.zo.space/api/rss'
+const GDELT_BASE = 'https://man44.zo.space/api/gdelt'
+
+// Patch fetch calls in useNewsFeed
+const oldFetchNews = window._fetchNews
+window._fetchNews = async function(url, opts) {
+  if (url?.startsWith?.('/api/news')) url = url.replace('/api/news', NEWS_BASE)
+  if (url?.startsWith?.('/api/rss'))  url = url.replace('/api/rss', RSS_BASE)
+  if (url?.startsWith?.('/api/gdelt')) url = url.replace('/api/gdelt', GDELT_BASE)
+  return oldFetchNews ? oldFetchNews(url, opts) : fetch(url, opts)
+}
