@@ -245,3 +245,169 @@ body.amoled aside { background: #000000; }
 
 /* IntelMap tooltip and overlay panels */
 body.amoled [style*="backdropFilter"] { background: rgba(0,0,0,0.95) !important; }
+
+/* ── Responsive breakpoints ────────────────────────────────────────────────── */
+/* Mobile: < 768px | Tablet: 768-1024px | Desktop: > 1024px                   */
+
+/* ── Mobile global overrides (< 768px) ────────────────────────────────────── */
+@media screen and (max-width: 767px) {
+  /* Hide desktop sidebar completely on mobile */
+  [data-sidebar] {
+    display: none !important;
+  }
+
+  /* Prevent horizontal overflow at root level */
+  #root > div {
+    overflow-x: hidden !important;
+  }
+
+  /* Ticker: hide on very small screens, show on small but ticker overflow */
+  .ticker-wrap {
+    display: none;
+  }
+
+  /* Board / graph canvases — cap width on mobile */
+  .board {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Feed items — prevent any overflow */
+  .feed-item {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Article cards */
+  .article-card {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Sit cards */
+  .sit-card {
+    max-width: 100%;
+  }
+
+  /* Ensure panel-based components don't overflow */
+  .panel {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+
+/* ── Tablet (768px – 1024px) ─────────────────────────────────────────────── */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+  /* Condensed sidebar on tablet — narrower */
+  [data-sidebar-condensed] {
+    width: 90px !important;
+  }
+}
+
+/* ── Desktop (> 1024px) ────────────────────────────────────────────────────── */
+@media screen and (min-width: 1025px) {
+  /* Standard desktop — show full sidebar */
+}
+
+/* ── Bottom nav safe area (iPhone X and newer) ─────────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-nav {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── KalshiTicker — hide ticker on very small screens ─────────────────────── */
+@media screen and (max-width: 480px) {
+  .ticker-wrap,
+  [data-ticker] {
+    display: none !important;
+  }
+}
+
+/* ── Scrollable containers on mobile ──────────────────────────────────────── */
+@media screen and (max-width: 767px) {
+  .scroll-mobile {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Force any flex child that overflows to scroll */
+  .flex-col-mobile {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .flex-col-mobile > * {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Fix: LiveFeed, LiveFeedSidebar, Situations containers */
+  .feed-panel-mobile,
+  .sidebar-panel-mobile {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Map container — full height on mobile */
+  .map-panel-mobile {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Top bar on mobile */
+  .mobile-topbar {
+    flex-shrink: 0;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  /* Bottom tab bar */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    background: rgba(11, 18, 32, 0.95);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Bottom nav button — ensure 44px touch target minimum */
+  .mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 4px;
+    min-height: 56px; /* slightly above 44px minimum for comfort */
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--t3);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .mobile-nav-btn.active {
+    color: var(--accent);
+  }
+
+  .mobile-nav-btn:active {
+    background: rgba(45, 212, 191, 0.05);
+  }
+}

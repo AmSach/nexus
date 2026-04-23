@@ -1,20 +1,19 @@
-// NEXUS v5 Mobile — True mobile-first, 5-tab layout, simplified panels
+// NEXUS v6 Mobile — True mobile-first, 5-tab layout, touch-optimized
 import React, { Suspense, useState } from 'react'
 import { useNewsFeed } from './hooks/useNewsFeed'
-import { useStore } from './store'
+import { Rss, Bell, Cpu, Map, Settings, RefreshCw } from 'lucide-react'
 import LiveFeed from './components/feed/LiveFeed'
 import Situations from './components/feed/Situations'
 import IntelMap from './components/map/IntelMap'
 import { SavedPanel, SettingsPanel } from './components/panels'
 import LiveFeedSidebar from './components/feed/LiveFeedSidebar'
-import { Rss, Bell, Cpu, Map, Settings, RefreshCw, Menu } from 'lucide-react'
 
 const TABS = [
-  { id: 'feed',        label: 'Feed',    Icon: Rss    },
-  { id: 'alerts',      label: 'Signals', Icon: Bell  },
-  { id: 'situations',  label: 'AI',      Icon: Cpu   },
-  { id: 'map',         label: 'Map',     Icon: Map   },
-  { id: 'settings',    label: 'Settings',Icon: Settings },
+  { id: 'feed',       label: 'Feed',     Icon: Rss      },
+  { id: 'alerts',     label: 'Signals',   Icon: Bell     },
+  { id: 'situations', label: 'AI',        Icon: Cpu     },
+  { id: 'map',        label: 'Map',       Icon: Map      },
+  { id: 'settings',   label: 'Settings', Icon: Settings },
 ]
 
 class ErrBound extends React.Component {
@@ -31,17 +30,16 @@ class ErrBound extends React.Component {
 }
 
 // ── Compact mobile top bar ──────────────────────────────────────────────
-function MobileTopBar({ loading, liveCount, onRefresh, tab }) {
+function MobileTopBar({ loading, liveCount, onRefresh }) {
   const [now, setNow] = useState(new Date())
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
   return (
-    <div style={{
+    <div className="mobile-topbar" style={{
       display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '0 12px', height: '44px', flexShrink: 0,
-      background: 'var(--base)', borderBottom: '1px solid var(--border)',
+      padding: '0 12px', background: 'var(--base)', borderBottom: '1px solid var(--border)',
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -74,11 +72,16 @@ function MobileTopBar({ loading, liveCount, onRefresh, tab }) {
       </div>
 
       {/* Refresh */}
-      <button onClick={onRefresh} disabled={loading} style={{
-        background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-        color: 'var(--t3)', padding: '4px', display: 'flex', alignItems: 'center',
-        opacity: loading ? 0.4 : 1,
-      }}>
+      <button
+        onClick={onRefresh}
+        disabled={loading}
+        className="mobile-nav-btn"
+        style={{
+          background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+          color: 'var(--t3)', padding: '4px', display: 'flex', alignItems: 'center',
+          opacity: loading ? 0.4 : 1, minHeight: '32px', flex: 'none',
+        }}
+      >
         <RefreshCw size={13} className={loading ? 'spin' : ''} />
       </button>
     </div>
@@ -86,20 +89,22 @@ function MobileTopBar({ loading, liveCount, onRefresh, tab }) {
 }
 
 // ── Mobile tab content wrapper ──────────────────────────────────────────
+// Uses CSS classes for responsive scrolling
 function MobileTab({ children }) {
   return (
-    <div style={{
-      flex: 1, overflow: 'auto', paddingBottom: '70px',
-      padding: '0', minHeight: 0,
-      // Mobile: no split, full width always
-      display: 'flex', flexDirection: 'column',
+    <div className="feed-panel-mobile" style={{
+      flex: 1,
+      minHeight: 0,
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      WebkitOverflowScrolling: 'touch',
     }}>
       {children}
     </div>
   )
 }
 
-// ── Feed panel: simplified single-column ───────────────────────────────
+// ── Feed panel: single-column ─────────────────────────────────────────
 function FeedPanel({ articles, loading }) {
   return (
     <MobileTab>
@@ -108,16 +113,21 @@ function FeedPanel({ articles, loading }) {
   )
 }
 
-// ── Signals/Alerts panel ────────────────────────────────────────────────
+// ── Signals/Alerts panel ───────────────────────────────────────────────
 function SignalsPanel({ articles }) {
   return (
-    <MobileTab>
-      <LiveFeedSidebar articles={articles} />
-    </MobileTab>
+    <div className="flex-col-mobile" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      <div className="sidebar-panel-mobile" style={{
+        flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        <LiveFeedSidebar articles={articles} />
+      </div>
+    </div>
   )
 }
 
-// ── AI/Situations panel ─────────────────────────────────────────────────
+// ── AI/Situations panel ───────────────────────────────────────────────
 function SituationsPanel({ articles }) {
   return (
     <MobileTab>
@@ -129,14 +139,14 @@ function SituationsPanel({ articles }) {
 // ── Map panel: full-screen globe ───────────────────────────────────────
 function MapPanel({ articles }) {
   return (
-    <div style={{ flex: 1, position: 'relative', overflow: 'hidden', paddingBottom: '70px' }}>
+    <div className="map-panel-mobile" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
       <IntelMap articles={articles} />
     </div>
   )
 }
 
 // ── Settings panel ─────────────────────────────────────────────────────
-function SettingsPanel_({}) {
+function SettingsPanel_() {
   return (
     <MobileTab>
       <SettingsPanel />
@@ -144,10 +154,60 @@ function SettingsPanel_({}) {
   )
 }
 
+// ── Bottom nav ─────────────────────────────────────────────────────────
+function BottomNav({ tab, setTab }) {
+  return (
+    <nav className="mobile-bottom-nav" style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+      display: 'flex', background: 'rgba(11,18,32,0.97)',
+      borderTop: '1px solid var(--border)',
+      padding: '0 0 env(safe-area-inset-bottom, 0px)',
+      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    }}>
+      {TABS.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          onClick={() => setTab(id)}
+          className={`mobile-nav-btn ${tab === id ? 'active' : ''}`}
+          style={{
+            flex: 1,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: '3px', padding: '10px 4px',
+            background: 'none', border: 'none',
+            cursor: 'pointer', minHeight: '56px',
+            color: tab === id ? 'var(--accent)' : 'var(--t3)',
+            transition: 'color 0.15s',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+            position: 'relative',
+          }}
+          aria-label={label}
+        >
+          <Icon size={tab === id ? 20 : 18} strokeWidth={tab === id ? 2 : 1.5} />
+          <span style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '8px', letterSpacing: '0.05em',
+          }}>
+            {label}
+          </span>
+          {tab === id && (
+            <div style={{
+              position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+              width: '24px', height: '2px', borderRadius: '0 0 2px 2px',
+              background: 'var(--accent)',
+            }} />
+          )}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 // ── Main App ────────────────────────────────────────────────────────────
 export default function AppMobile() {
   const [tab, setTab] = useState('feed')
-  const { articles, loading, synced, refetch, translating, translateCount } = useNewsFeed()
+  const { articles, loading, synced, refetch } = useNewsFeed()
 
   return (
     <div style={{
@@ -155,12 +215,11 @@ export default function AppMobile() {
       height: '100dvh', overflow: 'hidden',
       background: 'var(--void)',
     }}>
-      {/* Top bar — compact for mobile */}
+      {/* Top bar */}
       <MobileTopBar
         loading={loading}
         liveCount={articles.length}
         onRefresh={refetch}
-        tab={tab}
       />
 
       {/* Main content area */}
@@ -170,56 +229,16 @@ export default function AppMobile() {
             Loading…
           </div>
         }>
-          {tab === 'feed' && <FeedPanel articles={articles} loading={loading} />}
-          {tab === 'alerts' && <SignalsPanel articles={articles} />}
+          {tab === 'feed'       && <FeedPanel     articles={articles} loading={loading} />}
+          {tab === 'alerts'     && <SignalsPanel  articles={articles} />}
           {tab === 'situations' && <SituationsPanel articles={articles} />}
-          {tab === 'map' && <MapPanel articles={articles} />}
-          {tab === 'settings' && <SettingsPanel_ />}
+          {tab === 'map'        && <MapPanel      articles={articles} />}
+          {tab === 'settings'  && <SettingsPanel_ />}
         </Suspense>
       </div>
 
       {/* Bottom tab bar */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-        display: 'flex', background: 'rgba(11,18,32,0.95)',
-        borderTop: '1px solid var(--border)',
-        padding: '0 0 env(safe-area-inset-bottom)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-      }}>
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '3px', padding: '10px 4px',
-              background: 'none', border: 'none',
-              cursor: 'pointer', minHeight: '56px',
-              color: tab === id ? 'var(--accent)' : 'var(--t3)',
-              transition: 'color 0.15s',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <Icon size={tab === id ? 20 : 18} strokeWidth={tab === id ? 2 : 1.5} />
-            <span style={{
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '8px', letterSpacing: '0.05em',
-            }}>
-              {label}
-            </span>
-            {/* Active indicator */}
-            {tab === id && (
-              <div style={{
-                position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                width: '24px', height: '2px', borderRadius: '0 0 2px 2px',
-                background: 'var(--accent)',
-              }} />
-            )}
-          </button>
-        ))}
-      </div>
+      <BottomNav tab={tab} setTab={setTab} />
     </div>
   )
 }
