@@ -4,235 +4,149 @@
 
 | Component | Status |
 |-----------|--------|
-| **Active DB** | SQLite (`nexus.db`) — PostgreSQL not running |
-| **PostgreSQL** | ❌ Not running at `localhost:5432` |
-| **.env configured** | ✅ `postgresql://nexus_user:nexus_secure_pass_2024@localhost:5432/nexus` |
-| **Schema file** | ❌ None exists (auto-generated in Python) |
-
-**PostgreSQL fallback behavior:** If the `DATABASE_URL` env var is absent or unreachable, the server auto-falls back to SQLite. No manual switching needed.
+| **Active DB** | SQLite (`nexus.db`) — PostgreSQL unavailable |
+| **PostgreSQL** | Not running on `localhost:5432` |
+| **Fallback** | Working — SQLite used automatically when Postgres is down |
+| **DB Location** | `/home/workspace/nexus/nexus.db` |
 
 ---
 
-## Database Paths
+## Database Connection
 
-| File | Purpose |
-|------|---------|
-| `server/nexus.db` | Primary SQLite DB (actual data) |
-| `server/nexus_db.py` | DB initialization + connection module |
-| `.db.env` | PostgreSQL connection string (ignored currently — PG not running) |
+### SQLite (Active / Default)
+```
+/home/workspace/nexus/nexus.db
+```
+No credentials needed. WAL mode enabled for concurrent reads.
+
+### PostgreSQL (Production Target)
+```
+postgresql://nexus_user:nexus_secure_pass_2024@localhost:5432/nexus
+```
+Set via `DATABASE_URL` environment variable before starting the server.
 
 ---
 
-## Schema (auto-created by `nexus_db.py`)
+## Schema Overview
 
-Tables are created with `CREATE TABLE IF NOT EXISTS` on startup. **No separate `.sql` schema file exists** — the schema lives in Python code.
+### Core Intelligence Tables (both SQLite & PostgreSQL)
 
-### Core Intelligence Tables
+| Table | Purpose |
+|-------|---------|
+| `signals` | Geo-tagged intelligence signals — protests, disasters, military activity |
+| `prices` | Crypto/fiat price data — symbol, price, change_pct, volume |
+| `markets` | Prediction market questions (Kalshi, Metaculus) — question, prob, volume |
+| `predictions` | Model predictions linked to market `question_id` |
+| `alerts` | Alert feed with severity, location, resolved flag |
+| `intel` | Query/result log for intelligence lookups |
+| `surveillance` | Surveillance activity records — type, confidence, geo-tags |
 
-| Table | Description | Key Columns |
-|-------|-------------|-------------|
-| `signals` | Intelligence signals (threats, geopolitical, market) | `source`, `category`, `title`, `url`, `description`, `lat/lng`, `severity`, `tags`, `score`, `entity_type`, `country` |
-| `prices` | Price/volume data for trading symbols | `symbol`, `price`, `change_pct`, `volume` |
-| `markets` | Prediction market questions (Kalshi, etc.) | `market_id` (UNIQUE), `question`, `prob`, `volume`, `source`, `resolved` |
-| `predictions` | Model predictions vs actual outcomes | `question_id`, `predicted_prob`, `actual_outcome`, `engine`, `confidence`, `evidence` |
-| `alerts` | Real-time alerts with geolocation | `source`, `alert_type`, `title`, `detail`, `severity`, `lat/lng`, `resolved` |
-| `intel` | Cached intelligence query results | `query`, `result`, `source` |
-| `surveillance` | Surveillance data (source, type, location, tags) | `source`, `surveillance_type`, `title`, `description`, `url`, `lat/lng`, `confidence`, `tags` |
+### App-Level Tables (PostgreSQL only — not in SQLite init)
 
-### App-Level Tables (in `nexus.db`)
-
-| Table | Description |
-|-------|-------------|
-| `settings` | Key-value app configuration |
-| `saved_articles` | User-saved article IDs + content |
-| `watchlist` | User watchlist terms |
-| `feed_cache` | Cached RSS/feed responses (TTL-based) |
-| `situations` | Named situation/incident tracking |
-| `analytics` | Event tracking (page views, actions) |
+| Table | Purpose |
+|-------|---------|
+| `settings` | Key-value app settings |
+| `saved_articles` | User saved articles cache |
+| `watchlist` | Watchlist terms |
+| `feed_cache` | Feed URL cache with TTL |
+| `situations` | Named situation tracking |
+| `analytics` | Event analytics log |
 
 ### Indexes
-
 ```
 idx_signals_ts, idx_signals_category
 idx_prices_ts, idx_prices_symbol
 idx_markets_ts
 idx_alerts_ts
-idx_feed_cache_cached_at, idx_saved_articles_saved_at
-idx_watchlist_added_at, idx_situations_created_at, idx_analytics_ts
+idx_feed_cache_cached_at
+idx_saved_articles_saved_at
+idx_watchlist_added_at
+idx_situations_created_at
+idx_analytics_ts
 ```
 
 ---
 
-## Setting Up PostgreSQL (for production)
+## Switching SQLite → PostgreSQL
 
-### 1. Install PostgreSQL
-
+### 1. Start PostgreSQL
 ```bash
-sudo apt update && sudo apt install -y postgresql postgresql-contrib
+# Check if running
+pg_isready -h localhost -p 5432
+
+# Start PostgreSQL (system-dependent)
+# e.g. docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=... postgres:16
+# or systemctl start postgresql
 ```
 
-### 2. Create user + database
-
-```bash
-sudo -u postgres psql << 'EOF'
+### 2. Create Database & User
+```sql
 CREATE USER nexus_user WITH PASSWORD 'nexus_secure_pass_2024';
 CREATE DATABASE nexus OWNER nexus_user;
 GRANT ALL PRIVILEGES ON DATABASE nexus TO nexus_user;
-EOF
 ```
 
-### 3. Enable `.db.env` in server startup
-
-Edit the startup command or `server.py` to load `.db.env`:
-
-```python
-import os
-from dotenv import load_dotenv
-load_dotenv("/home/workspace/nexus-vercel/.db.env")
+### 3. Run Schema
+```bash
+psql -U nexus_user -d nexus -f /home/workspace/nexus-vercel/server/nexus_db_schema.sql
 ```
 
-Or export before running:
+### 4. Export Connection String & Restart Server
 ```bash
 export DATABASE_URL="postgresql://nexus_user:nexus_secure_pass_2024@localhost:5432/nexus"
-python server/server.py
+# Then restart the NEXUS server
 ```
-
-### 4. Create PostgreSQL schema
-
-Since there's no `.sql` file, port the schema from `nexus_db.py` to SQL:
-
-```sql
--- Signals table
-CREATE TABLE signals (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    source TEXT, category TEXT, title TEXT, url TEXT,
-    description TEXT, lat REAL, lng REAL, severity TEXT,
-    tags TEXT, score REAL DEFAULT 0, entity_type TEXT, country TEXT
-);
-
--- Prices table
-CREATE TABLE prices (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    symbol TEXT, price REAL, change_pct REAL, volume REAL
-);
-
--- Markets table
-CREATE TABLE markets (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    market_id TEXT UNIQUE, question TEXT, prob REAL,
-    volume REAL, source TEXT, resolved INTEGER DEFAULT 0
-);
-
--- Predictions table
-CREATE TABLE predictions (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    question_id TEXT, predicted_prob REAL, actual_outcome INTEGER,
-    resolved INTEGER DEFAULT 0, engine TEXT, confidence REAL, evidence TEXT
-);
-
--- Alerts table
-CREATE TABLE alerts (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    source TEXT, alert_type TEXT, title TEXT, detail TEXT,
-    severity TEXT, lat REAL, lng REAL, resolved INTEGER DEFAULT 0
-);
-
--- Intel table
-CREATE TABLE intel (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    query TEXT, result TEXT, source TEXT
-);
-
--- Surveillance table
-CREATE TABLE surveillance (
-    id SERIAL PRIMARY KEY,
-    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    source TEXT, surveillance_type TEXT, title TEXT, description TEXT,
-    url TEXT, lat REAL, lng REAL, confidence REAL, tags TEXT
-);
-
--- Indexes
-CREATE INDEX idx_signals_ts ON signals(ts);
-CREATE INDEX idx_signals_category ON signals(category);
-CREATE INDEX idx_prices_ts ON prices(ts);
-CREATE INDEX idx_prices_symbol ON prices(symbol);
-CREATE INDEX idx_markets_ts ON markets(ts);
-CREATE INDEX idx_alerts_ts ON alerts(ts);
-```
-
-Save as `nexus_db_schema.sql` in `server/` for future reference.
 
 ---
 
-## Migrating from SQLite → PostgreSQL
+## Data Migration (SQLite → PostgreSQL)
 
-### Option A: Export/Import (quick)
+Once PostgreSQL is live, migrate existing data:
 
-```bash
-# Export from SQLite
-sqlite3 server/nexus.db .dump > nexus_backup.sql
+```python
+import sqlite3, psycopg2
 
-# In PostgreSQL:
-# psql -U nexus_user -d nexus -f nexus_backup.sql
-# (Manual remapping of SQLite types to Postgres equivalents needed)
+sqlite_db = "/home/workspace/nexus/nexus.db"
+pg_conn = "postgresql://nexus_user:nexus_secure_pass_2024@localhost:5432/nexus"
+
+sqlite_conn = sqlite3.connect(sqlite_db)
+pg_conn = psycopg2.connect(pg_conn)
+
+tables = ["signals", "prices", "markets", "predictions", "alerts", "intel", "surveillance"]
+
+for table in tables:
+    rows = sqlite_conn.execute(f"SELECT * FROM {table}").fetchall()
+    cols = [desc[0] for desc in sqlite_conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    placeholders = ",".join(["%s"] * len(cols))
+    insert_sql = f"INSERT INTO {table} ({','.join(cols)}) VALUES ({placeholders}) ON CONFLICT DO NOTHING"
+    
+    with pg_conn.cursor() as cur:
+        for row in rows:
+            cur.execute(insert_sql, row)
+    pg_conn.commit()
+    print(f"Migrated {len(rows)} rows into {table}")
 ```
 
-### Option B: Schema-first migration (recommended for production)
-
-1. Stop the server
-2. Create PostgreSQL schema using `nexus_db_schema.sql` above
-3. Run a data migration script row-by-row (SQLite `INSERT` → PostgreSQL `INSERT`)
-4. Update `nexus_db.py` to use `psycopg2` with the `DATABASE_URL`
-5. Restart server with `DATABASE_URL` exported
-
-### Option C: Dual-write during transition
-
-Modify `nexus_db.py` to write to both SQLite and PostgreSQL simultaneously, then cut over once PostgreSQL is stable.
+> **Note:** App-level tables (`settings`, `saved_articles`, `watchlist`, `feed_cache`, `situations`, `analytics`) exist only in PostgreSQL — no SQLite source data for those.
 
 ---
 
-## Connection String Format
+## Key Implementation Notes
 
-```
-postgresql://nexus_user:nexus_secure_pass_2024@localhost:5432/nexus
-```
-
-Format breakdown:
-```
-postgresql:// [user] : [password] @ [host] : [port] / [database]
-```
-
-For production, replace `localhost` with your DB host and use a stronger password.
+- `nexus_db.py` — defines `init_db()` with inline SQLite CREATE TABLE statements. **Do not edit `DB_PATH`** without updating all references.
+- `server.py` — uses raw `conn.execute()` with SQLite parameter substitution (`?`). Works with SQLite; requires **psycopg2** and PostgreSQL for the production backend.
+- The `DATABASE_URL` from `.db.env` is the target — it's currently unused because PostgreSQL is not running.
+- `nexus_db_schema.sql` is PostgreSQL-compatible and can be run idempotently (`CREATE TABLE IF NOT EXISTS`).
 
 ---
 
-## Missing / Needed Files
+## Production Checklist
 
-| File | Status | Action |
-|------|--------|--------|
-| `server/nexus_db_schema.sql` | ❌ Missing | **Create it** — the schema above |
-| `server/.db.env` | ❌ Missing | Copy from `../.db.env` or create with `DATABASE_URL=` |
-| `.db.env` | ✅ Exists at project root | Keep here; server must load it |
-
----
-
-## Quick Start (current SQLite setup — works fine now)
-
-```bash
-# No changes needed — SQLite fallback is automatic
-cd /home/workspace/nexus-vercel/server
-python nexus_db.py   # initializes tables if not exist
-python server.py     # starts server using SQLite
-```
-
-To monitor the SQLite DB:
-```bash
-sqlite3 server/nexus.db "SELECT COUNT(*) FROM signals;"
-sqlite3 server/nexus.db ".tables"
-```
+- [ ] PostgreSQL running on port `5432`
+- [ ] Database `nexus` created with owner `nexus_user`
+- [ ] Schema applied via `psql -f nexus_db_schema.sql`
+- [ ] `DATABASE_URL` exported before server start
+- [ ] `nexus_db.py` updated to use psycopg2 (or SQLAlchemy) instead of sqlite3
+- [ ] Data migrated from `nexus.db`
+- [ ] App-level tables populated if needed
+- [ ] `nexus.db` backed up before switching
