@@ -10,7 +10,7 @@ function nexusMultiTargetPlugin() {
       const dist = resolve(__dirname, 'dist')
       const base = 'https://man44.zo.space'
       
-      // Desktop: index.html pointing to /nexus/assets/ (for Vercel deployment)
+      // Desktop: index.html pointing to /assets/ (Vercel root)
       const desktopHtml = `<!doctype html>
 <html lang="en">
 <head>
@@ -20,15 +20,15 @@ function nexusMultiTargetPlugin() {
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600&family=Orbitron:wght@600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="/nexus/assets/App.index.css"/>
-  <script type="module" crossorigin src="/nexus/assets/App.main.js"></script>
+  <link rel="stylesheet" href="/assets/App.index.css"/>
+  <script type="module" crossorigin src="/assets/App.main.js"></script>
 </head>
 <body>
   <div id="root"></div>
 </body>
 </html>`
       
-      // Mobile: pointing to /nexus/assets/
+      // Mobile: pointing to /assets/
       const mobileHtml = `<!doctype html>
 <html lang="en">
 <head>
@@ -41,8 +41,8 @@ function nexusMultiTargetPlugin() {
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600&family=Orbitron:wght@600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="/nexus/assets/App.index.css"/>
-  <script type="module" crossorigin src="/nexus/assets/App.mobile.js"></script>
+  <link rel="stylesheet" href="/assets/App.index.css"/>
+  <script type="module" crossorigin src="/assets/App.mobile.js"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -51,7 +51,7 @@ function nexusMultiTargetPlugin() {
       
       writeFileSync(resolve(dist, 'index.html'), desktopHtml)
       writeFileSync(resolve(dist, 'mobile.html'), mobileHtml)
-      console.log('[nexus-multi-target] Generated index.html and mobile.html with /nexus/assets/* paths')
+      console.log('[nexus-multi-target] Generated index.html and mobile.html with /assets/* paths')
     }
   }
 }
