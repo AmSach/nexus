@@ -10,7 +10,7 @@ function nexusMultiTargetPlugin() {
       const dist = resolve(__dirname, 'dist')
       const base = 'https://man44.zo.space'
       
-      // Desktop: index.html pointing to /assets/
+      // Desktop: index.html pointing to /nexus/assets/ (for Vercel deployment)
       const desktopHtml = `<!doctype html>
 <html lang="en">
 <head>
@@ -28,7 +28,7 @@ function nexusMultiTargetPlugin() {
 </body>
 </html>`
       
-      // Mobile: pointing to /nexus/assets/ too (same assets, mobile entry only)
+      // Mobile: pointing to /nexus/assets/
       const mobileHtml = `<!doctype html>
 <html lang="en">
 <head>

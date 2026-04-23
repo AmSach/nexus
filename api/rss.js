@@ -148,7 +148,17 @@ export default async function handler(req, res) {
 
   // ── RSS / Atom feed mode ──────────────────────────────────────────────────
   const { url, count = 30 } = req.query
-  if (!url) return res.status(400).json({ error: 'url param required' })
+  if (!url) {
+    const curated = [
+      { title: 'Russia Ukraine war: latest news', url: 'https://www.theguardian.com/world/russia-ukraine', source: 'Guardian', category: 'conflict' },
+      { title: 'ISW — Ukraine Offensive Campaign Assessments', url: 'https://www.understandingwar.org/', source: 'ISW', category: 'intel' },
+      { title: 'BBC World News', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', source: 'BBC', category: 'world' },
+      { title: 'Al Jazeera World', url: 'https://www.aljazeera.com/xml/rss/all.xml', source: 'Al Jazeera', category: 'world' },
+      { title: 'Defense News', url: 'https://www.defensenews.com/feed/', source: 'Defense News', category: 'military' },
+      { title: 'Radio Free Europe/Radio Liberty', url: 'https://www.rferl.org/syndication/rss/news/', source: 'RFE/RL', category: 'europe' },
+    ]
+    return res.status(200).json({ status: 'ok', items: curated, count: curated.length })
+  }
 
   try {
     const txt = await fetchURL(url)

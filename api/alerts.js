@@ -438,7 +438,7 @@ async function fetchProMED() {
 }
 
 async function fetchCloudflare() {
-  const CF_TOKEN = process.env.CF_TOKEN || ''
+  const CF_TOKEN = process.env.CF_TOKEN || process.env.CLOUDFLARE_TOKEN || ''
   if (!CF_TOKEN) return []
   try {
     const r = await fetch('https://api.cloudflare.com/client/v4/radar/outages/latest?format=json', {

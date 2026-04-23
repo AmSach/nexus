@@ -217,7 +217,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
 
-  if (req.query.mode === 'conflict') return conflictMarkets(req, res)
+  if (req.query.mode === 'conflict' || !req.query.mode) return conflictMarkets(req, res)
 
   // ── OHLCV history mode: returns daily OHLCV for charting + backtesting ─────
   // ?mode=history&symbol=SPY&range=1y   (range: 5d|1mo|3mo|6mo|1y|2y|5y)
@@ -284,7 +284,7 @@ export default async function handler(req, res) {
   if (req.query.mode === 'multi') {
     res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
     const symbols = (req.query.symbols || '').split(',').filter(Boolean).slice(0, 50)
-    const avKey  = req.query.avkey  || process.env.VITE_ALPHAVANTAGE_KEY  || 'GX7D3YNMNJND5ZF3'
+    const avKey  = req.query.avkey  || process.env.ALPHAVANTAGE_KEY  || ''
     const tdKey  = req.query.tdkey  || process.env.VITE_TWELVEDATA_KEY   || ''
     if (!symbols.length) return res.status(400).json({ error: 'No symbols' })
 

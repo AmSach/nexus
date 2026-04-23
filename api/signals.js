@@ -191,7 +191,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ funding, ts: new Date().toISOString() })
   }
 
-  const AISSTREAM_KEY  = process.env.AISSTREAM_KEY  || '7c4731ac6b055b6017439baf319e9b366f6af43c'
+  const AISSTREAM_KEY  = process.env.AISSTREAM_KEY  || ''
   const SPACETRACK_USER = process.env.SPACETRACK_USER || ''
   const SPACETRACK_PASS = process.env.SPACETRACK_PASS || ''
   const REDDIT_ID      = process.env.REDDIT_ID      || ''
@@ -216,7 +216,10 @@ export default async function handler(req, res) {
 
     // ── SpaceTrack — all tracked orbital objects (TLE catalog) ────────────
     (async () => {
-      if (!SPACETRACK_USER || !SPACETRACK_PASS) {
+      // SpaceTrack credentials — use env vars, graceful fallback to CelesTrak
+      const stUser = process.env.SPACETRACK_USER || ''
+      const stPass = process.env.SPACETRACK_PASS || ''
+      if (!stUser || !stPass) {
         // Use CelesTrak as free fallback (no auth)
         const [active, debris, leo] = await Promise.allSettled([
           get('https://celestrak.org/SOCRATES/query.php?CODE=ALL&ACTION=Latest&MAX=100&FORMAT=json', 12000),
@@ -249,7 +252,7 @@ export default async function handler(req, res) {
         const loginR = await fetch('https://www.space-track.org/ajaxauth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `identity=${encodeURIComponent(SPACETRACK_USER)}&password=${encodeURIComponent(SPACETRACK_PASS)}`,
+          body: `identity=${encodeURIComponent(stUser)}&password=${encodeURIComponent(stPass)}`,
           signal: AbortSignal.timeout(10000),
         })
         if (!loginR.ok) return

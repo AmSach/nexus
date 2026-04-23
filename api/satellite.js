@@ -38,21 +38,20 @@ export default async function handler(req, res) {
   const primaryDeadline = new Promise(r => setTimeout(r, 38000))
   const deadline        = new Promise(r => setTimeout(r, 52000))
 
-  const FIRMS_KEY       = '08be3187f8c1526e0fd30249ee2c3374'
-  const SHODAN_KEY      = process.env.SHODAN_KEY         || 'CwHKC0EtdYHtGejGE5CX9o0R4pMLe2LZ'
-  const AISSTREAM_KEY   = process.env.AISSTREAM_KEY      || '7c4731ac6b055b6017439baf319e9b366f6af43c'
-  const SPACETRACK_USER = process.env.SPACETRACK_USER    || ''
-  const SPACETRACK_PASS = process.env.SPACETRACK_PASS    || ''
+  // ── API Keys (env vars with graceful fallback) ──────────────────────────
+  const FIRMS_KEY       = process.env.FIRMS_KEY       || ''
+  const SHODAN_KEY      = process.env.SHODAN_KEY      || ''
+  const AISSTREAM_KEY   = process.env.AISSTREAM_KEY   || ''
+  const SPACETRACK_USER = process.env.SPACETRACK_USER || ''
+  const SPACETRACK_PASS = process.env.SPACETRACK_PASS || ''
   // OpenSky Network — authenticated REST API (much higher rate limits + military coverage)
-  const OPENSKY_USER    = process.env.OPENSKY_USER    || ''
-  const OPENSKY_PASS    = process.env.OPENSKY_PASS    || ''
-  const OPENSKY_AUTH    = OPENSKY_USER && OPENSKY_PASS
-    ? 'Basic ' + Buffer.from(OPENSKY_USER + ':' + OPENSKY_PASS).toString('base64')
-    : ''
+  const OPENSKY_USER    = process.env.OPENSKY_USER    || 'guest'
+  const OPENSKY_PASS    = process.env.OPENSKY_PASS    || 'guest'
+  const OPENSKY_AUTH    = 'Basic ' + Buffer.from(OPENSKY_USER + ':' + OPENSKY_PASS).toString('base64')
   // Telegram Bot token — for public channel monitoring
   const TELEGRAM_TOKEN  = process.env.TELEGRAM_TOKEN     || ''
   // NASA Earthdata — VIIRS nightlights
-  const EARTHDATA_TOKEN = process.env.EARTHDATA_TOKEN    || ''
+  const EARTHDATA_TOKEN = process.env.EARTHDATA_TOKEN || ''
 
   const get = async (url, ms = 20000, headers = {}) => {
     try {
@@ -119,7 +118,7 @@ export default async function handler(req, res) {
 
     // GVP: Smithsonian Global Volcanism Program
     (async () => {
-      const r = await get('https://volcano.si.edu/api/v1/eruptions?activityevidence=Eruption%20Observed&activitystatus=Confirmed&timeframe=Last%20Week&format=json', 8000)
+      const r = await get('https://volcano.si.edu/api/v1/eruptions?activityevidence=Eruption%22Observed&activitystatus=Confirmed&timeframe=Last%20Week&format=json', 8000)
       if (r) {
         const d = await r.json()
         const arr = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : []
@@ -383,6 +382,7 @@ export default async function handler(req, res) {
           const d = await r.json()
           ;(d?.ac || []).forEach(a => {
             if (!a.lat || !a.lon || seen.has(a.hex)) return
+            if (a.alt_baro === 'ground' && !a.squawk) return  // skip grounded w/o emergency
             seen.add(a.hex)
             all.push({
               icao24: a.hex, callsign: (a.flight || '').trim(),
@@ -648,7 +648,7 @@ export default async function handler(req, res) {
       } catch {}
 
       // 3. ADS-B fi — military callsign patterns from strategic zones
-      const milCallPat = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|VMF|VMFA|VMA|VFA|VP|VQ|VRC|VR|HC|HM|VAW|SPAR|EXEC|DUKE|MIGHT|REACH|IRON|STEEL|VALOR|ATLAS|NINJA|GHOST)/i
+      const milCallPat = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|VMF|VMFA|VMA|VFA|VP|VQ|VRC|VR|VC|VT|VX|HSC|HSM|HCS|HC|HM|VAW|VW|VAQ)/i
       const milZones = [
         {lat:38.9,lon:-77.0,name:'Washington DC/Bolling'},
         {lat:36.8,lon:-76.0,name:'Norfolk/Langley AFB'},
@@ -680,6 +680,7 @@ export default async function handler(req, res) {
         {lat:17.2,lon:78.5,name:'Dundigal/Indian AF'},
         {lat:32.1,lon:34.8,name:'Tel Aviv/Israeli AF'},
         {lat:24.1,lon:56.6,name:'Al Dhafra/UAE/USAF'},
+        {lat:29.2,lon:47.9,name:'Ali Al Salem/Kuwait'},
         {lat:26.3,lon:50.6,name:'Bahrain/USAF CENTCOM'},
         {lat:37.4,lon:35.4,name:'Incirlik/USAF Turkey'},
         {lat:-33.9,lon:151.2,name:'Richmond/RAAF'},
@@ -870,14 +871,11 @@ export default async function handler(req, res) {
 
       // ── 3b. AISStream HTTP REST (we have the API key) ──────────────────────
       // Falls back to bbox query for strategic chokepoints
-      const aisKey = '7c4731ac6b055b6017439baf319e9b366f6af43c'
+      const aisKey = process.env.AISSTREAM_KEY || ''
       const aisBoxes = [
         {bbox:[24.0,56.5,26.5,25.0], zone:'Hormuz'},
         {bbox:[103.5,-0.5,104.5,2.0], zone:'Malacca'},
         {bbox:[32.2,29.5,33.0,31.5], zone:'Suez'},
-        {bbox:[43.0,11.5,44.0,13.5], zone:'Bab-el-Mandeb'},
-        {bbox:[-6.5,35.5,-5.0,36.5], zone:'Gibraltar'},
-        {bbox:[118.5,23.5,120.5,25.5], zone:'Taiwan Strait'},
         {bbox:[46.0,11.5,51.0,14.0], zone:'Gulf of Aden'},
       ]
       await Promise.allSettled(aisBoxes.map(({bbox, zone}) =>
@@ -926,7 +924,7 @@ export default async function handler(req, res) {
               ;(d?.data?.rows||d?.vessels||(Array.isArray(d)?d:[])).forEach(v => add({
                 mmsi:String(v.MMSI||v.mmsi||''), name:v.SHIPNAME||v.name||'',
                 lat:+(v.LAT||v.lat||0), lng:+(v.LON||v.lon||0),
-                speed:+(v.SOG||v.speed||0)/10, heading:+(v.HEADING||v.heading||0),
+                speed:+(v.SPEED||v.speed||0)/10, heading:+(v.HEADING||v.heading||0),
                 flag:v.FLAG||v.flag||'', type:v.TYPE_NAME||v.type||'',
                 dest:v.DESTINATION||v.destination||'', zone:'MarineTraffic'
               }))
@@ -1133,13 +1131,13 @@ export default async function handler(req, res) {
           else if (f.geometry?.type==='Polygon') { const c=f.geometry.coordinates[0]?.[0]; if(c){lng=c[0];lat=c[1]} }
           else if (p.affectedZones?.[0]) { lat=38; lng=-95 } // continental US default
           return {
-            id:p.id, event:p.event, headline:p.headline?.slice(0,200),
-            severity:p.severity, urgency:p.urgency, certainty:p.certainty,
-            area:p.areaDesc?.slice(0,100), onset:p.onset, expires:p.expires,
-            lat, lng, url:p.web,
-            mapSeverity:p.severity==='Extreme'?'critical':p.severity==='Severe'?'high':'medium',
+            id:p.id, classification:p.classification,
+            location:p.icaoLocation, type:p.notamType,
+            startDate:p.startDate, endDate:p.endDate,
+            text: p.simpleText?.slice(0,300),
+            lat, lng, severity: p.classification==='CRITICAL'?'critical':'medium',
           }
-        }).filter(a=>a.lat!==0||a.lng!==0)
+        }).filter(n=>n.location)
       } catch {}
     })(),
 
@@ -1213,13 +1211,13 @@ export default async function handler(req, res) {
       // 1. rss2json.com proxy — different IP range, bypasses Vercel → ProMED blocks
       try {
         const r = await get('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://promedmail.org/feed/') + '&count=25', 12000, { 'Accept': 'application/json' })
-        if (r.ok) {
+        if (r) {
           const d = await r.json().catch(()=>null)
           if (d?.items?.length) {
             d.items.forEach((p,i) => {
               const title = (p.title||'').replace(/<[^>]+>/g,'').trim()
               if (title.length < 5) return
-              items.push({ title, url: p.link, date: p.pubDate, description: (p.description||p.content||'').replace(/<[^>]+>/g,'').slice(0,300), source:'ProMED' })
+              items.push({ title, url: p.link, date: p.pubDate, description: (p.description||p.content||'').replace(/<[^>]+>/g,'').slice(0,300), source: 'ProMED' })
             })
             if (items.length) { results.promed = items; return }
           }
@@ -1229,13 +1227,13 @@ export default async function handler(req, res) {
       // 2. ProMED WordPress REST API (sometimes works from Vercel)
       try {
         const r = await get('https://promedmail.org/wp-json/wp/v2/posts?per_page=25&_fields=id,title,link,date,excerpt', 12000)
-        if (r.ok) {
+        if (r) {
           const d = await r.json().catch(()=>null)
           if (Array.isArray(d) && d.length) {
             d.forEach(p => {
               const title = (p.title?.rendered||'').replace(/<[^>]+>/g,'').trim()
               if (title.length < 5) return
-              items.push({ title, url: p.link, date: p.date, description: (p.excerpt?.rendered||'').replace(/<[^>]+>/g,'').slice(0,300), source:'ProMED' })
+              items.push({ title, url: p.link, date: p.date, description: (p.excerpt?.rendered||'').replace(/<[^>]+>/g,'').slice(0,300), source: 'ProMED' })
             })
             if (items.length) { results.promed = items; return }
           }
@@ -1245,7 +1243,7 @@ export default async function handler(req, res) {
       // 3. ProMED direct RSS (sometimes accessible from Vercel edge regions)
       try {
         const r = await get('https://promedmail.org/feed/', 6000, { 'User-Agent': 'Mozilla/5.0 (compatible; NexusBot/1.0)', 'Accept': 'application/rss+xml, text/xml' })
-        if (r.ok) {
+        if (r) {
           const xml = await r.text().catch(()=>'')
           const parsed = parseRSSItems(xml, 'ProMED', 20)
           if (parsed.length) { items.push(...parsed); results.promed = items; return }
@@ -1255,7 +1253,7 @@ export default async function handler(req, res) {
       // 4. ISID ProMED mirror
       try {
         const r = await get('https://www.isid.org/feed/', 8000)
-        if (r.ok) {
+        if (r) {
           const xml = await r.text().catch(()=>'')
           parseRSSItems(xml, 'ISID/ProMED', 15).filter(x => /disease|outbreak|virus|fever|cholera|mpox|ebola|dengue|measles|flu|covid|plague|anthrax|polio/i.test(x.title)).forEach(x => items.push(x))
           if (items.length) { results.promed = items; return }
@@ -1265,7 +1263,7 @@ export default async function handler(req, res) {
       // 5. Outbreak News Today — aggregates ProMED + WHO + ECDC
       try {
         const r = await get('https://outbreaknewstoday.com/feed/', 8000)
-        if (r.ok) {
+        if (r) {
           const xml = await r.text().catch(()=>'')
           parseRSSItems(xml, 'Outbreak News Today', 15).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
           if (items.length) { results.promed = items; return }
@@ -1275,7 +1273,7 @@ export default async function handler(req, res) {
       // 6. HealthMap (Harvard School of Public Health)
       try {
         const r = await get('https://healthmap.org/genapi/en/alert/rss/30', 6000)
-        if (r.ok) {
+        if (r) {
           const xml = await r.text().catch(()=>'')
           parseRSSItems(xml, 'HealthMap', 15).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
           if (items.length) { results.promed = items; return }
@@ -1285,7 +1283,7 @@ export default async function handler(req, res) {
       // 7. ECDC Epidemic Intelligence
       try {
         const r = await get('https://www.ecdc.europa.eu/en/rss-feed/all', 8000)
-        if (r.ok) {
+        if (r) {
           const xml = await r.text().catch(()=>'')
           parseRSSItems(xml, 'ECDC', 20).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
           if (items.length) { results.promed = items; return }
@@ -1295,10 +1293,9 @@ export default async function handler(req, res) {
       // 8. WHO DON — final fallback
       try {
         const r = await get('https://www.who.int/feeds/entity/csr/don/en/rss.xml', 6000)
-        if (r.ok) {
+        if (r) {
           const xml = await r.text().catch(()=>'')
           parseRSSItems(xml, 'WHO DON', 15).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
-          if (items.length) { results.promed = items; return }
         }
       } catch {}
       results.promed = items
@@ -1417,7 +1414,7 @@ export default async function handler(req, res) {
           items.push({ title, url:getXMLTag(m[1],'link'), date:getXMLTag(m[1],'pubDate'),
             lat, lng, source,
             description:getXMLTag(m[1],'description').replace(/<[^>]+>/g,'').slice(0,300),
-            severity: /sinking|sunk|capsized|collision|explosion|fire|missing|attack|seized/i.test(title) ? 'high' : 'medium'
+            severity: /sinking|sunk|capsized|collision|explosion|fire|offensive|advance/i.test(title) ? 'high' : 'medium'
           })
         })
       }
@@ -1432,7 +1429,7 @@ export default async function handler(req, res) {
         // Additional sources for global coverage
         get('https://www.marinemec.com/news/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Marine Mec')).catch(()=>{}),
         get('https://www.seatrade-maritime.com/rss/news',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Seatrade Maritime')).catch(()=>{}),
-        get('https://lloydslist.maritimeintelligence.informa.com/rss',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Lloyd\'s List')).catch(()=>{}),
+        get('https://lloydslist.maritimeintelligence.informa.com/rss',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,"Lloyd's List")).catch(()=>{}),
         // Piracy and armed robbery reports
         get('https://www.icc-ccs.org/piracy-reporting-centre/live-piracy-report',8000).then(r=>r&&r.text()).then(x=>{
           if(!x) return
@@ -1458,11 +1455,11 @@ export default async function handler(req, res) {
         get('https://maritime-executive.com/rss/articles',6000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Executive')).catch(()=>{}),
         get('https://www.tradewindsnews.com/rss',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'TradeWinds')).catch(()=>{}),
         get('https://safety4sea.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Safety4Sea')).catch(()=>{}),
-        get('https://maritime-cyprus.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Cyprus')).catch(()=>{}),
+        get('https://maritime-executive.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Executive')).catch(()=>{}),
       ])
       // Add more maritime sources for broader coverage
       await Promise.allSettled([
-        get('https://www.bimco.org/news/rss',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'BIMCO')).catch(()=>{}),
+        get('https://www.bimco.org/news/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'BIMCO')).catch(()=>{}),
         get('https://www.janes.com/feeds/defence-news',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Janes Naval')).catch(()=>{}),
         get('https://www.navyrecognition.com/index.php/news.feed',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Navy Recognition')).catch(()=>{}),
         get('https://www.maritime-connector.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Connector')).catch(()=>{}),
@@ -1495,7 +1492,7 @@ export default async function handler(req, res) {
           if (!/nuclear|atomic|radioactive|radiation|warhead|missile|ICBM|uranium|plutonium|reactor|IAEA|nonproliferation|deterren|weapon|nuke|bomb/i.test(title)) return
           items.push({ title, url:getXMLTag(m[1],'link'), date:getXMLTag(m[1],'pubDate'), source,
             description:getXMLTag(m[1],'description').replace(/<[^>]+>/g,'').slice(0,300),
-            severity:/emergency|accident|leak|explosion|meltdown|launch|strike|attack/i.test(title)?'critical':/incident|security|warning|alert|report|casualty/i.test(title)?'high':'medium'
+            severity:/emergency|accident|leak|explosion|meltdown|launch|strike|attack/i.test(title)?'critical':'medium'
           })
         })
       }
@@ -1804,7 +1801,7 @@ export default async function handler(req, res) {
       const r = await get('https://m2m.cr.usgs.gov/api/api/json/stable/scene-search', 8000)
       // This requires auth — skip, use EONET wildfire instead
       // Instead: NASA EARTHDATA open search for recent thermal anomalies
-      const r2 = await get('https://firms.modaps.eosdis.nasa.gov/api/country/csv/08be3187f8c1526e0fd30249ee2c3374/VIIRS_SNPP_NRT/world/1', 8000)
+const r2 = await get('https://firms.modaps.eosdis.nasa.gov/api/country/csv/${process.env.FIRMS_KEY || ""}/VIIRS_SNPP_NRT/world/1', 8000)
       if (!r2) return
       try {
         const csv = await r2.text()
@@ -1813,13 +1810,17 @@ export default async function handler(req, res) {
         const h = lines[0].split(',').map(x=>x.trim())
         const latI=h.indexOf('latitude'), lngI=h.indexOf('longitude')
         const brightI=h.indexOf('bright_ti4')!==-1?h.indexOf('bright_ti4'):h.indexOf('brightness')
-        const sample = lines.slice(1, 501)
-        results.globalViirs = sample.map(line=>{
-          const v = line.split(',')
-          const lat=parseFloat(v[latI]), lng=parseFloat(v[lngI]), bright=parseFloat(v[brightI])||0
-          if(isNaN(lat)||isNaN(lng)) return null
-          return { lat, lng, brightness:bright, severity:bright>450?'critical':bright>380?'high':'medium', type:'firms' }
-        }).filter(Boolean)
+        const confI=h.indexOf('confidence')
+        lines.slice(1).forEach(line=>{
+          const v=line.split(',')
+          const lat=parseFloat(v[latI]), lng=parseFloat(v[lngI])
+          const bright=parseFloat(v[brightI])||0
+          const conf=v[confI]||'n'
+          if(isNaN(lat)||isNaN(lng)||bright<350) return
+          results.globalViirs = results.globalViirs || []
+          results.globalViirs.push({lat,lng,brightness:bright,confidence:conf,zone:'Global',product:'VIIRS',
+            severity:bright>450?'critical':bright>380?'high':'medium',type:'firms'})
+        })
       } catch {}
     })(),
 
@@ -1851,7 +1852,7 @@ export default async function handler(req, res) {
       ]
       const fires = []
       await Promise.allSettled(globalZones.map(async ([minLng,maxLng,minLat,maxLat,label])=>{
-        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/08be3187f8c1526e0fd30249ee2c3374/VIIRS_SNPP_NRT/${minLng},${minLat},${maxLng},${maxLat}/1`
+        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.FIRMS_KEY || ""}/VIIRS_SNPP_NRT/${minLng},${minLat},${maxLng},${maxLat}/1`
         const r = await get(url, 6000)
         if (!r) return
         const csv = await r.text()
@@ -2137,8 +2138,6 @@ export default async function handler(req, res) {
     // ════════════════════════════════════════════════════════════════════════
     (async () => {
       try {
-        // SIPRI has a TIV database search
-        const r = await get('https://www.sipri.org/sites/default/files/Yearbook/sipri-yb-2024-summary.pdf', 8000)
         // SIPRI doesn't have a REST API, but their data is in the GDELT network
         // Use GDELT to track SIPRI-related news and arms transfers
         const sipriR = await get("https://api.gdeltproject.org/api/v2/doc/doc?query=arms+transfer+weapons+sale+military+export&mode=artlist&maxrecords=50&sort=DateDesc&format=json&OUTPUTFIELDS=url,title,seendate,sourcecountry,socialimage", 10000)
@@ -2372,8 +2371,8 @@ export default async function handler(req, res) {
       { handle:'disclosetv',           name:'Disclose TV' },
       { handle:'sentdefender',         name:'Sentinel Defender' },
       { handle:'warcimintel',          name:'War Crime Intel' },
-      { handle:'combatfootage',        name:'Combat Footage' },
-      { handle:'informnapalm',         name:'InformNapalm' },
+      { handle:'CombatFootage',        name:'Combat Footage' },
+      { handle:'InformNapalm',         name:'InformNapalm' },
       { handle:'ukraine_911',          name:'Ukraine 911' },
     ]
     const tgPosts = []
@@ -2608,7 +2607,7 @@ export default async function handler(req, res) {
     const viirsItems = []
     await Promise.allSettled(viirs_conflicts.map(async z => {
       const today = new Date().toISOString().slice(0,10)
-      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/08be3187f8c1526e0fd30249ee2c3374/VIIRS_SNPP_NRT/${z.lng-2},${z.lat-2},${z.lng+2},${z.lat+2}/1`
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.FIRMS_KEY || ""}/VIIRS_SNPP_NRT/${z.lng-2},${z.lat-2},${z.lng+2},${z.lat+2}/1`
       const r = await fetch(url, { signal: AbortSignal.timeout(6000) }).catch(()=>null)
       if (!r?.ok) return
       const csv = await r.text().catch(()=>'')
@@ -2742,10 +2741,10 @@ export default async function handler(req, res) {
     // 6. Naval chokepoint monitoring — ships in strategic waterways
     const chokepoints = [
       {name:'Strait of Hormuz', lat:26.5, lng:56.5, radius:1.5, significance:'70% Gulf oil exports'},
-      {name:'Strait of Malacca', lat:2.5, lng:101.5, radius:2.0, significance:'30% global trade'},
+      {name:'Strait of Malacca', lat:1.2, lng:103.8, radius:2.0, significance:'30% global trade'},
       {name:'Suez Canal', lat:30.5, lng:32.3, radius:1.2, significance:'12% global trade'},
       {name:'Bab el-Mandeb', lat:12.5, lng:43.5, radius:1.5, significance:'Red Sea entry/exit'},
-      {name:'Taiwan Strait', lat:24.0, lng:120.5, radius:2.0, significance:'Critical semiconductor supply'},
+      {name:'Taiwan Strait', lat:24.0, lng:121.5, radius:2.0, significance:'Critical semiconductor supply'},
       {name:'Kerch Strait', lat:45.3, lng:36.5, radius:0.8, significance:'Black Sea Russian access'},
       {name:'Denmark Strait', lat:67.0, lng:-24.0, radius:3.0, significance:'North Atlantic Russian access'},
       {name:'South China Sea SLOC', lat:10.0, lng:114.0, radius:3.0, significance:'USD 5T annual trade'},
@@ -2761,19 +2760,55 @@ export default async function handler(req, res) {
         })
       })
       Object.entries(chokeActivity).forEach(([name, d]) => {
-        if (d.count >= 3) preAction.push({
-          type: 'military_concentration', category: 'naval_indicator',
-          name: `${d.count} military aircraft converging at ${name}`,
-          lat: d.lat, lng: d.lng,
-          aircraft_count: d.count, callsigns: d.aircraft.slice(0,8),
-          ts: new Date().toISOString(),
-          severity: d.count >= 10 ? 'critical' : d.count >= 5 ? 'high' : 'medium',
-          significance: 'Military air concentration near ' + name + ' — potential mobilization or exercise'
-        })
+        if (d.count >= 3) {
+          preAction.push({
+            type: 'military_concentration', category: 'force_concentration',
+            name: `${d.count} military aircraft converging at ${name}`,
+            lat: d.lat, lng: d.lng,
+            aircraft_count: d.count, callsigns: d.aircraft.slice(0,8),
+            ts: new Date().toISOString(),
+            severity: d.count >= 10 ? 'critical' : d.count >= 5 ? 'high' : 'medium',
+            significance: `Military air concentration near ${name} — potential mobilization or exercise`
+          })
+        }
       })
     }
 
-    // 7. Warship surge — multiple warships converging on same region
+    // 7. Military aircraft surge near conflict zones — mass military movement
+    if (results.milaircraft?.length) {
+      const CONFLICT_ZONES = [
+        {name:'Ukraine/Poland border', lat:50.5, lng:24.0, r:3},
+        {name:'Taiwan Strait', lat:24.0, lng:120.5, r:2.5},
+        {name:'Korean DMZ', lat:38.0, lng:127.0, r:2},
+        {name:'Strait of Hormuz', lat:26.5, lng:56.5, r:2},
+        {name:'Eastern Mediterranean', lat:35.0, lng:32.0, r:4},
+        {name:'Baltic Sea', lat:57.0, lng:20.0, r:4},
+        {name:'South China Sea', lat:12.0, lng:114.0, r:4},
+      ]
+      const zoneCounts = {}
+      results.milaircraft.forEach(a => {
+        CONFLICT_ZONES.forEach(z => {
+          const dist = Math.sqrt(Math.pow(a.lat-z.lat,2)+Math.pow(a.lng-z.lng,2))
+          if (dist < z.r) zoneCounts[z.name] = (zoneCounts[z.name]||{count:0,lat:z.lat,lng:z.lng,aircraft:[]})
+            && (zoneCounts[z.name].count++, zoneCounts[z.name].aircraft.push(a.callsign||a.icao24))
+        })
+      })
+      Object.entries(zoneCounts).forEach(([zone, d]) => {
+        if (d.count >= 3) {
+          preAction.push({
+            type: 'military_concentration', category: 'force_concentration',
+            name: `${d.count} military aircraft converging at ${zone}`,
+            lat: d.lat, lng: d.lng,
+            aircraft_count: d.count, callsigns: d.aircraft.slice(0,8),
+            ts: new Date().toISOString(),
+            severity: d.count >= 10 ? 'critical' : d.count >= 5 ? 'high' : 'medium',
+            significance: `Military air concentration near ${zone} — potential mobilization or exercise`
+          })
+        }
+      })
+    }
+
+    // 8. Warship surge — multiple warships converging on same region
     if (results.warships?.length) {
       const liveWarships = results.warships.filter(w=>w._livePos&&w.lat&&w.lng)
       if (liveWarships.length >= 3) {
@@ -2786,19 +2821,19 @@ export default async function handler(req, res) {
         })
         Object.values(clusters).filter(c=>c.ships.length>=3).forEach(c => {
           preAction.push({
-            type: 'warship_concentration', category: 'naval_indicator',
-            name: `${c.ships.length} warships converging at ${c.lat.toFixed(1)}°, ${c.lng.toFixed(1)}°`,
-            lat: c.lat, lng: c.lng,
-            ships: c.ships.map(s=>s.name||s.mmsi).slice(0,5),
-            ts: new Date().toISOString(),
-            severity: c.ships.length >= 5 ? 'high' : 'medium',
-            significance: 'Live AIS warship concentration — potential naval exercise or pre-deployment'
+            type:'warship_concentration', category:'naval_indicator',
+            name:`${c.ships.length} warships converging at ${c.lat.toFixed(1)}°, ${c.lng.toFixed(1)}°`,
+            lat:c.lat, lng:c.lng,
+            ships:c.ships.map(s=>s.name||s.mmsi).slice(0,5),
+            ts:new Date().toISOString(),
+            severity: c.ships.length>=5?'critical':'high',
+            significance:'Live AIS warship concentration — potential naval exercise or pre-deployment'
           })
         })
       }
     }
 
-    // 8. NOTAM military exercise detection — scan notam titles for exercise keywords
+    // 9. NOTAM military exercise detection — scan notam titles for exercise keywords
     if (results.notams?.length) {
       const exerciseKeywords = /exercise|LIVEX|DACT|RED FLAG|COLD RESPONSE|DEFENDER|SABER|SWIFT|IRON|THUNDER|JUNIPER|BALTOPS|TRIDENT/i
       const restrictionKeywords = /temporary.*restricted|prohibited.*area|danger.*area|military.*operations/i
@@ -2809,19 +2844,19 @@ export default async function handler(req, res) {
       if (exerciseNotams.length > 0) {
         exerciseNotams.slice(0,10).forEach(n => {
           preAction.push({
-            type: 'notam_exercise', category: 'exercise_indicator',
-            name: `NOTAM: ${(n.title||n.description||'Military restriction').slice(0,80)}`,
-            lat: n.lat || n.latitude || 0, lng: n.lng || n.longitude || 0,
-            url: n.url || 'https://notams.faa.gov',
-            ts: n.date || new Date().toISOString(),
-            severity: 'medium',
-            significance: 'Military NOTAM or airspace restriction — possible exercise or live operation'
+            type:'notam_exercise', category:'exercise_indicator',
+            name:`NOTAM: ${(n.title||n.description||'Military restriction').slice(0,80)}`,
+            lat:n.lat||n.latitude||0, lng:n.lng||n.longitude||0,
+            url:n.url||'https://notams.faa.gov',
+            ts:n.date||new Date().toISOString(),
+            severity:'medium',
+            significance:'Military NOTAM or airspace restriction — possible exercise or live operation'
           })
         })
       }
     }
 
-    // 9. Telegram volume surge — sudden spike in conflict channel activity (info-ops signal)
+    // 10. Telegram volume surge — sudden spike in conflict channel activity (info-ops signal)
     if (results.telegramPosts?.length) {
       const recentCutoff = Date.now() - 30*60*1000 // last 30 min
       const recent = results.telegramPosts.filter(p => {
@@ -2839,19 +2874,19 @@ export default async function handler(req, res) {
         const geoCoords = {ukraine:[49,31],russia:[55,37],gaza:[31.4,34.4],israel:[31.5,34.8],taiwan:[24,121],china:[35,105],iran:[32,53],korea:[37.5,127],syria:[35,38],yemen:[15,48],hezbollah:[33.9,35.5],hamas:[31.4,34.4]}
         const [lat,lng] = geoCoords[topGeo[0]] || [0,0]
         preAction.push({
-          type: 'telegram_surge', category: 'information_ops',
-          name: `Telegram surge: ${recent.length} posts in 30min focused on ${topGeo[0]} (${topGeo[1]} mentions)`,
+          type:'telegram_surge', category:'information_ops',
+          name:`Telegram surge: ${recent.length} posts in 30min focused on ${topGeo[0]} (${topGeo[1]} mentions)`,
           lat, lng,
-          post_count: recent.length, top_topic: topGeo[0], mention_count: topGeo[1],
-          channels: [...new Set(recent.slice(0,5).map(p=>p.channel||p.source))].filter(Boolean),
-          ts: new Date().toISOString(),
+          post_count:recent.length, top_topic:topGeo[0], mention_count:topGeo[1],
+          channels:[...new Set(recent.slice(0,5).map(p=>p.channel||p.source))].filter(Boolean),
+          ts:new Date().toISOString(),
           severity: recent.length >= 20 ? 'high' : 'medium',
-          significance: 'Sudden Telegram conflict channel surge — possible breaking event or information operation'
+          significance:'Sudden Telegram conflict channel surge — possible breaking event or information operation'
         })
       }
     }
 
-    // 10. Wikipedia conflict page edit surge — real-time political signal
+    // 11. Wikipedia conflict page edit surge — real-time political signal
     if (results.wikiEdits?.length) {
       const recentEdits = results.wikiEdits.filter(e => {
         try { return new Date(e.timestamp||0).getTime() > Date.now()-60*60*1000 } catch { return false }
@@ -2861,14 +2896,14 @@ export default async function handler(req, res) {
       recentEdits.forEach(e => { editCounts[e.title]=(editCounts[e.title]||0)+1 })
       Object.entries(editCounts).filter(([,n])=>n>=3).forEach(([title,count]) => {
         preAction.push({
-          type: 'wiki_edit_surge', category: 'information_signal',
-          name: `Wikipedia edit surge: ${count} edits to "${title.replace(/_/g,' ')}"`,
-          lat: 0, lng: 0,
-          article: title, edit_count: count,
-          url: `https://en.wikipedia.org/wiki/${title}`,
-          ts: new Date().toISOString(),
-          severity: 'medium',
-          significance: 'Rapid Wikipedia edits on conflict page — event may be developing in real-time'
+          type:'wiki_edit_surge', category:'information_signal',
+          name:`Wikipedia edit surge: ${count} edits to "${title.replace(/_/g,' ')}"`,
+          lat:0, lng:0,
+          article:title, edit_count:count,
+          url:`https://en.wikipedia.org/wiki/${title}`,
+          ts:new Date().toISOString(),
+          severity:'medium',
+          significance:'Rapid Wikipedia edits on conflict page — event may be developing in real-time'
         })
       })
     }
@@ -2896,8 +2931,8 @@ export default async function handler(req, res) {
       { mmsi:'369970572', name:'USS Carl Vinson (CVN-70)',          lat:21.3,  lng:-157.9, flag:'US', type:'Aircraft Carrier', zone:'Pearl Harbor' },
       { mmsi:'338234660', name:'USS Carney (DDG-64)',               lat:31.4,  lng:34.4,   flag:'US', type:'Destroyer',        zone:'Eastern Med' },
       { mmsi:'338234661', name:'USS Mason (DDG-87)',                lat:12.8,  lng:43.5,   flag:'US', type:'Destroyer',        zone:'Red Sea' },
-      { mmsi:'338234662', name:'USS Gravely (DDG-107)',             lat:14.5,  lng:42.0,   flag:'US', type:'Destroyer',        zone:'Red Sea' },
-      { mmsi:'338234663', name:'USS Laboon (DDG-58)',               lat:14.0,  lng:48.0,   flag:'US', type:'Destroyer',        zone:'Gulf of Aden' },
+      { mmsi:'338234662', name:'USS Gravely (DDG-107)',             lat:15.0,  lng:42.5,   flag:'US', type:'Destroyer',        zone:'Red Sea' },
+      { mmsi:'338234663', name:'USS Laboon (DDG-58)',               lat:14.5,  lng:48.0,   flag:'US', type:'Destroyer',        zone:'Gulf of Aden' },
       { mmsi:'338234664', name:'USS Bataan (LHD-5)',                lat:36.9,  lng:-76.3,  flag:'US', type:'Amphibious',       zone:'Norfolk' },
       { mmsi:'338234665', name:'USS Kearsarge (LHD-3)',             lat:33.5,  lng:44.0,   flag:'US', type:'Amphibious',       zone:'Persian Gulf' },
       // Royal Navy — real MMSIs
@@ -2954,7 +2989,7 @@ export default async function handler(req, res) {
     try {
       const bboxes = [[-180,-85,180,85]] // single global query
       await Promise.allSettled(bboxes.map(([mnLon,mnLat,mxLon,mxLat]) =>
-        get(`https://kystdatahuset.no/ws/api/ais/positions/latest/area/${mnLon}/${mnLat}/${mxLon}/${mxLat}`, 6000)
+        get('https://kystdatahuset.no/ws/api/ais/positions/latest/area/' + mnLon + '/' + mnLat + '/' + mxLon + '/' + mxLat, 6000)
           .then(r => r && r.json())
           .then(d => {
             ;(d?.data||d||[]).forEach(v => {
@@ -3018,43 +3053,49 @@ export default async function handler(req, res) {
       await Promise.allSettled(fleetMMSIs.slice(0, 35).map(async (mmsi, idx) => {
         await new Promise(r => setTimeout(r, idx * 80))
         const r = await fetch(`https://www.vesselfinder.com/api/pub/click/${mmsi}`, {
-          headers: { 'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer':'https://www.vesselfinder.com/', 'Accept':'application/json' },
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Referer': 'https://www.vesselfinder.com/', 'Accept': 'application/json' },
           signal: AbortSignal.timeout(6000)
         }).catch(()=>null)
         if (!r?.ok) return
         const d = await r.json().catch(()=>null)
-        if (!d) return
-        // VesselFinder returns: {name, lat, lon, speed, course, ...}
-        const lat = +(d.lat||d.latitude||0), lng = +(d.lon||d.longitude||0)
-        const spd = +(d.speed||d.sog||0)
+        const v = d?.vessel_data || d?.data || d
+        if (!v) return
+        const lat = +(v.LATITUDE||v.lat||0), lng = +(v.LONGITUDE||v.lon||0)
+        const spd = +(v.SPEED||v.speed||0)
         if (!lat||!lng) return
         const existing = fleetWarships.find(w => String(w.mmsi)===String(mmsi))
         if (existing) {
           existing.lat = lat; existing.lng = lng
-          existing.speed = spd; existing.heading = +(d.course||d.cog||0)
+          existing.speed = spd; existing.heading = +(v.COURSE||v.course||0)
+          existing.name = v.name || existing.name
+          existing.destination = v.destination || existing.destination
           existing._livePos = true
         }
       }))
     } catch {}
 
-    // 5. MarineTraffic tile scrape (global low-zoom tiles)
+    // 5. MarineTraffic unofficial endpoint (public vessel data)
     try {
-      const mtiles = ['z:1/X:0/Y:0','z:2/X:1/Y:1','z:2/X:2/Y:1','z:2/X:3/Y:1']
-      await Promise.allSettled(mtiles.map(tile =>
-        get(`https://www.marinetraffic.com/getData/get_data_json_3/${tile}/station:0`, 7000)
-          .then(r => r && r.text()).then(txt => {
-            if (!txt||!txt.startsWith('{')) return
-            try {
-              const d = JSON.parse(txt)
-              ;(d?.data?.rows||d?.vessels||(Array.isArray(d)?d:[])).forEach(v => addFleet({
-                mmsi: String(v.MMSI||v.mmsi||''), name: v.SHIPNAME||v.name||'',
-                lat: +(v.LAT||v.lat||0), lng: +(v.LON||v.lon||0),
-                speed: +(v.SOG||v.speed||0), heading: +(v.HEADING||v.heading||0),
-                flag: v.FLAG||'', type: v.TYPE_NAME||v.type||'Cargo', zone: 'MarineTraffic'
-              }))
-            } catch {}
-          }).catch(()=>{})
-      ))
+      await Promise.allSettled(fleetMMSIs.slice(0, 35).map(async (mmsi, idx) => {
+        await new Promise(r => setTimeout(r, idx * 80))
+        const r = await fetch(`https://www.marinetraffic.com/en/ais/get_info_window_data/mmsi:${mmsi}/all_languages:0`, {
+          headers: { 'User-Agent': 'Mozilla/5.0', 'X-Requested-With': 'XMLHttpRequest', 'Referer': `https://www.marinetraffic.com/en/ais/home/centerx:0/centery:0/zoom:3` },
+          signal: AbortSignal.timeout(6000)
+        }).catch(()=>null)
+        if (!r?.ok) return
+        const d = await r.json().catch(()=>null)
+        const v = d?.vessel_data || d?.data || d
+        if (!v) return
+        const lat = +(v.LATITUDE||v.lat||0), lng = +(v.LONGITUDE||v.lon||0)
+        const spd = +(v.SPEED||v.speed||0)
+        if (!lat||!lng) return
+        const existing = fleetWarships.find(w => String(w.mmsi)===String(mmsi))
+        if (existing) {
+          existing.lat = lat; existing.lng = lng
+          existing.speed = spd; existing.heading = +(v.COURSE||v.course||0)
+          existing._livePos = true
+        }
+      }))
     } catch {}
 
     // 6. AISHub — aggregates 1000+ AIS receivers globally, free tier
@@ -3065,12 +3106,16 @@ export default async function handler(req, res) {
       })
       if (r) {
         const d = await r.json().catch(()=>null)
-        ;(d?.vessels||d?.data||[]).forEach(v => addFleet({
-          mmsi: String(v.MMSI||v.mmsi||''), name: v.Name||v.name||'',
-          lat: +(v.Latitude||v.lat||0), lng: +(v.Longitude||v.lon||0),
-          speed: +(v.Speed||v.speed||0), heading: +(v.Course||v.course||0),
-          flag: v.Flag||'', type: v.ShipType||'Cargo', zone: 'AISHub'
-        }))
+        ;(d?.vessels||d?.data||[]).forEach(v => {
+          const lat = +(v.LATITUDE||v.lat||0), lng = +(v.LONGITUDE||v.lon||0)
+          if (!lat||!lng) return
+          const existing = fleetWarships.find(w => String(w.mmsi)===String(v.MMSI||v.mmsi))
+          if (existing) {
+            existing.lat = lat; existing.lng = lng
+            existing.speed = +(v.SPEED||v.speed||0); existing.heading = +(v.COURSE||v.course||0)
+            existing._livePos = true
+          }
+        })
       }
     } catch {}
 
@@ -3085,9 +3130,11 @@ export default async function handler(req, res) {
           .then(r => r && r.json())
           .then(d => {
             ;(d?.data||d||[]).forEach(v => {
-              if (!fleetMMSIs.includes(String(v.mmsi))) return
+              const mmsi = String(v.mmsi||'')
+              if (!fleetMMSIs.includes(mmsi)) return
               const lat = +(v.lat||v.latitude||0), lng = +(v.lon||v.longitude||v.lng||0)
-              const existing = fleetWarships.find(w => String(w.mmsi)===String(v.mmsi))
+              if (!lat||!lng) return
+              const existing = fleetWarships.find(w => String(w.mmsi)===mmsi)
               if (existing) {
                 existing.lat = lat; existing.lng = lng
                 existing.speed = +(v.sog||v.speed||0); existing.heading = +(v.cog||v.course||0)

@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   const q = req.query?.q || req.query?.name || req.query?.query || ''
   const timespan = req.query?.timespan || '1year'
-  const OC_TOKEN = process.env.OPENCORP_KEY || req.query?.opencorp_key || process.env.NEXUS_OPENCORP_KEY || ''
+  const OC_TOKEN = process.env.OPENCORP_KEY || req.query?.opencorp_key || 'F6ypvqUI1qEk2OCJJQfC'
   if (!q) return res.status(400).json({ error: 'q required' })
 
   const query   = decodeURIComponent(q).trim()
@@ -21,7 +21,8 @@ export default async function handler(req, res) {
   // ── DocSearch fast path — IntelX only, bypasses full enrichment pipeline ──
   // Called by DocSearchPanel with ?docSearch=1 to fix browser CORS block on IntelX
   if (req.query?.docSearch === '1') {
-    const ixKey = req.query?.intelx_key || process.env.INTELX_KEY || '6a3d39ff-cafe-4b9d-980a-396d31e2b784'
+    const ixKey = req.query?.intelx_key || process.env.INTELX_KEY || ''
+    if (!ixKey) return res.status(200).json({ intelx: [] })
     try {
       const ctrl1 = new AbortController()
       setTimeout(() => ctrl1.abort(), 15000)
@@ -63,7 +64,7 @@ export default async function handler(req, res) {
   const qk = req.query || {}
   const KEYS = {
     intelx:    qk.intelx_key    || process.env.INTELX_KEY    || '6a3d39ff-cafe-4b9d-980a-396d31e2b784',
-    virustotal:qk.virustotal_key|| process.env.VIRUSTOTAL_KEY|| '2004a33892a12a3c47e8eeb8992d9e3619c69ed36bc855aec11004aca3aba397',
+    virustotal:qk.virustotal_key|| process.env.VIRUSTOTAL_KEY|| '',
     hibp:      qk.hibp_key      || process.env.HIBP_KEY      || '',
     hunter:    qk.hunter_key    || process.env.HUNTER_KEY    || '',
     dehashed:  qk.dehashed_key  || process.env.DEHASHED_KEY  || '',
