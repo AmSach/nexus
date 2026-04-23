@@ -7,7 +7,7 @@ import sqlite3, time, requests, sys
 from datetime import datetime
 
 DB_PATH = "/home/workspace/nexus/nexus.db"
-BASE_URL = "http://localhost:8000"
+BASE_URL = "https://nexus-api-man44.zocomputer.io"
 
 def get_conn():
     c = sqlite3.connect(DB_PATH, check_same_thread=False, isolation_level=None)

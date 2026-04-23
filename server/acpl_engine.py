@@ -63,7 +63,7 @@ def predict(question_id, question):
     if not signals:
         return {"prob": 0.5, "confidence": 0.05, "signal_count": 0, "reasoning": "No recent signals", "engine": "ACPL"}
     
-    zone_scores = {z: {"raw": 0, "weighted": 0, "sources": set()} for z in ZONE_WEIGHTS}
+    zone_scores = {z: {"raw": 0, "weighted": 0, "sources": set()} for z in ZONE_KWS}
     q_zones = zone_score(question, question)
     
     for title, desc, severity, category, ts, source in signals:
@@ -74,7 +74,8 @@ def predict(question_id, question):
         z_scores = zone_score(title or "", desc or "")
         for z, zs in z_scores.items():
             zone_scores[z]["raw"] += raw
-            zone_scores[z]["weighted"] += raw * ZONE_WEIGHTS[z]["base"]
+            base = ZONE_WEIGHTS.get(z, {}).get("base", 0.25)
+            zone_scores[z]["weighted"] += raw * base
             zone_scores[z]["sources"].add(source or "unknown")
     
     relevant = q_zones if q_zones else list(zone_scores.keys())
@@ -84,7 +85,7 @@ def predict(question_id, question):
         d = zone_scores[z]
         if d["weighted"] > 0:
             norm = math.tanh(d["weighted"] * 2)
-            w = ZONE_WEIGHTS[z]["base"]
+            w = ZONE_WEIGHTS.get(z, {}).get("base", 0.25)
             total_s += norm * w
             total_w += w
             if d["sources"]:

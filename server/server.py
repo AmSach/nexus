@@ -27,6 +27,7 @@ app.add_middleware(
 )
 
 API_KEY = None  # Set via NEXUS_API_KEY env var
+LIVE_API = "https://nexus-api-man44.zocomputer.io"
 
 def require_key(x_api_key: str = None):
     if not API_KEY: return  # No key configured = open
@@ -116,9 +117,24 @@ async def get_signals(
     limit: int = Query(100),
 ):
     require_key(None)
+    # Try live API first, fall back to local DB
+    try:
+        params = {"hours": hours, "limit": limit}
+        if category: params["category"] = category
+        if severity: params["severity"] = severity
+        if source: params["source"] = source
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.get(LIVE_API + "/api/signals", params=params) as r:
+                if r.status == 200:
+                    data = await r.json()
+                    if data.get("signals"):
+                        return data
+    except Exception as e:
+        print(f"[signals] live API failed: {e}")
+    # Fallback: local DB
     q = "SELECT ts, source, category, title, url, description, lat, lng, severity, tags FROM signals WHERE 1=1"
     params = []
-    cutoff = datetime.fromtimestamp(time.time() - hours*3600).strftime('%Y-%m-%d %H:%M:%S')
+    cutoff = datetime.fromtimestamp(time.time() - hours*3600).isoformat()
     q += " AND ts >= ?"
     params.append(cutoff)
     if category:
