@@ -9,11 +9,11 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900')
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
 
-  const SHODAN_KEY      = process.env.SHODAN_KEY      || 'CwHKC0EtdYHtGejGE5CX9o0R4pMLe2LZ'
+  const SHODAN_KEY      = process.env.SHODAN_KEY      || ''
   const GREYNOISE_KEY   = process.env.GREYNOISE_KEY   || ''
-  const CENSYS_ID     = process.env.CENSYS_ID     || 'censys_Dh3Lx7Mm'
-  const CENSYS_SECRET = process.env.CENSYS_SECRET || '_9pwotibu3GTV1REWWYCkqomT'
-  const OTX_KEY        = process.env.OTX_KEY        || 'fb9962a963a512fcfb63be7053b1f66ab3de6818d8bd2d5330510d0c1edea4a0'
+  const CENSYS_ID     = process.env.CENSYS_ID     || ''
+  const CENSYS_SECRET = process.env.CENSYS_SECRET || ''
+  const OTX_KEY        = process.env.OTX_KEY        || ''
   const VIRUSTOTAL_KEY = process.env.VIRUSTOTAL_KEY || '2004a33892a12a3c47e8eeb8992d9e3619c69ed36bc855aec11004aca3aba397'
 
   const get = async (url, ms = 15000, headers = {}) => {

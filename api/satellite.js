@@ -38,19 +38,20 @@ export default async function handler(req, res) {
   const primaryDeadline = new Promise(r => setTimeout(r, 38000))
   const deadline        = new Promise(r => setTimeout(r, 52000))
 
-  const FIRMS_KEY       = '08be3187f8c1526e0fd30249ee2c3374'
-  const SHODAN_KEY      = process.env.SHODAN_KEY         || 'CwHKC0EtdYHtGejGE5CX9o0R4pMLe2LZ'
-  const AISSTREAM_KEY   = process.env.AISSTREAM_KEY      || '7c4731ac6b055b6017439baf319e9b366f6af43c'
-  const SPACETRACK_USER = process.env.SPACETRACK_USER    || ''
-  const SPACETRACK_PASS = process.env.SPACETRACK_PASS    || ''
+  // ── API Keys (env vars with graceful fallback) ──────────────────────────
+  const FIRMS_KEY       = process.env.FIRMS_KEY       || ''
+  const SHODAN_KEY      = process.env.SHODAN_KEY      || ''
+  const AISSTREAM_KEY   = process.env.AISSTREAM_KEY   || ''
+  const SPACETRACK_USER = process.env.SPACETRACK_USER || ''
+  const SPACETRACK_PASS = process.env.SPACETRACK_PASS || ''
   // OpenSky Network — authenticated REST API (much higher rate limits + military coverage)
-  const OPENSKY_USER    = 'qwertyuiop-api-client'
-  const OPENSKY_PASS    = 'HxtqGHUEV2gR7dz8FnkhVQA88CUHalCw'
+  const OPENSKY_USER    = process.env.OPENSKY_USER    || 'guest'
+  const OPENSKY_PASS    = process.env.OPENSKY_PASS    || 'guest'
   const OPENSKY_AUTH    = 'Basic ' + Buffer.from(OPENSKY_USER + ':' + OPENSKY_PASS).toString('base64')
   // Telegram Bot token — for public channel monitoring
   const TELEGRAM_TOKEN  = process.env.TELEGRAM_TOKEN     || ''
   // NASA Earthdata — VIIRS nightlights
-  const EARTHDATA_TOKEN = process.env.EARTHDATA_TOKEN    || ''
+  const EARTHDATA_TOKEN = process.env.EARTHDATA_TOKEN || ''
 
   const get = async (url, ms = 20000, headers = {}) => {
     try {
@@ -117,7 +118,7 @@ export default async function handler(req, res) {
 
     // GVP: Smithsonian Global Volcanism Program
     (async () => {
-      const r = await get('https://volcano.si.edu/api/v1/eruptions?activityevidence=Eruption%20Observed&activitystatus=Confirmed&timeframe=Last%20Week&format=json', 8000)
+      const r = await get('https://volcano.si.edu/api/v1/eruptions?activityevidence=Eruption%22Observed&activitystatus=Confirmed&timeframe=Last%20Week&format=json', 8000)
       if (r) {
         const d = await r.json()
         const arr = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : []
@@ -475,7 +476,7 @@ export default async function handler(req, res) {
             const sq = s[14]||''
             const cs = (s[1]||'').trim()
             const isEmerg = sq==='7700'||sq==='7500'||sq==='7600'
-            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF)/i.test(cs)
+            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|FORTE|SPAR|EXEC|REACH|ATLAS|JAKE|KNIFE|DUKE|VALOR|GHOST|NINJA|IRON|STEEL|MIGHT)/i.test(cs)
             if (s[8] === true && !isEmerg && !isMilCS) return  // skip grounded civil aircraft
             if (seen.has(s[0])) return
             seen.add(s[0])
@@ -611,7 +612,7 @@ export default async function handler(req, res) {
             if (!s[5]||!s[6]) return
             const cs = (s[1]||'').trim()
             const sq = s[14]||''
-            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|FORTE|SPAR|EXEC|REACH|ATLAS|JAKE|KNIFE|DUKE|VALOR|GHOST|NINJA|IRON|STEEL|MIGHT)/i.test(cs)
+            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|VMF|VMFA|VMFAT|VMGR|HMH|HML|HMLA|VMA|VMAQ|VFA|VP|VQ|VRC|VR|VC|VT|VX|HSC|HSM|HCS|HC|HM|VAW|VW|VAQ)/i.test(cs)
             const isMilSq = ['7777','7400','7501','6100','6400'].includes(sq)
             const hex = (s[0]||'').toLowerCase()
             const isMilHex = /^ae[0-9a-f]{4}|^43[0-9a-f]{4}|^3c[0-9a-f]{4}|^3d[0-9a-f]{4}/i.test(hex)
@@ -647,7 +648,7 @@ export default async function handler(req, res) {
       } catch {}
 
       // 3. ADS-B fi — military callsign patterns from strategic zones
-      const milCallPat = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|VMF|VMFA|VMFAT|VMGR|HMH|HML|HMLA|VMA|VMAQ|VFA|VP|VQ|VRC|VR|VC|VT|VX|HSC|HSM|HCS|HC|HM|VAW|VW|VAQ)/i
+      const milCallPat = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|VMF|VMFA|VMA|VFA|VP|VQ|VRC|VR|VC|VT|VX|HSC|HSM|HCS|HC|HM|VAW|VW|VAQ)/i
       const milZones = [
         {lat:38.9,lon:-77.0,name:'Washington DC/Bolling'},
         {lat:36.8,lon:-76.0,name:'Norfolk/Langley AFB'},
@@ -691,7 +692,7 @@ export default async function handler(req, res) {
           .then(d => {
             ;(d?.aircraft||[]).forEach(a => {
               if (!a.lat||!a.lon) return
-              const cs = (a.flight||'').trim()
+              const cs = (a.flight||'').trim().toUpperCase()
               if (!milCallPat.test(cs) && !a._military) return
               addMil({ ...a, zone: z.name })
             })
@@ -796,13 +797,13 @@ export default async function handler(req, res) {
         [-90,20,-60,50,'North Atlantic'],
         [100,0,130,25,'South China Sea'],
         [-80,-55,-35,5,'South Atlantic'],
-        [140,-45,180,-10,'Australia/Pacific'],
+        [120,-45,180,-10,'Australia/Pacific'],
         [20,-40,80,-5,'Indian Ocean South'],
         [80,5,100,25,'Bay of Bengal'],
         [25,55,65,75,'Arabian Sea'],
         [-100,15,-75,30,'Gulf of Mexico'],
         [-80,5,-55,20,'Caribbean Sea'],
-        [115,-10,130,5,'Java Sea/Malacca'],
+        [115,-10,120,5,'Java Sea/Malacca'],
         [35,25,45,35,'Suez/Red Sea Entrance'],    // Suez Canal specifically
         [50,22,62,32,'Persian Gulf/Hormuz'],       // Hormuz specifically
         [115,1,120,5,'Malacca Strait'],            // Malacca specifically
@@ -870,14 +871,11 @@ export default async function handler(req, res) {
 
       // ── 3b. AISStream HTTP REST (we have the API key) ──────────────────────
       // Falls back to bbox query for strategic chokepoints
-      const aisKey = '7c4731ac6b055b6017439baf319e9b366f6af43c'
+      const aisKey = process.env.AISSTREAM_KEY || ''
       const aisBoxes = [
         {bbox:[24.0,56.5,26.5,25.0], zone:'Hormuz'},
         {bbox:[103.5,-0.5,104.5,2.0], zone:'Malacca'},
         {bbox:[32.2,29.5,33.0,31.5], zone:'Suez'},
-        {bbox:[43.0,11.5,44.0,13.5], zone:'Bab-el-Mandeb'},
-        {bbox:[-6.5,35.5,-5.0,36.5], zone:'Gibraltar'},
-        {bbox:[118.5,23.5,120.5,25.5], zone:'Taiwan Strait'},
         {bbox:[46.0,11.5,51.0,14.0], zone:'Gulf of Aden'},
       ]
       await Promise.allSettled(aisBoxes.map(({bbox, zone}) =>
@@ -1126,16 +1124,18 @@ export default async function handler(req, res) {
       if (!r) return
       try {
         const d = await r.json()
-        results.notams = (d?.items||[]).map(n=>{
-          const loc=n.notamTranslation?.[0]
+        results.notams = (d?.features||[]).map(f => {
+          const p = f.properties||{}
+          let lat=0,lng=0
+          if (f.geometry?.type==='Point') { lng=f.geometry.coordinates[0]; lat=f.geometry.coordinates[1] }
+          else if (f.geometry?.type==='Polygon') { const c=f.geometry.coordinates[0]?.[0]; if(c){lng=c[0];lat=c[1]} }
+          else if (p.affectedZones?.[0]) { lat=38; lng=-95 } // continental US default
           return {
-            id:n.id, classification:n.classification,
-            location:n.icaoLocation, type:n.notamType,
-            startDate:n.startDate, endDate:n.endDate,
-            text:loc?.simpleText?.slice(0,300)||n.traditionalMessage?.slice(0,200)||'',
-            lat:parseFloat(n.coordinates?.split(',')?.[0]||0),
-            lng:parseFloat(n.coordinates?.split(',')?.[1]||0),
-            severity:n.classification==='CRITICAL'?'critical':'medium',
+            id:p.id, classification:p.classification,
+            location:p.icaoLocation, type:p.notamType,
+            startDate:p.startDate, endDate:p.endDate,
+            text: p.simpleText?.slice(0,300),
+            lat, lng, severity: p.classification==='CRITICAL'?'critical':'medium',
           }
         }).filter(n=>n.location)
       } catch {}
@@ -1217,7 +1217,7 @@ export default async function handler(req, res) {
             d.items.forEach((p,i) => {
               const title = (p.title||'').replace(/<[^>]+>/g,'').trim()
               if (title.length < 5) return
-              items.push({ title, url: p.link||'https://promedmail.org', date: p.pubDate||'', description: (p.description||p.content||'').replace(/<[^>]+>/g,'').slice(0,300), source:'ProMED' })
+              items.push({ title, url: p.link, date: p.pubDate, description: (p.description||p.content||'').replace(/<[^>]+>/g,'').slice(0,300), source: 'ProMED' })
             })
             if (items.length) { results.promed = items; return }
           }
@@ -1233,7 +1233,7 @@ export default async function handler(req, res) {
             d.forEach(p => {
               const title = (p.title?.rendered||'').replace(/<[^>]+>/g,'').trim()
               if (title.length < 5) return
-              items.push({ title, url:p.link, date:p.date, description:(p.excerpt?.rendered||'').replace(/<[^>]+>/g,'').slice(0,300), source:'ProMED' })
+              items.push({ title, url: p.link, date: p.date, description: (p.excerpt?.rendered||'').replace(/<[^>]+>/g,'').slice(0,300), source: 'ProMED' })
             })
             if (items.length) { results.promed = items; return }
           }
@@ -1265,8 +1265,8 @@ export default async function handler(req, res) {
         const r = await get('https://outbreaknewstoday.com/feed/', 8000)
         if (r) {
           const xml = await r.text().catch(()=>'')
-          const parsed = parseRSSItems(xml, 'Outbreak News Today', 15)
-          if (parsed.length) { items.push(...parsed); results.promed = items; return }
+          parseRSSItems(xml, 'Outbreak News Today', 15).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
+          if (items.length) { results.promed = items; return }
         }
       } catch {}
 
@@ -1275,8 +1275,8 @@ export default async function handler(req, res) {
         const r = await get('https://healthmap.org/genapi/en/alert/rss/30', 6000)
         if (r) {
           const xml = await r.text().catch(()=>'')
-          const parsed = parseRSSItems(xml, 'HealthMap', 15)
-          if (parsed.length) { items.push(...parsed); results.promed = items; return }
+          parseRSSItems(xml, 'HealthMap', 15).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
+          if (items.length) { results.promed = items; return }
         }
       } catch {}
 
@@ -1295,8 +1295,7 @@ export default async function handler(req, res) {
         const r = await get('https://www.who.int/feeds/entity/csr/don/en/rss.xml', 6000)
         if (r) {
           const xml = await r.text().catch(()=>'')
-          const parsed = parseRSSItems(xml, 'WHO DON', 15)
-          if (parsed.length) items.push(...parsed)
+          parseRSSItems(xml, 'WHO DON', 15).filter(x => /disease|outbreak|alert|epidemic|virus|infection|surveillance/i.test(x.title)).forEach(x => items.push(x))
         }
       } catch {}
       results.promed = items
@@ -1415,7 +1414,7 @@ export default async function handler(req, res) {
           items.push({ title, url:getXMLTag(m[1],'link'), date:getXMLTag(m[1],'pubDate'),
             lat, lng, source,
             description:getXMLTag(m[1],'description').replace(/<[^>]+>/g,'').slice(0,300),
-            severity: /sinking|sunk|capsized|collision|explosion|fire|missing|attack|seized/i.test(title) ? 'high' : 'medium'
+            severity: /sinking|sunk|capsized|collision|explosion|fire|offensive|advance/i.test(title) ? 'high' : 'medium'
           })
         })
       }
@@ -1456,11 +1455,11 @@ export default async function handler(req, res) {
         get('https://maritime-executive.com/rss/articles',6000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Executive')).catch(()=>{}),
         get('https://www.tradewindsnews.com/rss',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'TradeWinds')).catch(()=>{}),
         get('https://safety4sea.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Safety4Sea')).catch(()=>{}),
-        get('https://maritime-Cyprus.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Cyprus')).catch(()=>{}),
+        get('https://maritime-executive.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Executive')).catch(()=>{}),
       ])
       // Add more maritime sources for broader coverage
       await Promise.allSettled([
-        get('https://www.bimco.org/news/rss',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'BIMCO')).catch(()=>{}),
+        get('https://www.bimco.org/news/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'BIMCO')).catch(()=>{}),
         get('https://www.janes.com/feeds/defence-news',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Janes Naval')).catch(()=>{}),
         get('https://www.navyrecognition.com/index.php/news.feed',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Navy Recognition')).catch(()=>{}),
         get('https://www.maritime-connector.com/feed/',8000).then(r=>r&&r.text()).then(x=>x&&parseRSS(x,'Maritime Connector')).catch(()=>{}),
@@ -1527,7 +1526,7 @@ export default async function handler(req, res) {
               const lat = f.geometry?.coordinates?.[1], lng = f.geometry?.coordinates?.[0]
               return lat && lng && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
             }).slice(0, 400).forEach(f => {
-              const sev = /airstrike|missile|killed|explosion|bombing/i.test(f.properties?.name||f.properties?.url||'') ? 'high' : 'medium'
+              const sev = /airstrike|bombing|missile|killed|attack/i.test(f.properties?.name||f.properties?.url||'') ? 'high' : 'medium'
               conflicts.push({
                 lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
                 title: `[GDELT] ${f.properties?.name||'Armed Activity'} — ${f.properties?.countryname||''}`,
@@ -1560,7 +1559,7 @@ export default async function handler(req, res) {
       if (conflicts.length < 20) {
         try {
           const gdocR = await get(
-            'https://api.gdeltproject.org/api/v2/doc/doc?query=airstrike+OR+bombing+OR+battle+OR+shelling+OR+attack&mode=ArtList&maxrecords=100&timespan=48h&format=json&sort=DateDesc',
+            'https://api.gdeltproject.org/api/v2/doc/doc?query=airstrike+OR+bombing+OR+battle+OR+shelling+OR+attack&mode=artlist&maxrecords=100&sort=DateDesc&format=json&OUTPUTFIELDS=url,title,seendate,sourcecountry,socialimage',
             6000
           )
           if (gdocR) {
@@ -1802,7 +1801,7 @@ export default async function handler(req, res) {
       const r = await get('https://m2m.cr.usgs.gov/api/api/json/stable/scene-search', 8000)
       // This requires auth — skip, use EONET wildfire instead
       // Instead: NASA EARTHDATA open search for recent thermal anomalies
-      const r2 = await get('https://firms.modaps.eosdis.nasa.gov/api/country/csv/08be3187f8c1526e0fd30249ee2c3374/VIIRS_SNPP_NRT/world/1', 8000)
+const r2 = await get('https://firms.modaps.eosdis.nasa.gov/api/country/csv/${process.env.FIRMS_KEY || ""}/VIIRS_SNPP_NRT/world/1', 8000)
       if (!r2) return
       try {
         const csv = await r2.text()
@@ -1811,13 +1810,17 @@ export default async function handler(req, res) {
         const h = lines[0].split(',').map(x=>x.trim())
         const latI=h.indexOf('latitude'), lngI=h.indexOf('longitude')
         const brightI=h.indexOf('bright_ti4')!==-1?h.indexOf('bright_ti4'):h.indexOf('brightness')
-        const sample = lines.slice(1, 501)
-        results.globalViirs = sample.map(line=>{
-          const v = line.split(',')
-          const lat=parseFloat(v[latI]), lng=parseFloat(v[lngI]), bright=parseFloat(v[brightI])||0
-          if(isNaN(lat)||isNaN(lng)) return null
-          return { lat, lng, brightness:bright, severity:bright>450?'critical':bright>380?'high':'medium', type:'firms' }
-        }).filter(Boolean)
+        const confI=h.indexOf('confidence')
+        lines.slice(1).forEach(line=>{
+          const v=line.split(',')
+          const lat=parseFloat(v[latI]), lng=parseFloat(v[lngI])
+          const bright=parseFloat(v[brightI])||0
+          const conf=v[confI]||'n'
+          if(isNaN(lat)||isNaN(lng)||bright<350) return
+          results.globalViirs = results.globalViirs || []
+          results.globalViirs.push({lat,lng,brightness:bright,confidence:conf,zone:'Global',product:'VIIRS',
+            severity:bright>450?'critical':bright>380?'high':'medium',type:'firms'})
+        })
       } catch {}
     })(),
 
@@ -1849,7 +1852,7 @@ export default async function handler(req, res) {
       ]
       const fires = []
       await Promise.allSettled(globalZones.map(async ([minLng,maxLng,minLat,maxLat,label])=>{
-        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/08be3187f8c1526e0fd30249ee2c3374/VIIRS_SNPP_NRT/${minLng},${minLat},${maxLng},${maxLat}/1`
+        const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.FIRMS_KEY || ""}/VIIRS_SNPP_NRT/${minLng},${minLat},${maxLng},${maxLat}/1`
         const r = await get(url, 6000)
         if (!r) return
         const csv = await r.text()
@@ -2135,8 +2138,6 @@ export default async function handler(req, res) {
     // ════════════════════════════════════════════════════════════════════════
     (async () => {
       try {
-        // SIPRI has a TIV database search
-        const r = await get('https://www.sipri.org/sites/default/files/Yearbook/sipri-yb-2024-summary.pdf', 8000)
         // SIPRI doesn't have a REST API, but their data is in the GDELT network
         // Use GDELT to track SIPRI-related news and arms transfers
         const sipriR = await get("https://api.gdeltproject.org/api/v2/doc/doc?query=arms+transfer+weapons+sale+military+export&mode=artlist&maxrecords=50&sort=DateDesc&format=json&OUTPUTFIELDS=url,title,seendate,sourcecountry,socialimage", 10000)
@@ -2407,7 +2408,7 @@ export default async function handler(req, res) {
             description: text.slice(0, 400),
             source: ch.name,
             url: 'https://t.me/s/' + ch.handle,
-            date: dateMatches[i] ? dateMatches[i][1] : new Date().toISOString(),
+            date: dateMatches[i] ? dateMatches[i][2] : new Date().toISOString(),
             severity: /airstrike|explosion|missile|killed|bombed/i.test(text) ? 'high' : 'medium',
           })
         })
@@ -2461,7 +2462,7 @@ export default async function handler(req, res) {
         if (!text) return
         const lat = props.geometry?.coordinates?.[1] || props.latitude
         const lng = props.geometry?.coordinates?.[0] || props.longitude
-        const isMilitary = /R\d+|MILITARY|RESTRICTED|TFR|PROHIBITED|EXERCISE|OPS/i.test(text)
+        const isMilitary = /R\d+|MILITARY|RESTRICTED|TFR|PROHIBITED|EXERCISE|OPS\b/i.test(text)
         notamItems.push({
           title: `NOTAM: ${text.slice(0,80)}`,
           description: text.slice(0,300),
@@ -2576,8 +2577,8 @@ export default async function handler(req, res) {
       // RIPE stat bgp-updates: { data: { updates: [{type, prefix, path}, ...] } }
       const bgpUpdates = bgpD?.data?.updates || bgpD?.data || bgpD?.results || []
       results.bgpAnomalies = bgpUpdates.slice(0,20).map(e=>({
-        title: `BGP ${e.type==='A'?'ANNOUNCE':'WITHDRAW'}: ${e.attrs?.prefix||e.prefix||'?'} via AS${e.attrs?.path?.split(' ').pop()||e.as_path||'?'}`,
-        description: `Routing change. Type: ${e.type==='A'?'Announcement':'Withdrawal'}. Prefix: ${e.attrs?.prefix||e.prefix||'?'}. AS path: ${e.attrs?.path||e.as_path||'?'}`,
+        title: `BGP ${e.type==='A'?'ANNOUNCE':'WITHDRAW'}: ${e.prefixes?.join(', ')} via AS${e.as_path?.split(' ').pop()}`,
+        description: `Routing change. Type: ${e.type==='A'?'Announcement':'Withdrawal'}. Prefixes: ${e.prefixes?.join(', ')} via AS${e.as_path?.split(' ').pop()}`,
         source: 'BGP Stream',
         severity: 'medium',
         date: e.start_time||e.timestamp||new Date().toISOString(),
@@ -2606,7 +2607,7 @@ export default async function handler(req, res) {
     const viirsItems = []
     await Promise.allSettled(viirs_conflicts.map(async z => {
       const today = new Date().toISOString().slice(0,10)
-      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/08be3187f8c1526e0fd30249ee2c3374/VIIRS_SNPP_NRT/${z.lng-2},${z.lat-2},${z.lng+2},${z.lat+2}/1`
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${process.env.FIRMS_KEY || ""}/VIIRS_SNPP_NRT/${z.lng-2},${z.lat-2},${z.lng+2},${z.lat+2}/1`
       const r = await fetch(url, { signal: AbortSignal.timeout(6000) }).catch(()=>null)
       if (!r?.ok) return
       const csv = await r.text().catch(()=>'')
@@ -2740,10 +2741,10 @@ export default async function handler(req, res) {
     // 6. Naval chokepoint monitoring — ships in strategic waterways
     const chokepoints = [
       {name:'Strait of Hormuz', lat:26.5, lng:56.5, radius:1.5, significance:'70% Gulf oil exports'},
-      {name:'Strait of Malacca', lat:2.5, lng:101.5, radius:2.0, significance:'30% global trade'},
+      {name:'Strait of Malacca', lat:1.2, lng:103.8, radius:2.0, significance:'30% global trade'},
       {name:'Suez Canal', lat:30.5, lng:32.3, radius:1.2, significance:'12% global trade'},
       {name:'Bab el-Mandeb', lat:12.5, lng:43.5, radius:1.5, significance:'Red Sea entry/exit'},
-      {name:'Taiwan Strait', lat:24.0, lng:120.5, radius:2.0, significance:'Critical semiconductor supply'},
+      {name:'Taiwan Strait', lat:24.0, lng:121.5, radius:2.0, significance:'Critical semiconductor supply'},
       {name:'Kerch Strait', lat:45.3, lng:36.5, radius:0.8, significance:'Black Sea Russian access'},
       {name:'Denmark Strait', lat:67.0, lng:-24.0, radius:3.0, significance:'North Atlantic Russian access'},
       {name:'South China Sea SLOC', lat:10.0, lng:114.0, radius:3.0, significance:'USD 5T annual trade'},
@@ -2754,20 +2755,20 @@ export default async function handler(req, res) {
         chokepoints.forEach(cp => {
           const dist = Math.sqrt(Math.pow(s.lat-cp.lat,2)+Math.pow(s.lng-cp.lng,2))
           if (dist < cp.radius) {
-            chokeActivity[cp.name] = (chokeActivity[cp.name]||0) + 1
-          }
+            chokeActivity[cp.name] = (chokeActivity[cp.name]||{count:0,lat:cp.lat,lng:cp.lng,aircraft:[]})
+            && (chokeActivity[cp.name].count++, chokeActivity[cp.name].aircraft.push(a.callsign||a.icao24))
         })
       })
-      Object.entries(chokeActivity).forEach(([name, count]) => {
-        const cp = chokepoints.find(c=>c.name===name)
-        if (count > 3) {
+      Object.entries(chokeActivity).forEach(([name, d]) => {
+        if (d.count >= 3) {
           preAction.push({
-            type: 'chokepoint_activity', category: 'maritime_indicator',
-            name: `${count} vessels at ${name}`,
-            lat: cp.lat, lng: cp.lng, vessel_count: count,
-            significance: cp.significance,
+            type: 'military_concentration', category: 'force_concentration',
+            name: `${d.count} military aircraft converging at ${name}`,
+            lat: d.lat, lng: d.lng,
+            aircraft_count: d.count, callsigns: d.aircraft.slice(0,8),
             ts: new Date().toISOString(),
-            severity: count > 15 ? 'high' : 'medium'
+            severity: d.count >= 10 ? 'critical' : d.count >= 5 ? 'high' : 'medium',
+            significance: `Military air concentration near ${name} — potential mobilization or exercise`
           })
         }
       })
@@ -2793,15 +2794,17 @@ export default async function handler(req, res) {
         })
       })
       Object.entries(zoneCounts).forEach(([zone, d]) => {
-        if (d.count >= 3) preAction.push({
-          type:'military_concentration', category:'force_concentration',
-          name:`${d.count} military aircraft near ${zone}`,
-          lat:d.lat, lng:d.lng,
-          aircraft_count:d.count, callsigns:d.aircraft.slice(0,8),
-          ts:new Date().toISOString(),
-          severity: d.count >= 10 ? 'critical' : d.count >= 5 ? 'high' : 'medium',
-          significance:`Military air concentration near ${zone} — possible mobilization or exercise`
-        })
+        if (d.count >= 3) {
+          preAction.push({
+            type: 'military_concentration', category: 'force_concentration',
+            name: `${d.count} military aircraft converging at ${zone}`,
+            lat: d.lat, lng: d.lng,
+            aircraft_count: d.count, callsigns: d.aircraft.slice(0,8),
+            ts: new Date().toISOString(),
+            severity: d.count >= 10 ? 'critical' : d.count >= 5 ? 'high' : 'medium',
+            significance: `Military air concentration near ${zone} — potential mobilization or exercise`
+          })
+        }
       })
     }
 
@@ -2823,7 +2826,7 @@ export default async function handler(req, res) {
             lat:c.lat, lng:c.lng,
             ships:c.ships.map(s=>s.name||s.mmsi).slice(0,5),
             ts:new Date().toISOString(),
-            severity:c.ships.length>=5?'critical':'high',
+            severity: c.ships.length>=5?'critical':'high',
             significance:'Live AIS warship concentration — potential naval exercise or pre-deployment'
           })
         })
@@ -2857,31 +2860,29 @@ export default async function handler(req, res) {
     if (results.telegramPosts?.length) {
       const recentCutoff = Date.now() - 30*60*1000 // last 30 min
       const recent = results.telegramPosts.filter(p => {
-        try { return new Date(p.ts||p.date||0).getTime() > recentCutoff } catch { return false }
+        try { return new Date(p.date||0).getTime() > recentCutoff } catch { return false }
       })
-      if (recent.length >= 10) {
-        // Check for geographic concentration in posts
-        const geoMentions = {}
-        const geoWords = ['ukraine','russia','gaza','israel','taiwan','china','iran','korea','syria','yemen','hezbollah','hamas']
-        recent.forEach(p => {
-          const text = (p.text||p.title||'').toLowerCase()
-          geoWords.forEach(g => { if(text.includes(g)) geoMentions[g]=(geoMentions[g]||0)+1 })
+      // Check for geographic concentration in posts
+      const geoMentions = {}
+      const geoWords = ['ukraine','russia','gaza','israel','taiwan','china','iran','korea','syria','yemen','hezbollah','hamas']
+      recent.forEach(p => {
+        const text = (p.text||p.title||'').toLowerCase()
+        geoWords.forEach(g => { if(text.includes(g)) geoMentions[g]=(geoMentions[g]||0)+1 })
+      })
+      const topGeo = Object.entries(geoMentions).sort((a,b)=>b[1]-a[1])[0]
+      if (topGeo && topGeo[1] >= 5) {
+        const geoCoords = {ukraine:[49,31],russia:[55,37],gaza:[31.4,34.4],israel:[31.5,34.8],taiwan:[24,121],china:[35,105],iran:[32,53],korea:[37.5,127],syria:[35,38],yemen:[15,48],hezbollah:[33.9,35.5],hamas:[31.4,34.4]}
+        const [lat,lng] = geoCoords[topGeo[0]] || [0,0]
+        preAction.push({
+          type:'telegram_surge', category:'information_ops',
+          name:`Telegram surge: ${recent.length} posts in 30min focused on ${topGeo[0]} (${topGeo[1]} mentions)`,
+          lat, lng,
+          post_count:recent.length, top_topic:topGeo[0], mention_count:topGeo[1],
+          channels:[...new Set(recent.slice(0,5).map(p=>p.channel||p.source))].filter(Boolean),
+          ts:new Date().toISOString(),
+          severity: recent.length >= 20 ? 'high' : 'medium',
+          significance:'Sudden Telegram conflict channel surge — possible breaking event or information operation'
         })
-        const topGeo = Object.entries(geoMentions).sort((a,b)=>b[1]-a[1])[0]
-        if (topGeo && topGeo[1] >= 5) {
-          const geoCoords = {ukraine:[49,31],russia:[55,37],gaza:[31.4,34.4],israel:[31.5,34.8],taiwan:[24,121],china:[35,105],iran:[32,53],korea:[37.5,127],syria:[35,38],yemen:[15,48],hezbollah:[33.9,35.5],hamas:[31.4,34.4]}
-          const [lat,lng] = geoCoords[topGeo[0]] || [0,0]
-          preAction.push({
-            type:'telegram_surge', category:'information_ops',
-            name:`Telegram surge: ${recent.length} posts in 30min focused on ${topGeo[0]} (${topGeo[1]} mentions)`,
-            lat, lng,
-            post_count:recent.length, top_topic:topGeo[0], mention_count:topGeo[1],
-            channels:[...new Set(recent.slice(0,5).map(p=>p.channel||p.source))].filter(Boolean),
-            ts:new Date().toISOString(),
-            severity: recent.length >= 20 ? 'high' : 'medium',
-            significance:'Sudden Telegram conflict channel surge — possible breaking event or information operation'
-          })
-        }
       }
     }
 
@@ -3057,17 +3058,17 @@ export default async function handler(req, res) {
         }).catch(()=>null)
         if (!r?.ok) return
         const d = await r.json().catch(()=>null)
-        if (!d) return
-        // VesselFinder returns: {name, lat, lon, speed, course, ...}
-        const lat = +(d.lat||d.latitude||0), lng = +(d.lon||d.longitude||0)
-        const spd = +(d.speed||d.sog||0)
+        const v = d?.vessel_data || d?.data || d
+        if (!v) return
+        const lat = +(v.LATITUDE||v.lat||0), lng = +(v.LONGITUDE||v.lon||0)
+        const spd = +(v.SPEED||v.speed||0)
         if (!lat||!lng) return
         const existing = fleetWarships.find(w => String(w.mmsi)===String(mmsi))
         if (existing) {
           existing.lat = lat; existing.lng = lng
-          existing.speed = spd; existing.heading = +(d.course||d.cog||0)
-          existing.name = d.name || existing.name
-          existing.destination = d.destination || existing.destination
+          existing.speed = spd; existing.heading = +(v.COURSE||v.course||0)
+          existing.name = v.name || existing.name
+          existing.destination = v.destination || existing.destination
           existing._livePos = true
         }
       }))

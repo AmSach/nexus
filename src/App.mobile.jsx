@@ -1,5 +1,5 @@
 // NEXUS v6 Mobile — True mobile-first, 5-tab layout, touch-optimized
-import React, { Suspense, useState } from 'react'
+import React, { Suspense, useState, useRef, useCallback } from 'react'
 import { useNewsFeed } from './hooks/useNewsFeed'
 import { Rss, Bell, Cpu, Map, Settings, RefreshCw } from 'lucide-react'
 import LiveFeed from './components/feed/LiveFeed'
@@ -7,6 +7,9 @@ import Situations from './components/feed/Situations'
 import IntelMap from './components/map/IntelMap'
 import { SavedPanel, SettingsPanel } from './components/panels'
 import LiveFeedSidebar from './components/feed/LiveFeedSidebar'
+
+// Mobile detection — used to disable heavy desktop-only features
+const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
 const TABS = [
   { id: 'feed',       label: 'Feed',     Icon: Rss      },

@@ -438,7 +438,7 @@ async function fetchProMED() {
 }
 
 async function fetchCloudflare() {
-  const CF_TOKEN = process.env.CF_TOKEN || 'o-GzHIAJojNPxNwvVo2MPfTtWU-E-T910U408Nmw'
+  const CF_TOKEN = process.env.CF_TOKEN || process.env.CLOUDFLARE_TOKEN || ''
   if (!CF_TOKEN) return []
   try {
     const r = await fetch('https://api.cloudflare.com/client/v4/radar/outages/latest?format=json', {
@@ -844,7 +844,7 @@ async function fetchTelegram() {
     { handle:'wartranslated',        name:'War Translated',       icon:'📡' },
     { handle:'UkraineNow',           name:'Ukraine Now',          icon:'🇺🇦' },
     { handle:'militarylandnews',     name:'Military Land',        icon:'⚔️' },
-    { handle:'nexta_tv',             name:'NEXTA TV',             icon:'📡' },
+    { handle:'nexta_tv',             name:'NEXTA tv',             icon:'📡' },
     { handle:'rybar',                name:'Rybar (RU)',           icon:'📡' },
     { handle:'flash_news_ua',        name:'Flash News UA',        icon:'⚡' },
     { handle:'ukraineweapon',        name:'Ukraine Weapons',      icon:'🔫' },

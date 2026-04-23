@@ -76,9 +76,12 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
 
-  const apiKey  = req.query.key || process.env.FIRMS_KEY || '08be3187f8c1526e0fd30249ee2c3374'
+  const apiKey  = req.query.key || process.env.FIRMS_KEY || ''
   const dayRange = parseInt(req.query.days) || 1
-  if (!apiKey) { res.status(400).json({ error: 'key required' }); return }
+  if (!apiKey || apiKey === '') {
+    // Return empty but valid response — FIRMS data needs a key for all sources
+    return res.status(200).json([])
+  }
 
   const results = []
 
