@@ -217,7 +217,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
 
-  if (req.query.mode === 'conflict') return conflictMarkets(req, res)
+  if (req.query.mode === 'conflict' || !req.query.mode) return conflictMarkets(req, res)
 
   // ── OHLCV history mode: returns daily OHLCV for charting + backtesting ─────
   // ?mode=history&symbol=SPY&range=1y   (range: 5d|1mo|3mo|6mo|1y|2y|5y)

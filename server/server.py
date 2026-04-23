@@ -118,7 +118,7 @@ async def get_signals(
     require_key(None)
     q = "SELECT ts, source, category, title, url, description, lat, lng, severity, tags FROM signals WHERE 1=1"
     params = []
-    cutoff = datetime.fromtimestamp(time.time() - hours*3600).isoformat()
+    cutoff = datetime.fromtimestamp(time.time() - hours*3600).strftime('%Y-%m-%d %H:%M:%S')
     q += " AND ts >= ?"
     params.append(cutoff)
     if category:
@@ -142,7 +142,7 @@ async def get_alerts(source: str = Query(None), hours: int = Query(24)):
     require_key(None)
     q = "SELECT ts, source, alert_type, title, detail, severity, lat, lng FROM alerts WHERE 1=1"
     params = []
-    cutoff = datetime.fromtimestamp(time.time() - hours*3600).isoformat()
+    cutoff = datetime.fromtimestamp(time.time() - hours*3600).strftime('%Y-%m-%d %H:%M:%S')
     q += " AND ts >= ?"; params.append(cutoff)
     if source:
         q += " AND source=?"; params.append(source)
