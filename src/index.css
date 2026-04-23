@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --void:    #03050a;
+  --base:    #070c14;
+  --panel:   #0b1220;
+  --raised:  #101828;
+  --hover:   #141f30;
+  --border:  #1a2840;
+  --border2: #243550;
+  --accent:  #2dd4bf;   /* teal — readable, not neon */
+  --accent2: #3b82f6;   /* blue */
+  --red:     #ef4444;
+  --orange:  #f97316;
+  --yellow:  #eab308;
+  --green:   #22c55e;
+  --purple:  #a855f7;
+  --t1: #e2e8f0;   /* primary text */
+  --t2: #94a3b8;   /* secondary */
+  --t3: #475569;   /* muted */
+  --t4: #1e3a5f;   /* faint */
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%; width: 100%;
+  background: var(--void);
+  color: var(--t1);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Selection */
+::selection { background: rgba(45,212,191,0.2); color: var(--accent); }
+
+/* Mono helper */
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Severity colors */
+.dot-critical { background: var(--red); box-shadow: 0 0 5px var(--red); }
+.dot-high     { background: var(--orange); box-shadow: 0 0 5px var(--orange); }
+.dot-medium   { background: var(--yellow); }
+.dot-low      { background: var(--accent); }
+
+/* Tag chip */
+.chip {
+  display: inline-flex; align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; line-height: 1;
+  padding: 2px 6px; border-radius: 3px;
+  background: var(--raised); border: 1px solid var(--border);
+  color: var(--t3); white-space: nowrap;
+}
+.chip-accent { background: rgba(45,212,191,0.08); border-color: rgba(45,212,191,0.25); color: var(--accent); }
+.chip-red    { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: var(--red);    }
+.chip-orange { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.25); color: var(--orange); }
+.chip-yellow { background: rgba(234,179,8,0.08);  border-color: rgba(234,179,8,0.25);  color: var(--yellow); }
+.chip-blue   { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.25); color: var(--accent2);}
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 4px 10px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--t3);
+  transition: all 0.1s; white-space: nowrap; outline: none;
+}
+.btn:hover { border-color: var(--border2); color: var(--t2); background: var(--raised); }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-accent { background: rgba(45,212,191,0.08); border-color: rgba(45,212,191,0.3); color: var(--accent); }
+.btn-accent:hover { background: rgba(45,212,191,0.15); }
+.btn-blue { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.3); color: var(--accent2); }
+.btn-danger { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); color: var(--red); }
+
+/* Input */
+.inp {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  background: var(--void); border: 1px solid var(--border);
+  color: var(--t1); padding: 6px 10px; border-radius: 3px;
+  outline: none; width: 100%;
+}
+.inp:focus { border-color: rgba(45,212,191,0.4); }
+.inp::placeholder { color: var(--t3); }
+
+/* Panel */
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 3px; }
+
+/* Divider */
+.div-h { height: 1px; background: var(--border); }
+.div-v { width: 1px; background: var(--border); }
+
+/* Animations */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.spin { animation: spin 0.8s linear infinite; }
+.fade-in { animation: fade-in 0.2s ease-out; }
+.slide-in { animation: slide-in 0.2s ease-out; }
+.ticker-anim { animation: ticker 60s linear infinite; }
+.ticker-anim:hover { animation-play-state: paused; }
+.pulse { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+/* Article feed item */
+.feed-item {
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.feed-item:hover { background: var(--hover); }
+.feed-item.expanded { background: var(--base); }
+
+/* Entity pill */
+.entity {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 1px 6px; border-radius: 10px;
+  background: var(--raised); border: 1px solid var(--border2);
+  color: var(--t2); cursor: pointer; white-space: nowrap;
+  transition: all 0.1s;
+}
+.entity:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Board canvas */
+.board { background: var(--void); }
+
+/* Node */
+.node { cursor: grab; }
+.node:active { cursor: grabbing; }
+
+/* Situation card */
+.sit-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 3px; padding: 10px 12px;
+  cursor: pointer; transition: all 0.1s;
+}
+.sit-card:hover { border-color: var(--border2); background: var(--raised); }
+.sit-card.active { border-color: rgba(45,212,191,0.4); background: rgba(45,212,191,0.04); }
+
+/* Ticker strip */
+.ticker-wrap { overflow: hidden; white-space: nowrap; height: 22px; }
+.ticker-inner { display: inline-flex; align-items: center; height: 100%; }
+
+/* Flash on new article */
+@keyframes flash { 0% { background: rgba(45,212,191,0.15); } 100% { background: transparent; } }
+.flash { animation: flash 1s ease-out; }
+
+/* ── TV / Large screen mode ───────────────────────────────────────────────── */
+/* Targets screens wider than 1920px (typical TV resolution) */
+/* Zooms out the entire UI: smaller fonts, thinner borders, tighter padding   */
+@media screen and (min-width: 1921px) {
+  :root {
+    font-size: 10px; /* down from 13px — shrinks all rem-based sizes */
+    --border:  #0f1a28; /* thinner/dimmer borders */
+    --border2: #182236;
+  }
+  body {
+    font-size: 10px;
+    zoom: 0.75; /* scale entire UI to 75% — fits more on screen */
+  }
+  /* Tighten specific UI chrome */
+  .mono { font-size: 9px !important; }
+  .btn  { padding: 2px 6px !important; font-size: 9px !important; }
+}
+
+/* TV browsers that report as 1080p but act like 4K (e.g. Samsung Tizen, LG webOS) */
+@media screen and (min-width: 1921px) and (min-resolution: 1dppx) {
+  body { zoom: 0.7; }
+}
+
+/* ── AMOLED Black theme ──────────────────────────────────────────────────── */
+/* Pure black backgrounds for OLED power saving, boosted text contrast */
+body.amoled {
+  --void:    #000000;
+  --base:    #000000;
+  --panel:   #080808;
+  --raised:  #101010;
+  --hover:   #161616;
+  --border:  #222222;
+  --border2: #2e2e2e;
+  /* Brighter text for AMOLED contrast */
+  --t1: #f0f4ff;
+  --t2: #b0bcd0;
+  --t3: #6a7a90;
+  --t4: #333d4a;
+  /* Slightly brighter accents for AMOLED visibility */
+  --accent:  #33e8d0;
+  --accent2: #4d96ff;
+  --red:     #ff5555;
+  --orange:  #ff8833;
+  --yellow:  #ffd23f;
+  --green:   #33dd66;
+  --purple:  #cc77ff;
+  background: #000000;
+}
+body.amoled *     { border-color: #222222 !important; }
+body.amoled .btn  { background: #111111 !important; color: #b0bcd0 !important; }
+body.amoled .btn:hover { background: #1a1a1a !important; color: #f0f4ff !important; }
+body.amoled .inp  { background: #080808 !important; color: #f0f4ff !important; border-color: #2e2e2e !important; }
+body.amoled .chip { background: #111111 !important; border-color: #2e2e2e !important; }
+body.amoled .panel { background: #080808 !important; }
+body.amoled ::-webkit-scrollbar-track { background: #000000; }
+body.amoled ::-webkit-scrollbar-thumb { background: #2e2e2e; }
+
+/* AMOLED: Override ALL hardcoded dark backgrounds in inline styles */
+/* ViewMode, IntelMap, LiveTV, and other components use hardcoded rgba(2,8,16,...) */
+body.amoled [style*="background: #020810"],
+body.amoled [style*="background:#020810"],
+body.amoled [style*="background: rgba(2,8,16"],
+body.amoled [style*="background:rgba(2,8,16"],
+body.amoled [style*="background: rgba(2, 8, 16"] { background: #000000 !important; }
+
+body.amoled [style*="background: #000"],
+body.amoled [style*="background:#000"]           { background: #000000 !important; }
+
+body.amoled [style*="background: #0a0a0a"],
+body.amoled [style*="background:#0a0a0a"]        { background: #000000 !important; }
+
+/* Surface-level elements */
+body.amoled [style*="background: var(--surface)"] { background: #0d0d0d !important; }
+body.amoled [style*="background:var(--surface)"]  { background: #0d0d0d !important; }
+
+/* Override the surface CSS variable directly */
+body.amoled { --surface: #0d0d0d; }
+
+/* Force pure black on key layout containers */
+body.amoled > div,
+body.amoled main,
+body.amoled aside { background: #000000; }
+
+/* IntelMap tooltip and overlay panels */
+body.amoled [style*="backdropFilter"] { background: rgba(0,0,0,0.95) !important; }

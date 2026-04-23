@@ -1,0 +1,3 @@
+# sdn_full.json is NOT committed (7.3MB).
+# Download from: https://www.treasury.gov/ofac/downloads/sdn_all.csv
+# Or generate: npm run seed:sdn
