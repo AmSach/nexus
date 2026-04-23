@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   const q = req.query?.q || req.query?.name || req.query?.query || ''
   const timespan = req.query?.timespan || '1year'
-  const OC_TOKEN = process.env.OPENCORP_KEY || req.query?.opencorp_key || process.env.NEXUS_OPENCORP_KEY || ''
+  const OC_TOKEN = process.env.OPENCORP_KEY || req.query?.opencorp_key || 'F6ypvqUI1qEk2OCJJQfC'
   if (!q) return res.status(400).json({ error: 'q required' })
 
   const query   = decodeURIComponent(q).trim()
