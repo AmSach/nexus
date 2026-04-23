@@ -239,7 +239,38 @@ app.get('/api/satellite', async (c) => {
     // Maritime RSS
     (async () => { const items = []; await Promise.allSettled([get('https://gcaptain.com/feed/', 6000).then(r => r && r.text()).then(x => x && parseRSSItems2(x, 'gCaptain', 20)).then(parsed => parsed.forEach(x => items.push(x))).catch(() => {}), get('https://www.navalnews.com/feed/', 6000).then(r => r && r.text()).then(x => x && parseRSSItems2(x, 'Naval News', 15)).then(parsed => parsed.forEach(x => items.push(x))).catch(() => {}), get('https://www.maritimebulletin.net/feed/', 8000).then(r => r && r.text()).then(x => x && parseRSSItems2(x, 'Maritime Bulletin', 15)).then(parsed => parsed.forEach(x => items.push(x))).catch(() => {}), get('https://splash247.com/feed/', 8000).then(r => r && r.text()).then(x => x && parseRSSItems2(x, 'Splash247', 10)).then(parsed => parsed.forEach(x => items.push(x))).catch(() => {})]); results.maritime = items.filter(i => i.title && i.title.length > 5).map(i => ({ ...i, severity: /attack|hijack|seized|piracy|explosion|sinking|sunk|missing|distress|abandon|fire.*vessel|SOS/i.test(i.title + ' ' + (i.description || '')) ? 'critical' : /accident|collision|grounding|rescue|investigation|detained|arrested/i.test(i.title + ' ' + (i.description || '')) ? 'high' : /incident|security|warning|alert|report|casualty/i.test(i.title + ' ' + (i.description || '')) ? 'medium' : 'low' })) })(),
     // Nuclear
-    (async () => { const items = []; const parseRSSn = (xml, source) => { [...xml.matchAll(/<item>(\s*?)<\/item>/gi)].forEach(m => { const title = (m[1].match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i) || [])[1]?.trim() || ''; if (!title) return; if (!/nuclear|atomic|radioactive|radiation|warhead|missile|ICBM|uranium|plutonium|reactor|IAEA|nonproliferation|deterren|weapon|nuke|bomb/i.test(title)) return; items.push({ title, url: (m[1].match(/<link[^>]*>(.*?)<\/link>/i) || [])[1]?.trim() || '', date: (m[1].match(/<pubDate>(.*?)<\/pubDate>/i) || [])[1]?.trim() || '', source, description: (m[1].match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/i) || [])[1]?.trim()?.replace(/<[^>]+>/g, '')?.slice(0, 300) || '', severity: /emergency|accident|leak|explosion|meltdown|launch|strike|attack/i.test(title) ? 'critical' : 'medium' }) }; await Promise.allSettled([get('https://www.iaea.org/feeds/topstories.xml', 6000).then(r => r && r.text()).then(x => x && parseRSSn(x, 'IAEA')).catch(() => {}), get('https://www.world-nuclear-news.org/rss', 8000).then(r => r && r.text()).then(x => x && parseRSSn(x, 'World Nuclear News')).catch(() => {}), get('https://thebulletin.org/feed/', 8000).then(r => r && r.text()).then(x => x && parseRSSn(x, 'Bulletin of Atomic Scientists')).catch(() => {}), get('https://warontherocks.com/feed/', 8000).then(r => r && r.text()).then(x => x && parseRSSn(x, 'War on the Rocks')).catch(() => {})]); results.nuclear = items })(),
+    (async () => {
+      const items = []
+      const parseRSSn = (xml, source) => {
+        const rawItems = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)]
+        rawItems.forEach(m => {
+          const b = m[1]
+          const titleRaw = b.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)
+          const title = titleRaw ? titleRaw[1].trim() : ''
+          if (!title || title.length < 5) return
+          const kw = /nuclear|atomic|radioactive|radiation|warhead|missile|ICBM|uranium|plutonium|reactor|IAEA|nonproliferation|deterren|weapon|nuke|bomb/i
+          if (!kw.test(title)) return
+          const linkM = b.match(/<link[^>]*>(.*?)<\/link>/i)
+          const link = linkM ? linkM[1].trim() : ''
+          const dateM = b.match(/<pubDate>(.*?)<\/pubDate>/i)
+          const date = dateM ? dateM[1].trim() : ''
+          const descM = b.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i)
+          const desc = descM ? descM[1].replace(/<[^>]+>/g, '').trim().slice(0, 300) : ''
+          const sev = /emergency|accident|leak|explosion|meltdown|launch|strike|attack/i.test(title) ? 'critical' : 'medium'
+          items.push({ title, url: link, date, source, description: desc, severity: sev })
+        })
+      }
+      const feeds = [
+        ['https://www.iaea.org/feeds/topstories.xml', 'IAEA'],
+        ['https://www.world-nuclear-news.org/rss', 'World Nuclear News'],
+        ['https://thebulletin.org/feed/', 'Bulletin of Atomic Scientists'],
+        ['https://warontherocks.com/feed/', 'War on the Rocks'],
+      ]
+      await Promise.allSettled(feeds.map(([url, src]) =>
+        get(url, 8000).then(r => r && r.text()).then(x => x && parseRSSn(x, src)).catch(() => {})
+      ))
+      results.nuclear = items
+    })(),
     // Conflict events GDELT + UCDP
     (async () => {
       const conflicts = []
@@ -248,8 +279,53 @@ app.get('/api/satellite', async (c) => {
       results.conflictEvents = conflicts
     })(),
     // Cyber
-    (async () => { const cyberItems = []; const cisaR = await get('https://www.cisa.gov/uscert/ncas/alerts.xml', 6000); if (cisaR) { const xml = await cisaR.text().catch(() => ''); [...xml.matchAll(/<item>([\t\n\r ]*?)<\/item>/gi)].forEach(m => { const title = getXMLTag2(m[1], 'title'); if (!title) return; cyberItems.push({ title, url: getXMLTag2(m[1], 'link'), date: getXMLTag2(m[1], 'pubDate'), description: getXMLTag2(m[1], 'description').replace(/<[^>]+>/g, '').slice(0, 300), source: 'CISA US-CERT', _fetchedAt: new Date().toISOString(), severity: title.toLowerCase().includes('critical') ? 'critical' : 'high' }) }) } catch {}; const kevR = await get('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', 8000); if (kevR) { const d = await kevR.json().catch(() => null); (d?.vulnerabilities || []).slice(0, 50).forEach(v => { cyberItems.push({ title: `KEV: ${v.vendorProject} ${v.product} — ${v.vulnerabilityName}`, url: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, date: v.dateAdded, cveID: v.cveID, description: v.shortDescription?.slice(0, 300), source: 'CISA KEV', _fetchedAt: new Date().toISOString(), severity: 'critical' }) }) } catch {}; const feodoR = await get('https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json', 6000); if (feodoR) { const d = await feodoR.json().catch(() => null); (d || []).slice(0, 200).forEach(host => { if (!host.ip_address) return; cyberItems.push({ title: `Botnet C2: ${host.ip_address} (${host.malware || 'Unknown'})`, url: `https://feodotracker.abuse.ch/browse/host/${host.ip_address}/`, date: host.first_seen, ip: host.ip_address, country: host.country, port: host.port, malware: host.malware, description: `${host.malware || 'Malware'} C2 server · Port ${host.port || '?'} · Country: ${host.country || '?'} · First seen: ${host.first_seen || '?'}`, source: 'Abuse.ch Feodo Tracker', _fetchedAt: new Date().toISOString(), severity: 'high' }) }) } catch {}; const urlhausR = await get('https://urlhaus-api.abuse.ch/v1/urls/recent/limit/100/', 6000); if (urlhausR) { const d = await urlhausR.json().catch(() => null); (d?.urls || []).slice(0, 100).forEach(u => { if (!u.url || u.url_status === 'offline') return; cyberItems.push({ title: `Malware URL: ${u.host || u.url?.slice(0, 40)}`, url: u.urlhaus_link || u.url, date: u.date_added, host: u.host, description: `${u.threat || 'Malware'} · ${u.url?.slice(0, 200)}`, source: 'Abuse.ch URLhaus', _fetchedAt: new Date().toISOString(), severity: u.threat?.includes('malware_download') ? 'critical' : 'high' }) }) } catch {}; results.cyber = cyberItems; results.botnetC2 = cyberItems.filter(c => c.source === 'Abuse.ch Feodo Tracker'); results.kev = cyberItems.filter(c => c.source === 'CISA KEV') })(),
-    // Copernicus EMS
+    (async () => {
+      const cyberItems = []
+      try {
+        const cisaR = await get('https://www.cisa.gov/uscert/ncas/alerts.xml', 6000)
+        if (cisaR) {
+          const xml = await cisaR.text().catch(() => '')
+          const rawItems = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)]
+          rawItems.forEach(m => {
+            const title = getXMLTag2(m[1], 'title')
+            if (!title) return
+            cyberItems.push({ title, url: getXMLTag2(m[1], 'link'), date: getXMLTag2(m[1], 'pubDate'), description: getXMLTag2(m[1], 'description').replace(/<[^>]+>/g, '').slice(0, 300), source: 'CISA US-CERT', _fetchedAt: new Date().toISOString(), severity: title.toLowerCase().includes('critical') ? 'critical' : 'high' })
+          })
+        }
+      } catch {}
+      try {
+        const kevR = await get('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', 8000)
+        if (kevR) {
+          const d = await kevR.json().catch(() => null)
+          ;(d?.vulnerabilities || []).slice(0, 50).forEach(v => {
+            cyberItems.push({ title: 'KEV: ' + v.vendorProject + ' ' + v.product + ' — ' + v.vulnerabilityName, url: 'https://nvd.nist.gov/vuln/detail/' + v.cveID, date: v.dateAdded, cveID: v.cveID, description: v.shortDescription?.slice(0, 300), source: 'CISA KEV', _fetchedAt: new Date().toISOString(), severity: 'critical' })
+          })
+        }
+      } catch {}
+      try {
+        const feodoR = await get('https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json', 6000)
+        if (feodoR) {
+          const d = await feodoR.json().catch(() => null)
+          ;(d || []).slice(0, 200).forEach(host => {
+            if (!host.ip_address) return
+            cyberItems.push({ title: 'Botnet C2: ' + host.ip_address + ' (' + (host.malware || 'Unknown') + ')', url: 'https://feodotracker.abuse.ch/browse/host/' + host.ip_address + '/', date: host.first_seen, ip: host.ip_address, country: host.country, port: host.port, malware: host.malware, description: (host.malware || 'Malware') + ' C2 server · Port ' + (host.port || '?') + ' · Country: ' + (host.country || '?') + ' · First seen: ' + (host.first_seen || '?'), source: 'Abuse.ch Feodo Tracker', _fetchedAt: new Date().toISOString(), severity: 'high' })
+          })
+        }
+      } catch {}
+      try {
+        const urlhausR = await get('https://urlhaus-api.abuse.ch/v1/urls/recent/limit/100/', 6000)
+        if (urlhausR) {
+          const d = await urlhausR.json().catch(() => null)
+          ;(d?.urls || []).slice(0, 100).forEach(u => {
+            if (!u.url || u.url_status === 'offline') return
+            cyberItems.push({ title: 'Malware URL: ' + (u.host || u.url?.slice(0, 40)), url: u.urlhaus_link || u.url, date: u.date_added, host: u.host, description: (u.threat || 'Malware') + ' · ' + (u.url?.slice(0, 200)), source: 'Abuse.ch URLhaus', _fetchedAt: new Date().toISOString(), severity: u.threat?.includes('malware_download') ? 'critical' : 'high' })
+          })
+        }
+      } catch {}
+      results.cyber = cyberItems
+      results.botnetC2 = cyberItems.filter(c => c.source === 'Abuse.ch Feodo Tracker')
+      results.kev = cyberItems.filter(c => c.source === 'CISA KEV')
+    })(),
     (async () => { const r = await get('https://emergency.copernicus.eu/mapping/activations-rapid?service=WFS&request=GetFeature&typeName=ems%3ARapidMappingActivation&outputFormat=application%2Fjson&maxFeatures=50', 8000); if (r) { const d = await r.json().catch(() => null); results.copernicus = (d?.features || d?.data || []).map(a => ({ id: a.properties?.activationcode || a.id, title: a.properties?.title || a.title || 'Copernicus EMS Activation', type: a.properties?.hazard_type || a.hazardType || 'Unknown', country: a.properties?.country || '', date: a.properties?.activationdate || '', url: `https://emergency.copernicus.eu/mapping/activations-rapid/${a.properties?.activationcode || a.id}`, severity: 'high' })) } })(),
     // ACLED crowds + protests
     (async () => { try { const since14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10); const r = await get('https://api.acleddata.com/acled/read/?terms=accept&event_type=Protests&limit=200&fields=event_date,event_type,sub_event_type,country,location,latitude,longitude,notes,fatalities&format=json', 8000); if (r) { const d = await r.json().catch(() => null); const crowdEvents = []; (d?.data || []).forEach(e => { const lat = parseFloat(e.latitude), lng = parseFloat(e.longitude); if (isNaN(lat) || isNaN(lng)) return; const isFatal = parseInt(e.fatalities || 0) > 0; const evType = (e.sub_event_type || e.event_type || 'Event').toLowerCase(); const isCrowd = /protest|demonstration|riot|march|rally|strike|mob/.test(evType); crowdEvents.push({ id: 'acled-' + (e.event_date || '') + '-' + (e.location || '').replace(/[^a-z0-9]/gi, '-').slice(0, 20), type: isCrowd ? 'crowd' : 'acled_conflict', icon: isCrowd ? '👥' : '⚔️', title: (e.sub_event_type || e.event_type) + ' — ' + (e.location || '') + ', ' + (e.country || ''), actors: [e.actor1, e.actor2].filter(Boolean).join(' vs '), source: 'ACLED', date: e.event_date, lat, lng, severity: parseInt(e.fatalities || 0) > 10 ? 'critical' : isFatal ? 'high' : 'medium', detail: e.notes?.slice(0, 200), fatalities: parseInt(e.fatalities || 0) }); }); results.crowds = crowdEvents.slice(0, 200) } } catch {} })(),
