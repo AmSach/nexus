@@ -33,7 +33,7 @@ class ErrBound extends React.Component {
 
 export default function App() {
   const { tab, collapsed } = useStore()
-  const { articles, loading, synced, refetch, translating, translateCount } = useNewsFeed()
+  const { articles = [], loading, synced, refetch, translating, translateCount } = useNewsFeed()
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:'var(--void)' }}>
       <TopBar loading={loading} synced={synced} liveCount={articles.length} onRefresh={refetch} translating={translating} translateCount={translateCount} />
