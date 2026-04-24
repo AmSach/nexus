@@ -146,9 +146,9 @@ export default function CIIDashboard({ articles = [], acledEvents = [], satellit
   const [expanded, setExpanded] = useState(null)
 
   const { situations, criticalCount, highCount } = useSignalConvergence({
-    articles,
-    acledEvents,
-    satellite,
+    articles: articles || [],
+    acledEvents: [],
+    satellite: satellite || null,
     polyMarkets,
     kalshiMarkets,
     liveAlerts,
