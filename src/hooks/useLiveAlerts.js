@@ -1,8 +1,8 @@
 import { useSupabaseData, isSupabaseConfigured } from './useSupabase'
 
 function useLiveAlertsFromSupabase() {
-  const { signals } = useSupabaseData()
-  const alerts = signals
+  const { signals = [] } = useSupabaseData()
+  const alerts = (signals || [])
     .filter(s => ['alert','gdacs','hurricane','disease'].includes(s.type))
     .map(s => ({ id: s.name, title: s.name, desc: s.desc, severity: s.severity,
       type: s.type, url: s.url, source: s.source, lat: s.lat, lng: s.lng,

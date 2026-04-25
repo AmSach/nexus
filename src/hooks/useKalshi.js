@@ -2,8 +2,8 @@ import { useSupabaseData, isSupabaseConfigured } from './useSupabase'
 
 // ── Supabase-first: read from DB when configured ──────────────────────────────
 function useKalshiFromSupabase() {
-  const { markets } = useSupabaseData()
-  const kalshiMkts = markets.filter(m => m.platform === 'kalshi').map(m => ({
+  const { markets = [] } = useSupabaseData()
+  const kalshiMkts = (markets || []).filter(m => m.platform === 'kalshi').map(m => ({
     ...m, ...(typeof m.meta === 'object' ? m.meta : {}),
     id: m.id, title: m.title || m.meta?.title,
     probability: m.probability, volume: m.volume, url: m.url,

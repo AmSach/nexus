@@ -1,8 +1,8 @@
 import { useSupabaseData, isSupabaseConfigured } from './useSupabase'
 
 function usePolymarketFromSupabase() {
-  const { markets } = useSupabaseData()
-  const pmMkts = markets.filter(m => m.platform === 'polymarket').map(m => ({
+  const { markets = [] } = useSupabaseData()
+  const pmMkts = (markets || []).filter(m => m.platform === 'polymarket').map(m => ({
     ...m, ...(typeof m.meta === 'object' ? m.meta : {}),
     id: m.id, title: m.title || m.meta?.title,
     probability: m.probability, volume: m.volume, url: m.url,
