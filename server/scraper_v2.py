@@ -99,7 +99,7 @@ async def fetch_polymarket():
                 'volume': float(m.get('volume') or 0),
                 'ts': datetime.now(timezone.utc).isoformat()
             })
-        except:
+        except Exception:
             pass
     print('[Polymarket] ' + str(len(markets)) + ' markets')
     return [], markets
@@ -256,7 +256,7 @@ def store_alrt(items):
                  it.get('category') or 'general')
             )
             n += 1
-        except:
+        except Exception:
             pass
     conn.commit()
     return n
@@ -278,7 +278,7 @@ def store_mkt(items):
                  m.get('source') or 'Unknown')
             )
             n += 1
-        except:
+        except Exception:
             pass
     conn.commit()
     return n

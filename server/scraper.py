@@ -14,7 +14,8 @@ async def fetch(url, timeout=12, json_mode=False):
             async with s.get(url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=timeout)) as r:
                 if not r.ok: return None
                 return await r.json() if json_mode else await r.text()
-    except: return None
+    except Exception:
+        return None
 
 def xml_items(text, max_items=10):
     if not text: return []
@@ -62,7 +63,8 @@ def save_signals(signals):
                  s.get('lat'), s.get('lng'), sev,
                  json.dumps(s.get('tags',[])), s.get('country',''),
                  zone, severity_score))
-        except: pass
+        except Exception:
+            pass
     conn.commit()
 
 def save_prices(prices):
@@ -70,7 +72,8 @@ def save_prices(prices):
         try:
             conn.execute("INSERT INTO prices(symbol,price,change_pct,volume) VALUES(?,?,?,?)",
                 (p['symbol'], p['price'], p.get('change_pct',0), p.get('volume',0)))
-        except: pass
+        except Exception:
+            pass
     conn.commit()
 
 def save_markets(markets):
@@ -80,7 +83,8 @@ def save_markets(markets):
                 VALUES(?,?,?,?,?)""",
                 (m.get('id',''), (m.get('question') or '')[:500], m.get('prob',0),
                  m.get('volume',0), m.get('source','')))
-        except: pass
+        except Exception:
+            pass
     conn.commit()
 
 def save_alerts(alerts):
@@ -91,7 +95,8 @@ def save_alerts(alerts):
                 (a.get('source',''), a.get('type',''), (a.get('title') or '')[:500],
                  (a.get('detail') or '')[:1000], a.get('severity','medium'),
                  a.get('lat'), a.get('lng')))
-        except: pass
+        except Exception:
+            pass
     conn.commit()
 
 # ── USGS Earthquakes ───────────────────────────────────────────────
@@ -215,7 +220,8 @@ async def do_polymarket():
             prob = float(p) if p else 0.5
             markets.append({'id':m.get('id',''),'question':m.get('question','')[:500],
                 'prob':prob,'volume':float(m.get('volume','0') or 0),'source':'Polymarket'})
-        except: pass
+        except Exception:
+            pass
     save_markets(markets)
     print(f"[Polymarket] {len(markets)} markets")
 
@@ -230,7 +236,8 @@ async def do_kalshi():
             markets.append({'id':m.get('market_id',''),'question':m.get('question','')[:500],
                 'prob':float(pct) if isinstance(pct,(int,float)) else 0.5,
                 'volume':float(m.get('volume','0') or 0),'source':'Kalshi'})
-        except: pass
+        except Exception:
+            pass
     save_markets(markets)
     print(f"[Kalshi] {len(markets)} markets")
 
@@ -260,7 +267,8 @@ async def do_reddit():
     if not d: return
     try:
         posts = d.get('data',{}).get('children',[])
-    except: return
+    except Exception:
+        return
     signals = []
     for p in posts[:15]:
         post = p.get('data',{})

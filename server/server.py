@@ -246,7 +246,8 @@ async def gdelt_search(
                         a.get('timestamp') or datetime.utcnow().isoformat()
                     )
                 )
-            except: pass
+            except Exception:
+                pass
         conn.commit()
     return {
         'query': q,

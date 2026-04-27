@@ -50,7 +50,7 @@ def recency_weight(ts_str):
     try:
         age_min = (time.time() - datetime.fromisoformat(ts_str).timestamp()) / 60
         return math.exp(-age_min / 120)
-    except:
+    except Exception:
         return 0.1
 
 def predict(question_id, question):
