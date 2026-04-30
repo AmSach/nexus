@@ -3191,3 +3191,4 @@ function parseFIRMS(csv, label, prod, arr) {
       severity:bright>450?'critical':bright>380?'high':'medium'})
   })
 }
+// force redeploy
