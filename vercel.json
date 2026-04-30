@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/**/*.js": {
+    "dist/api/**/*.js": {
       "runtime": "nodejs22.x"
     }
   },
@@ -12,18 +12,18 @@
     { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
   ],
   "rewrites": [
-    { "source": "/api/satellite", "destination": "/api/satellite.js" },
-    { "source": "/api/firms", "destination": "/api/firms.js" },
-    { "source": "/api/ingest", "destination": "/api/ingest.js" },
-    { "source": "/api/alerts", "destination": "/api/alerts.js" },
-    { "source": "/api/gdelt", "destination": "/api/gdelt.js" },
-    { "source": "/api/intel", "destination": "/api/intel.js" },
-    { "source": "/api/kalshi", "destination": "/api/kalshi.js" },
-    { "source": "/api/polymarket", "destination": "/api/polymarket.js" },
-    { "source": "/api/rss", "destination": "/api/rss.js" },
-    { "source": "/api/fred", "destination": "/api/fred.js" },
-    { "source": "/api/signals", "destination": "/api/signals.js" },
-    { "source": "/api/threats", "destination": "/api/threats.js" },
+    { "source": "/api/satellite", "destination": "/dist/api/satellite.js" },
+    { "source": "/api/firms", "destination": "/dist/api/firms.js" },
+    { "source": "/api/ingest", "destination": "/dist/api/ingest.js" },
+    { "source": "/api/alerts", "destination": "/dist/api/alerts.js" },
+    { "source": "/api/gdelt", "destination": "/dist/api/gdelt.js" },
+    { "source": "/api/intel", "destination": "/dist/api/intel.js" },
+    { "source": "/api/kalshi", "destination": "/dist/api/kalshi.js" },
+    { "source": "/api/polymarket", "destination": "/dist/api/polymarket.js" },
+    { "source": "/api/rss", "destination": "/dist/api/rss.js" },
+    { "source": "/api/fred", "destination": "/dist/api/fred.js" },
+    { "source": "/api/signals", "destination": "/dist/api/signals.js" },
+    { "source": "/api/threats", "destination": "/dist/api/threats.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
