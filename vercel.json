@@ -3,13 +3,24 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/*.js": {
-      "runtime": "nodejs22.x"
-    }
+    "api/firms.js": { "runtime": "nodejs22.x" },
+    "api/satellite.js": { "runtime": "nodejs22.x" },
+    "api/ingest.js": { "runtime": "nodejs22.x" },
+    "api/alerts.js": { "runtime": "nodejs22.x" },
+    "api/signals.js": { "runtime": "nodejs22.x" },
+    "api/threats.js": { "runtime": "nodejs22.x" },
+    "api/gdelt.js": { "runtime": "nodejs22.x" },
+    "api/kalshi.js": { "runtime": "nodejs22.x" },
+    "api/polymarket.js": { "runtime": "nodejs22.x" },
+    "api/fred.js": { "runtime": "nodejs22.x" },
+    "api/intel.js": { "runtime": "nodejs22.x" },
+    "api/rss.js": { "runtime": "nodejs22.x" }
   },
   "headers": [
     { "source": "/api/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=120, stale-while-revalidate=300" }] },
     { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
   ],
-  "rewrites": []
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ]
 }
