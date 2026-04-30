@@ -1,3 +1,20 @@
 {
-  "framework": "vite"
+  "framework": "vite",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs22.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/satellite", "destination": "/api/satellite.js" },
+    { "source": "/api/firms", "destination": "/api/firms.js" },
+    { "source": "/api/ingest", "destination": "/api/ingest.js" },
+    { "source": "/api/alerts", "destination": "/api/alerts.js" },
+    { "source": "/api/gdelt", "destination": "/api/gdelt.js" },
+    { "source": "/api/intel", "destination": "/api/intel.js" },
+    { "source": "/api/kalshi", "destination": "/api/kalshi.js" },
+    { "source": "/api/polymarket", "destination": "/api/polymarket.js" },
+    { "source": "/api/rss", "destination": "/api/rss.js" },
+    { "source": "/api/fred", "destination": "/api/fred.js" }
+  ]
 }
