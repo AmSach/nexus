@@ -1,11 +1,7 @@
 {
   "framework": null,
-  "buildCommand": "npm run build && cp -r api dist/api",
-  "functions": {
-    "dist/api/**/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
