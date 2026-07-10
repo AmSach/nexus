@@ -1,8 +1,3 @@
 {
-  "framework": "vite",
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 60
-    }
-  }
+  "framework": "vite"
 }
