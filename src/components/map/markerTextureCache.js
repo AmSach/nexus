@@ -237,6 +237,69 @@ export function getMarkerMaterial(THREE, pt) {
     cx.fillStyle = '#ffffff'; cx.font = 'bold 22px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
     cx.fillText('!', 32, 38)
 
+  } else if (type === 'vuln') {
+    clr(cx, '#261000', 0.9)
+    cx.strokeStyle = '#ff6600'; cx.lineWidth = 2.5
+    cx.strokeRect(12, 12, 40, 40)
+    cx.font = '24px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('🔓', 32, 32)
+
+  } else if (type === 'cve') {
+    clr(cx, '#261a00', 0.9)
+    cx.fillStyle = '#ffaa00'
+    cx.beginPath(); cx.moveTo(32, 6); cx.lineTo(58, 54); cx.lineTo(6, 54); cx.closePath(); cx.fill()
+    cx.strokeStyle = '#000000'; cx.lineWidth = 2; cx.stroke()
+    cx.fillStyle = '#000000'; cx.font = 'bold 22px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('!', 32, 38)
+
+  } else if (type === 'maritime') {
+    clr(cx, '#001a33', 0.9)
+    cx.strokeStyle = '#0088ff'; cx.lineWidth = 2.5
+    cx.beginPath(); cx.arc(32, 32, 24, 0, Math.PI * 2); cx.stroke()
+    cx.font = '24px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('⚓', 32, 32)
+
+  } else if (type === 'notam') {
+    clr(cx, '#261400', 0.9)
+    cx.strokeStyle = '#ff8844'; cx.lineWidth = 2.5
+    cx.beginPath(); cx.arc(32, 32, 24, 0, Math.PI * 2); cx.stroke()
+    cx.font = '22px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('✈', 32, 32)
+
+  } else if (type === 'humanitarian') {
+    clr(cx, '#260f00', 0.9)
+    cx.strokeStyle = '#fb923c'; cx.lineWidth = 2.5
+    cx.beginPath(); cx.arc(32, 32, 24, 0, Math.PI * 2); cx.stroke()
+    cx.font = '20px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('🆘', 32, 32)
+
+  } else if (type === 'crowd') {
+    clr(cx, '#26001a', 0.9)
+    cx.strokeStyle = '#f472b6'; cx.lineWidth = 2.5
+    cx.beginPath(); cx.arc(32, 32, 24, 0, Math.PI * 2); cx.stroke()
+    cx.font = '20px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('👥', 32, 32)
+
+  } else if (type === 'preaction') {
+    clr(cx, '#261800', 0.9)
+    cx.strokeStyle = '#f59e0b'; cx.lineWidth = 3
+    cx.beginPath(); cx.arc(32, 32, 24, 0, Math.PI * 2); cx.stroke()
+    cx.fillStyle = '#ffdd00'; cx.beginPath(); cx.moveTo(34, 18); cx.lineTo(26, 32); cx.lineTo(32, 32); cx.lineTo(28, 46); cx.lineTo(38, 30); cx.lineTo(32, 30); cx.closePath(); cx.fill()
+
+  } else if (type === 'iris') {
+    clr(cx, '#141433', 0.9)
+    cx.strokeStyle = '#818cf8'; cx.lineWidth = 2.5
+    cx.beginPath(); cx.arc(32, 32, 24, 0, Math.PI * 2); cx.stroke()
+    cx.font = '22px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('🌐', 32, 32)
+
+  } else if (type === 'wikiEdit') {
+    clr(cx, '#141426', 0.9)
+    cx.strokeStyle = '#aaaaff'; cx.lineWidth = 2.5
+    cx.strokeRect(12, 12, 40, 40)
+    cx.font = '22px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    cx.fillText('📝', 32, 32)
+
   } else {
     // Default circular pin
     clr(cx)
@@ -273,6 +336,8 @@ export function getClusterMaterial(THREE, clusterType, count) {
     nuclear: '#ffff00', gpsjam: '#f59e0b', firms: '#ff4400', news: '#2dd4bf',
     notam: '#ff8844', wikiEdit: '#aaaaff', bgp: '#ff6600', viirs: '#ffffff',
     gdacs: '#ffaa00', eonet_wildfire: '#ff3300', darkfleet: '#c084fc', sarRadar: '#38bdf8',
+    vuln: '#ff6600', cve: '#ffaa00', maritime: '#0055cc', crowd: '#f472b6',
+    humanitarian: '#fb923c', preaction: '#f59e0b', iris: '#818cf8',
   }
   const TYPE_ICON = {
     aircraft: '✈', milaircraft: '✈', ship: '🚢', warship: '⚔',
@@ -280,6 +345,8 @@ export function getClusterMaterial(THREE, clusterType, count) {
     nuclear: '☢', gpsjam: '📡', firms: '🔥', news: '📰',
     notam: '🚫', wikiEdit: '📝', bgp: '🌐', viirs: '🛰',
     gdacs: '⚠', eonet_wildfire: '🔥', darkfleet: '🏴‍☠️', sarRadar: '🛰',
+    vuln: '🔓', cve: '⚠️', maritime: '⚓', crowd: '👥',
+    humanitarian: '🆘', preaction: '⚡', iris: '🌐',
   }
 
   const clr = TYPE_CLR[clusterType] || '#2dd4bf'
