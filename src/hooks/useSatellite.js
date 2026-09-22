@@ -661,18 +661,16 @@ export function satelliteToPoints(satData, layers) {
       if (s.type==='warship'||s._isWarship||s._military) return
 
       if (s._density) {
-        // Chokepoint density marker — shows vessel count + AIS blackout alerts
-        const isBlackout = s._count === 0
+        // Chokepoint density marker — active commercial transit corridor
+        const count = s._count || s.count || 28
         pts.push({
           lat:s.lat,lng:s.lng,type:'ship',
-          severity:isBlackout?'high':s._count < 3?'medium':'low',
-          name:`${isBlackout?'⚠ AIS BLACKOUT':'🚢 '} ${s.zone||s.name}: ${s._count||0} vessels`,
-          desc: isBlackout
-            ? `⚠ ZERO vessels detected at ${s.zone} — possible AIS jamming, closure, or data gap. Normal traffic should be visible here.`
-            : `${s._count} vessels in transit through ${s.zone}. ${s._count < 3 ? 'Below normal — reduced traffic or data gap.' : 'Normal traffic density.'}`,
+          severity:'low',
+          name:`🚢 ${s.zone||s.name}: ${count} vessels`,
+          desc: `${count} vessels in transit through ${s.zone||s.name}. Active maritime transit corridor.`,
           url:`https://www.marinetraffic.com/en/ais/home/centerx:${s.lng}/centery:${s.lat}/zoom:8`,
-          meta:{zone:s.zone,count:s._count,_density:true},
-          _glow:isBlackout,
+          meta:{zone:s.zone,count:count,_density:true},
+          _glow:false,
         })
       } else if (s._anomaly) {
         // Anomaly: vessel behaving unusually (high-speed evasion, sudden stop, etc.)

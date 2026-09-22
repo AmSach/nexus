@@ -164,6 +164,54 @@ const SHODAN_TARGET_NODES = [
     cpes: ['cpe:/a:f5:nginx', 'cpe:/a:php:php:8.0.30', 'cpe:/a:postfix:postfix'],
     hostnames: ['earth-station-telemetry01.cnes-partners.fr', 'tree.eco-journeys.com'], tags: ['satellite', 'ground-station', 'eol-product', 'aerospace'],
     cvssMax: 9.8, mitreTechniques: ['T1190', 'T1059', 'T1203']
+  },
+  {
+    ip: '139.162.24.88', country: 'SG', product: 'Emerson DeltaV Distributed Control System',
+    org: 'Jurong Island Petrochemical Refining Complex', sector: 'Oil & Gas Refining', protocol: 'Modbus (502) / DeltaV HMI',
+    ports: [80, 502, 443], vulns: ['CVE-2022-29951', 'CVE-2023-38545'],
+    cpes: ['cpe:/a:emerson:deltav:14.3', 'cpe:/a:modbus:modbus_tcp'],
+    hostnames: ['refinery-dcs-gw01.jurong.sg'], tags: ['ics', 'scada', 'oil-gas', 'refinery'],
+    cvssMax: 9.8, mitreTechniques: ['T0885', 'T0814', 'T0855']
+  },
+  {
+    ip: '185.175.56.21', country: 'PL', product: 'Siemens SIMATIC WinCC SCADA Server',
+    org: 'Rzeszow Strategic Cross-Border Rail Logistics Terminal', sector: 'Transportation Rail Logistics', protocol: 'S7comm (102) / WinCC Web (80)',
+    ports: [80, 102, 443], vulns: ['CVE-2023-46805', 'CVE-2022-38465'],
+    cpes: ['cpe:/a:siemens:wincc:v7.5', 'cpe:/o:siemens:simatic_s7-1500_firmware'],
+    hostnames: ['rail-dispatch-ops01.rzeszow-hub.pl'], tags: ['ics', 'railways', 'logistics', 's7comm'],
+    cvssMax: 9.8, mitreTechniques: ['T1190', 'T0814', 'T1059']
+  },
+  {
+    ip: '139.59.88.102', country: 'IN', product: 'BHEL SCADA Thermal Power Plant RTU',
+    org: 'Northern Regional Load Despatch Centre', sector: 'Energy & Electric Grid', protocol: 'IEC 60870-5-104 (2404) / HTTP (8080)',
+    ports: [8080, 2404], vulns: ['CVE-2022-45788', 'CVE-2021-32955'],
+    cpes: ['cpe:/a:bhel:scada_telemetry:v3.1'],
+    hostnames: ['power-grid-rtu04.delhi-load.gov.in'], tags: ['ics', 'scada', 'substation', 'iec-104'],
+    cvssMax: 9.8, mitreTechniques: ['T0885', 'T0855', 'T0813']
+  },
+  {
+    ip: '194.67.210.45', country: 'RU', product: 'MikroTik Cloud Core Router BGP Egress',
+    org: 'State Telecom Transit & Network Filtering Node', sector: 'Telecommunications & BGP', protocol: 'BGP (179) / RouterOS Winbox (8291)',
+    ports: [80, 179, 8291], vulns: ['CVE-2023-30799', 'CVE-2023-41570'],
+    cpes: ['cpe:/o:mikrotik:routeros:6.49.8'],
+    hostnames: ['transit-core-gw02.cloud-transit.ru'], tags: ['router', 'bgp', 'censorship', 'telecom'],
+    cvssMax: 9.1, mitreTechniques: ['T1190', 'T1557', 'T1068']
+  },
+  {
+    ip: '138.68.140.12', country: 'GB', product: 'Subsea Cable Landing Station Telemetry Server',
+    org: 'Cornwall Bude Transatlantic Optical Interconnect', sector: 'Submarine Communications', protocol: 'SNMP (161) / HTTPS (443)',
+    ports: [161, 443, 8443], vulns: ['CVE-2024-3400', 'CVE-2023-22515'],
+    cpes: ['cpe:/a:cisco:optical_telemetry:v4.0'],
+    hostnames: ['subsea-landing-bude01.atlantic-cable.co.uk'], tags: ['submarine-cable', 'optical', 'telecom', 'critical-infrastructure'],
+    cvssMax: 9.8, mitreTechniques: ['T1190', 'T1059', 'T1203']
+  },
+  {
+    ip: '165.22.115.77', country: 'AU', product: 'Schneider CitectSCADA Mining Haulage Dispatch',
+    org: 'Pilbara Heavy Freight Autonomous Rail Dispatch', sector: 'Mining & Heavy Freight Rail', protocol: 'Modbus (502) / OPC UA (4840)',
+    ports: [502, 4840], vulns: ['CVE-2022-45788', 'CVE-2023-2244'],
+    cpes: ['cpe:/a:schneider-electric:citectscada:2020'],
+    hostnames: ['pilbara-rail-telemetry01.rio-mining.au'], tags: ['ics', 'mining', 'freight-rail', 'modbus'],
+    cvssMax: 9.8, mitreTechniques: ['T0885', 'T0814', 'T0858']
   }
 ]
 
@@ -541,11 +589,11 @@ export default async function handler(req, res) {
       if (r.ok) {
         const d = await r.json()
         if (d.vulnerabilities?.length) {
-          const liveKev = d.vulnerabilities.slice(0, 60).map(enrichCveMetadata)
+          const liveKev = d.vulnerabilities.slice(0, 120).map(enrichCveMetadata)
           results.kev = liveKev
 
           // Also populate recentCVEs with enriched live high-severity CVEs
-          results.recentCVEs = liveKev.slice(0, 25).map(v => ({
+          results.recentCVEs = liveKev.slice(0, 50).map(v => ({
             id: v.cveID,
             cvss: v.cvss,
             cvssVector: v.cvssVector,
@@ -573,7 +621,7 @@ export default async function handler(req, res) {
       if (r.ok) {
         const d = await r.json()
         if (Array.isArray(d) && d.length > 0) {
-          const liveC2 = d.slice(0, 35).map(item => ({
+          const liveC2 = d.slice(0, 60).map(item => ({
             ip: item.ip_address,
             port: item.port,
             malware: item.malware || 'Botnet C2',
@@ -609,7 +657,7 @@ export default async function handler(req, res) {
           const liveIndicators = []
           const c2List = []
 
-          for (const k of keys.slice(0, 60)) {
+          for (const k of keys.slice(0, 90)) {
             const arr = d[k]
             if (!arr || !arr.length) continue
             const item = arr[0]

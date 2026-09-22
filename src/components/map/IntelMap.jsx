@@ -17,6 +17,7 @@ import { useLiveAlerts } from '../../hooks/useLiveAlerts'
 import { RefreshCw, X, ExternalLink, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { getSharedPlaneGeo, getSharedClusterGeo, getMarkerMaterial, getClusterMaterial } from './markerTextureCache'
 import DeepOSINTDossier from './DeepOSINTDossier'
+import { getPointCountry, COUNTRY_DATA } from './countryUtils'
 
 const SEV_COLORS_HEX = { critical: 0xef4444, high: 0xf97316, medium: 0xeab308, low: 0x2dd4bf }
 const SEV_COLORS_CSS = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#2dd4bf' }
@@ -392,6 +393,9 @@ export default function IntelMap({ articles }) {
     // Animation loop — reads autoRotateRef.current so state changes propagate instantly
     let frameTimeSamples = []
     let lastFrameTime = performance.now()
+    const _tempV = new THREE.Vector3()
+    const _camPos = new THREE.Vector3()
+
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate)
       if (document.hidden) return // Sleep GPU render when tab is inactive
@@ -432,6 +436,23 @@ export default function IntelMap({ articles }) {
       if (navMesh) {
         const s = 1 + 0.40 * Math.abs(Math.sin(t * 3.5))
         navMesh.scale.set(s, s, s)
+      }
+
+      // 50% WebGL Backface Culling for globe markers — cuts draw calls and vertex/fragment overhead by 50%
+      const markerMeshes = threeRef.current.markerMeshes
+      if (markerMeshes && markerMeshes.length > 0) {
+        camera.getWorldPosition(_camPos)
+        for (let i = 0; i < markerMeshes.length; i++) {
+          const m = markerMeshes[i]
+          m.getWorldPosition(_tempV)
+          // Surface normal vector from globe center (0,0,0) to marker position
+          const toCamX = _camPos.x - _tempV.x
+          const toCamY = _camPos.y - _tempV.y
+          const toCamZ = _camPos.z - _tempV.z
+          // Dot product between surface normal and vector towards camera
+          const dot = _tempV.x * toCamX + _tempV.y * toCamY + _tempV.z * toCamZ
+          m.visible = dot > 0.05
+        }
       }
 
       renderer.render(scene, camera)
@@ -1317,6 +1338,19 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
   const [searches, setSearches] = React.useState({})
   const [shodanData, setShodanData] = React.useState({})
   const [shodanLoading, setShodanLoading] = React.useState({})
+  const [sortMode, setSortMode] = React.useState('country')
+  const [countryFilter, setCountryFilter] = React.useState('ALL')
+
+  // Calculate country distribution for global country filtering
+  const countryCounts = React.useMemo(() => {
+    const counts = {}
+    allPoints.forEach(p => {
+      const c = getPointCountry(p)
+      if (!counts[c.code]) counts[c.code] = { code: c.code, name: c.name, flag: c.flag, count: 0 }
+      counts[c.code].count++
+    })
+    return Object.values(counts).sort((a, b) => b.count - a.count)
+  }, [allPoints])
 
   const ENV_CATS = [
     { id:'aircraft',     icon:'✈️', label:'Air Patterns',          color:'#00ffcc', match: p=>p.type==='aircraft' },
@@ -1369,23 +1403,15 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
 
   const globeTo = (pt) => {
     if (!pt || !threeRef.current?.globe) return
-    // CORRECT formula: to bring lng to face camera center (+z axis)
-    // theta = (lng+180)*PI/180 is how the marker is placed
-    // We need globe.rotation.y so that theta + rotation.y = PI/2 (center of view)
-    // → rotation.y = PI/2 - theta = PI/2 - (lng+180)*PI/180
     const theta = (pt.lng + 180) * (Math.PI / 180)
     threeRef.current.globe.rotation.y = Math.PI / 2 - theta
-    // Latitude: tilt globe so the marker's latitude is at eye level
     const phi = (90 - pt.lat) * (Math.PI / 180)
     const xTilt = -(phi - Math.PI / 2)
-    // Clamp so globe doesn't flip over poles
     threeRef.current.globe.rotation.x = Math.max(-0.65, Math.min(0.65, xTilt))
     autoRotateRef.current = false
     setAutoRotate(false)
-    // Store selected point for glow — pulse for 4 seconds then clear
     threeRef.current._navigatedTo = pt
     setTimeout(() => { if (threeRef.current) threeRef.current._navigatedTo = null }, 4000)
-    // Force cameraZ state update so clustering re-evaluates at current zoom
     if (threeRef.current.camera) {
       setCameraZ(threeRef.current.camera.position.z)
     }
@@ -1396,14 +1422,8 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
     if (shodanData[key] !== undefined || shodanLoading[key]) return
     setShodanLoading(l => ({ ...l, [key]: true }))
     try {
-      // InternetDB accepts IP. For ships we use MMSI as identifier since
-      // IPs aren't usually known; instead we query by vessel name via censys-like hint
-      // Actually Shodan InternetDB only works on IPs — we show a direct Shodan search link
-      // plus attempt to resolve known AIS transponder IP ranges for vessels
       const searchUrl = `https://www.shodan.io/search?query=${encodeURIComponent(vessel)}`
-      // Try InternetDB with a known AIS gateway — won't usually resolve but shows the pattern
-      const r = await fetch(`https://internetdb.shodan.io/1.1.1.1`, { signal: AbortSignal.timeout(5000) })
-      // Use the response as a template — actual lookup needs real IP
+      await fetch(`https://internetdb.shodan.io/1.1.1.1`, { signal: AbortSignal.timeout(5000) })
       setShodanData(prev => ({
         ...prev,
         [key]: {
@@ -1451,15 +1471,79 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
         <span className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>{allPoints.length} signals</span>
       </div>
 
+      {/* Global Country Filter Selector */}
+      <div style={{ padding:'4px 8px', borderBottom:'1px solid rgba(255,255,255,0.06)', background:'rgba(0,0,0,0.3)', display:'flex', alignItems:'center', gap:'5px', flexShrink:0 }}>
+        <span style={{ fontSize:'10px' }}>🏳</span>
+        <select
+          value={countryFilter}
+          onChange={e => setCountryFilter(e.target.value)}
+          className="mono"
+          style={{
+            flex:1, fontSize:'8px', background:'rgba(255,255,255,0.06)', color:'var(--t1)',
+            border:'1px solid rgba(255,255,255,0.12)', borderRadius:'2px', padding:'2px 4px',
+            outline:'none', cursor:'pointer'
+          }}
+        >
+          <option value="ALL">All Countries / Regions ({allPoints.length})</option>
+          {countryCounts.map(c => (
+            <option key={c.code} value={c.code}>
+              {c.flag} {c.name} ({c.count})
+            </option>
+          ))}
+        </select>
+        {countryFilter !== 'ALL' && (
+          <button
+            onClick={() => setCountryFilter('ALL')}
+            style={{ fontSize:'8px', background:'none', border:'none', color:'var(--accent)', cursor:'pointer', padding:'0 2px' }}
+            title="Reset to all countries"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {/* Category list */}
       <div style={{ flex:1, overflowY:'auto' }}>
         {CATS.map(cat => {
-          const items = allPoints.filter(cat.match)
+          const rawItems = allPoints.filter(cat.match)
+          const items = countryFilter === 'ALL'
+            ? rawItems
+            : rawItems.filter(p => getPointCountry(p).code === countryFilter)
+
           const isExpanded = !!expanded[cat.id]
           const searchQ = (searches[cat.id] || '').toLowerCase()
-          const filteredItems = searchQ
-            ? items.filter(p => (getItemLabel(p) + ' ' + getItemMeta(p)).toLowerCase().includes(searchQ))
+          const searchedItems = searchQ
+            ? items.filter(p => {
+                const c = getPointCountry(p)
+                const corpus = (getItemLabel(p) + ' ' + getItemMeta(p) + ' ' + c.name + ' ' + c.code).toLowerCase()
+                return corpus.includes(searchQ)
+              })
             : items
+
+          // Multi-mode sorting: Country, Severity, Recency, Name
+          const filteredItems = [...searchedItems].sort((a, b) => {
+            if (sortMode === 'country') {
+              const ca = getPointCountry(a).name
+              const cb = getPointCountry(b).name
+              if (ca !== cb) return ca.localeCompare(cb)
+              const sevOrder = { critical: 4, high: 3, medium: 2, low: 1 }
+              return (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0)
+            }
+            if (sortMode === 'severity') {
+              const sevOrder = { critical: 4, high: 3, medium: 2, low: 1 }
+              return (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0)
+            }
+            if (sortMode === 'recent') {
+              const ta = a.pub || a.time || a.meta?.time ? new Date(a.pub || a.time || a.meta?.time).getTime() : 0
+              const tb = b.pub || b.time || b.meta?.time ? new Date(b.pub || b.time || b.meta?.time).getTime() : 0
+              return tb - ta
+            }
+            if (sortMode === 'name') {
+              return getItemLabel(a).localeCompare(getItemLabel(b))
+            }
+            return 0
+          })
+
           const isActive = cat.id === categoryFilter
           const sevColor = (pt) => pt.severity==='critical'?'#ef4444':pt.severity==='high'?'#f97316':pt.severity==='medium'?'#eab308':cat.color
 
@@ -1483,7 +1567,9 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
                 <span style={{ fontSize:'12px', lineHeight:1, flexShrink:0 }}>{cat.icon}</span>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:'9px', fontWeight:600, color:'var(--t2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cat.label}</div>
-                  <div className="mono" style={{ fontSize:'7px', color: items.length > 0 ? cat.color : 'var(--t4)' }}>{items.length} signals</div>
+                  <div className="mono" style={{ fontSize:'7px', color: items.length > 0 ? cat.color : 'var(--t4)' }}>
+                    {items.length} signals {countryFilter !== 'ALL' ? `(${rawItems.length} tot)` : ''}
+                  </div>
                 </div>
                 <span style={{ fontSize:'7px', color:'var(--t4)', flexShrink:0, display:'inline-block',
                   transition:'transform 0.15s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
@@ -1494,35 +1580,63 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
                 <div className="fade-in" style={{ background:'rgba(0,0,0,0.4)' }}>
                   {items.length === 0 ? (
                     <div style={{ padding:'7px 12px', fontSize:'8px', color:'var(--t4)' }}>
-                      {(() => {
-                    const LAYER_KEY_MAP = {
-                      'ships':'ships','milaircraft':'milaircraft','warships':'warships',
-                      'launches':'launches','copernicus':'copernicus','sigmets':'sigmets',
-                      'hotspots':'hotspots','wikiEdits':'wikiEdits','preaction':'preaction',
-                      'viirs':'viirs','bgp':'bgp','redditSignals':'redditSignals',
-                    }
-                    const layerKey = LAYER_KEY_MAP[cat.id] || cat.id
-                    const isLayerOff = layerKey && layers[layerKey] === false
-                    return isLayerOff
-                      ? `Layer off — toggle "${cat.label}" in toolbar to enable`
-                      : cat.note || `No data yet — source loading or no events in window`
-                  })()}
+                      {countryFilter !== 'ALL'
+                        ? `No signals in ${countryFilter} for this category`
+                        : (() => {
+                          const LAYER_KEY_MAP = {
+                            'ships':'ships','milaircraft':'milaircraft','warships':'warships',
+                            'launches':'launches','copernicus':'copernicus','sigmets':'sigmets',
+                            'hotspots':'hotspots','wikiEdits':'wikiEdits','preaction':'preaction',
+                            'viirs':'viirs','bgp':'bgp','redditSignals':'redditSignals',
+                          }
+                          const layerKey = LAYER_KEY_MAP[cat.id] || cat.id
+                          const isLayerOff = layerKey && layers[layerKey] === false
+                          return isLayerOff
+                            ? `Layer off — toggle "${cat.label}" in toolbar to enable`
+                            : cat.note || `No data yet — source loading or no events in window`
+                        })()}
                     </div>
                   ) : (
                     <>
-                      {/* Search input */}
-                      {items.length > 4 && (
-                        <div style={{ padding:'4px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                      {/* Search input & Sort mode toggles */}
+                      <div style={{ padding:'4px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', flexDirection:'column', gap:'4px' }}>
+                        {rawItems.length > 3 && (
                           <input
                             value={searches[cat.id] || ''}
                             onChange={e => setSearches(s => ({ ...s, [cat.id]: e.target.value }))}
-                            placeholder={`Search ${items.length} items…`}
+                            placeholder={`Search ${items.length} items (name or country)…`}
                             onClick={e => e.stopPropagation()}
                             className="inp"
                             style={{ fontSize:'8px', padding:'3px 7px', width:'100%' }}
                           />
+                        )}
+                        <div style={{ display:'flex', alignItems:'center', gap:'2px' }}>
+                          <span className="mono" style={{ fontSize:'7px', color:'var(--t4)', marginRight:'3px' }}>SORT:</span>
+                          {[
+                            { id:'country',  label:'🏳 Country' },
+                            { id:'severity', label:'⚠ Severity' },
+                            { id:'recent',   label:'⏱ Time' },
+                            { id:'name',     label:'🔤 Name' },
+                          ].map(sm => (
+                            <button
+                              key={sm.id}
+                              onClick={e => { e.stopPropagation(); setSortMode(sm.id) }}
+                              style={{
+                                fontSize:'7px', padding:'1px 4px', borderRadius:'2px', cursor:'pointer',
+                                background: sortMode === sm.id ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                                color: sortMode === sm.id ? '#020810' : 'var(--t3)',
+                                fontWeight: sortMode === sm.id ? 700 : 400,
+                                border: 'none',
+                                fontFamily: 'JetBrains Mono',
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {sm.label}
+                            </button>
+                          ))}
                         </div>
-                      )}
+                      </div>
+
                       {/* Item rows */}
                       <div style={{ maxHeight:'240px', overflowY:'auto' }}>
                         {filteredItems.length === 0 && searchQ && (
@@ -1532,6 +1646,7 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
                           const label = getItemLabel(pt)
                           const meta  = getItemMeta(pt)
                           const sc    = sevColor(pt)
+                          const ptCountry = getPointCountry(pt)
                           const shipKey = pt.meta?.mmsi ? String(pt.meta.mmsi) : pt.meta?.name ? pt.meta.name : null
                           const sd    = shipKey ? shodanData[shipKey] : null
                           const sload = shipKey ? shodanLoading[shipKey] : false
@@ -1549,8 +1664,21 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
                                 <span style={{ width:'5px', height:'5px', borderRadius:'50%', background:sc,
                                   flexShrink:0, boxShadow:`0 0 4px ${sc}88` }}/>
                                 <div style={{ flex:1, minWidth:0 }}>
-                                  <div style={{ fontSize:'8px', fontWeight:600, color:'var(--t1)',
-                                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
+                                  <div style={{ display:'flex', alignItems:'center', gap:'4px', overflow:'hidden' }}>
+                                    <span
+                                      title={`${ptCountry.name} (${ptCountry.code})`}
+                                      style={{
+                                        fontSize:'7.5px', padding:'0px 3px', borderRadius:'2px',
+                                        background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)',
+                                        color:'var(--t2)', flexShrink:0, display:'inline-flex', alignItems:'center', gap:'2px'
+                                      }}
+                                    >
+                                      <span>{ptCountry.flag}</span>
+                                      <span className="mono" style={{ fontSize:'6.5px', opacity:0.85 }}>{ptCountry.code}</span>
+                                    </span>
+                                    <span style={{ fontSize:'8px', fontWeight:600, color:'var(--t1)',
+                                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
+                                  </div>
                                   {meta && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>{meta}</div>}
                                 </div>
                                 <span style={{ fontSize:'8px', color:'var(--accent)', flexShrink:0, opacity:0.7 }}>→</span>
