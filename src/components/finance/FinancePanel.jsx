@@ -12,8 +12,8 @@ import {
   blackScholes, impliedVolatility, yieldCurveMetrics, financialConditionsIndex,
   backtestMomentum, annualisedReturn
 } from '../../hooks/useFinanceIntel'
-// useFRED removed — requires FRED API key not available in base deployment
-import { RefreshCw, TrendingUp, TrendingDown, Minus, Activity, BarChart2, DollarSign, Zap, Globe, Shield, Target, Cpu, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Minus, Activity, BarChart2, DollarSign, Zap, Globe, Shield, Target, Cpu, ChevronDown, ChevronRight, ExternalLink, Anchor } from 'lucide-react'
+import EconomicResearchTerminal from './EconomicResearchTerminal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n,d=2) => n==null||isNaN(n)?'—':Math.abs(n)>=1e12?(n/1e12).toFixed(d)+'T':Math.abs(n)>=1e9?(n/1e9).toFixed(d)+'B':Math.abs(n)>=1e6?(n/1e6).toFixed(d)+'M':n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d})
@@ -210,15 +210,19 @@ function SecHead({ title, icon:Icon }) {
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 const TABS = [
-  {id:'overview', label:'Overview', icon:Activity},
-  {id:'charts',   label:'Charts',   icon:BarChart2},
-  {id:'technical',label:'Signals',  icon:Zap},
-  {id:'portfolio',label:'Portfolio',icon:Shield},
-  {id:'options',  label:'Options',  icon:Target},
-  {id:'macro',    label:'Macro',    icon:Globe},
-  {id:'backtest', label:'Backtest', icon:Cpu},
-  {id:'crypto',   label:'Crypto',   icon:DollarSign},
-  {id:'fx',       label:'FX',       icon:Globe},
+  {id:'chokepoints', label:'🚢 Chokepoints', icon:Anchor},
+  {id:'correlations',label:'📊 Correlations',icon:TrendingUp},
+  {id:'alpha',       label:'🎯 Alpha Desk',  icon:Target},
+  {id:'stress',      label:'⚡ Stress-Test', icon:Cpu},
+  {id:'overview',    label:'Overview',       icon:Activity},
+  {id:'charts',      label:'Charts',         icon:BarChart2},
+  {id:'technical',   label:'Signals',        icon:Zap},
+  {id:'portfolio',   label:'Portfolio',      icon:Shield},
+  {id:'options',     label:'Options',        icon:Target},
+  {id:'macro',       label:'Macro',          icon:Globe},
+  {id:'backtest',    label:'Backtest',       icon:Cpu},
+  {id:'crypto',      label:'Crypto',         icon:DollarSign},
+  {id:'fx',          label:'FX',             icon:Globe},
 ]
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -226,7 +230,11 @@ export default function FinancePanel() {
   const { quotes, crypto, fx, history, adultEcon, loading, lastUpdate, refresh, analytics, fetchHistoryForSymbol } = useFinanceIntel()
   // FRED data requires an API key — show macro data from quotes when available
   const fredData = null
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(() => {
+    const h = typeof window !== 'undefined' ? window.location.hash.replace(/^#\/?/, '').toLowerCase() : ''
+    if (['chokepoints', 'correlations', 'alpha', 'stress'].includes(h)) return h
+    return 'chokepoints'
+  })
   const [chartSym, setChartSym] = useState('SPY')
   const [chartRange, setChartRange] = useState('1y')
   const [portSyms, setPortSyms] = useState(['SPY','GLD','TLT','EEM','BZ=F'])
@@ -307,6 +315,11 @@ export default function FinancePanel() {
       </div>
 
       <div style={{flex:1,overflow:'hidden'}}>
+
+        {/* ── ECONOMIC & MACRO TERMINAL TABS ── */}
+        {['chokepoints', 'correlations', 'alpha', 'stress', 'export'].includes(tab) && (
+          <EconomicResearchTerminal activeSubTab={tab} />
+        )}
 
         {/* ── OVERVIEW ── */}
         {tab==='overview'&&(

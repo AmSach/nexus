@@ -2,6 +2,7 @@
 // Synthesizes multi-domain signals into decision-relevant threat postures, cross-domain leads, and instant Yes/No strategic answers.
 
 import React, { useState, useMemo } from 'react'
+import { MARITIME_CHOKEPOINTS, ALPHA_TRADE_PLAYBOOKS } from '../../data/economicCorrelations'
 
 export default function ActionableIntelPanel({ points = [], onFlyTo, onClose }) {
   const [activeTab, setActiveTab] = useState('threats') // 'threats' | 'leads' | 'oracle' | 'export'
@@ -406,6 +407,16 @@ ${oracleQuestions.map(q => `
           🔮 Decision Oracle
         </button>
         <button
+          onClick={() => setActiveTab('economic')}
+          className={`flex-1 py-2 text-center font-semibold transition border-b-2 ${
+            activeTab === 'economic'
+              ? 'border-cyan-400 text-cyan-300 bg-cyan-950/20'
+              : 'border-transparent text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          💼 Economic
+        </button>
+        <button
           onClick={() => setActiveTab('export')}
           className={`flex-1 py-2 text-center font-semibold transition border-b-2 ${
             activeTab === 'export'
@@ -419,6 +430,62 @@ ${oracleQuestions.map(q => `
 
       {/* Tab Body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+        {/* TAB: ECONOMIC & TRADE IMPACT */}
+        {activeTab === 'economic' && (
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between">
+              <div>
+                <span className="font-bold text-emerald-300">MACRO TRANSMISSION ENGINE</span>
+                <p className="text-[11px] text-neutral-300 mt-0.5">Physical & cyber shocks mapped to commodities, supply chains, and asset pricing.</p>
+              </div>
+              <button
+                onClick={() => { window.location.hash = '#finnews' }}
+                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded border border-emerald-500/40 text-[10px] font-bold"
+              >
+                Open Terminal ↗
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Vulnerable Chokepoints</span>
+              {MARITIME_CHOKEPOINTS.slice(0, 3).map(c => (
+                <div key={c.id} className="p-2.5 rounded border border-neutral-800 bg-neutral-900/60 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-cyan-300 text-xs">{c.name}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">{c.threatLevel}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-neutral-400">
+                    <span>{c.oilFlow}</span>
+                    <span className="text-amber-400 font-semibold">{c.currentReroutePct}% Rerouted (+{c.capeRerouteDays}d)</span>
+                  </div>
+                  <div className="text-[10px] text-neutral-300 pt-1 border-t border-neutral-800/80">
+                    <strong className="text-cyan-400">Play:</strong> {c.actionableDirective}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">High-Conviction Alpha Plays</span>
+              {ALPHA_TRADE_PLAYBOOKS.slice(0, 2).map(p => (
+                <div key={p.id} className="p-2.5 rounded border border-neutral-800 bg-neutral-900/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-neutral-100 text-xs">{p.title}</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">{p.conviction}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-1.5 rounded text-emerald-300">
+                      <strong>Long:</strong> {p.longLeg.slice(0, 2).join(', ')}
+                    </div>
+                    <div className="bg-red-500/10 border border-red-500/20 p-1.5 rounded text-red-300">
+                      <strong>Short:</strong> {p.shortLeg[0]}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {/* TAB 1: THREAT BAROMETER & DEFCON */}
         {activeTab === 'threats' && (
           <div className="space-y-4">

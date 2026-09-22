@@ -59,20 +59,27 @@ function Clock() {
   )
 }
 
-// Horizontal scrolling ticker
+// Horizontal scrolling ticker — uses hardware-accelerated requestAnimationFrame (no timer lag)
 function Ticker({ items }) {
   const wrap = useRef(null)
   const pos  = useRef(0)
   useEffect(() => {
     if (!items.length) return
-    const iv = setInterval(() => {
-      pos.current += 0.6
+    let animId
+    let last = performance.now()
+    const step = (now) => {
+      const dt = Math.min(now - last, 50)
+      last = now
+      pos.current += 0.035 * dt
       if (wrap.current) {
-        if (pos.current > wrap.current.scrollWidth / 2) pos.current = 0
-        wrap.current.style.transform = `translateX(-${pos.current}px)`
+        const half = wrap.current.scrollWidth / 2
+        if (half > 0 && pos.current > half) pos.current = 0
+        wrap.current.style.transform = `translate3d(-${pos.current}px, 0, 0)`
       }
-    }, 20) // ~50fps equivalent, TV-safe
-    return () => clearInterval(iv)
+      animId = requestAnimationFrame(step)
+    }
+    animId = requestAnimationFrame(step)
+    return () => { if (animId) cancelAnimationFrame(animId) }
   }, [items.length])
 
   const doubled = [...items, ...items]

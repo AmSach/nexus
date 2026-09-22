@@ -9,7 +9,7 @@ const TABS = [
   { id: 'search',     label: 'Intel Search', Icon: Search     },
   { id: 'board',      label: 'Board',      Icon: GitBranch    },
   { id: 'map',        label: 'Map',        Icon: Map          },
-  { id: 'finnews',    label: 'Finance',    Icon: DollarSign   },
+  { id: 'finnews',    label: 'Finance & Alpha', Icon: DollarSign },
   { id: 'vox',        label: 'VOX Sim',    Icon: Cpu          },
   { id: 'saved',      label: 'Saved',      Icon: Bookmark     },
   { id: 'health',     label: 'Health',     Icon: Activity     },

@@ -40,6 +40,8 @@ export default function App() {
       const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
       if (h && ['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox'].includes(h)) {
         setTab(h)
+      } else if (h && ['econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) {
+        setTab('finnews')
       }
     }
     syncFromHash()
@@ -79,10 +81,10 @@ export default function App() {
               </div>
             </div>
             <div style={{ display: tab==='board'      ? 'contents' : 'none' }}><ErrBound><IntelBoard /></ErrBound></div>
-            <div style={{ display: tab==='map'        ? 'contents' : 'none' }}><ErrBound><IntelMap articles={articles} /></ErrBound></div>
+            <div style={{ display: tab==='map'        ? 'contents' : 'none' }}><ErrBound><IntelMap articles={articles} active={tab==='map'} /></ErrBound></div>
             <div style={{ display: tab==='finnews'    ? 'contents' : 'none' }}><ErrBound><FinancePanel /></ErrBound></div>
             <div style={{ display: tab==='search'     ? 'contents' : 'none' }}><ErrBound><GDELTSearch /></ErrBound></div>
-            <div style={{ display: tab==='view'       ? 'contents' : 'none' }}><ErrBound><ViewMode articles={articles} /></ErrBound></div>
+            <div style={{ display: tab==='view'       ? 'contents' : 'none' }}><ErrBound><ViewMode articles={articles} active={tab==='view'} /></ErrBound></div>
             <div style={{ display: tab==='saved'      ? 'contents' : 'none' }}><ErrBound><SavedPanel /></ErrBound></div>
             <div style={{ display: tab==='settings'   ? 'contents' : 'none' }}><ErrBound><SettingsPanel /></ErrBound></div>
             <div style={{ display: tab==='health'     ? 'contents' : 'none' }}><ErrBound><HealthCheck /></ErrBound></div>

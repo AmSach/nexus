@@ -12,15 +12,15 @@ let SHARED_CLUSTER_GEO = null
 
 export function getSharedPlaneGeo(THREE, large = false) {
   if (large) {
-    if (!SHARED_PLANE_GEO_LARGE) SHARED_PLANE_GEO_LARGE = new THREE.PlaneGeometry(0.048, 0.048)
+    if (!SHARED_PLANE_GEO_LARGE) SHARED_PLANE_GEO_LARGE = new THREE.PlaneGeometry(0.040, 0.040)
     return SHARED_PLANE_GEO_LARGE
   }
-  if (!SHARED_PLANE_GEO) SHARED_PLANE_GEO = new THREE.PlaneGeometry(0.036, 0.036)
+  if (!SHARED_PLANE_GEO) SHARED_PLANE_GEO = new THREE.PlaneGeometry(0.026, 0.026)
   return SHARED_PLANE_GEO
 }
 
 export function getSharedClusterGeo(THREE) {
-  if (!SHARED_CLUSTER_GEO) SHARED_CLUSTER_GEO = new THREE.PlaneGeometry(0.088, 0.088)
+  if (!SHARED_CLUSTER_GEO) SHARED_CLUSTER_GEO = new THREE.PlaneGeometry(0.056, 0.056)
   return SHARED_CLUSTER_GEO
 }
 
@@ -63,10 +63,11 @@ export function getMarkerMaterial(THREE, pt) {
     return MATERIAL_CACHE.get(cacheKey)
   }
 
-  // Create canvas once
+  // Create lightweight downscaled 32x32 canvas (cuts texture VRAM by 75%)
   const cv = document.createElement('canvas')
-  cv.width = cv.height = 64
+  cv.width = cv.height = 32
   const cx = cv.getContext('2d')
+  cx.scale(0.5, 0.5)
 
   // Draw icon based on type
   if (type === 'hotspot') {
@@ -319,6 +320,7 @@ export function getMarkerMaterial(THREE, pt) {
   }
 
   const tex = new THREE.CanvasTexture(cv)
+  tex.generateMipmaps = false
   tex.minFilter = THREE.LinearFilter
   const mat = new THREE.MeshBasicMaterial({
     map: tex,
@@ -337,8 +339,9 @@ export function getClusterMaterial(THREE, clusterType, count) {
   if (CLUSTER_CACHE.has(key)) return CLUSTER_CACHE.get(key)
 
   const cv = document.createElement('canvas')
-  cv.width = cv.height = 96
+  cv.width = cv.height = 48
   const cx = cv.getContext('2d')
+  cx.scale(0.5, 0.5)
 
   const TYPE_CLR = {
     aircraft: '#00ffcc', milaircraft: '#ff4444', ship: '#0088ff', warship: '#8888ff',
@@ -375,6 +378,7 @@ export function getClusterMaterial(THREE, clusterType, count) {
   cx.fillText(cntStr, 48, 79)
 
   const tex = new THREE.CanvasTexture(cv)
+  tex.generateMipmaps = false
   tex.minFilter = THREE.LinearFilter
   const mat = new THREE.MeshBasicMaterial({
     map: tex,
