@@ -12,15 +12,15 @@ let SHARED_CLUSTER_GEO = null
 
 export function getSharedPlaneGeo(THREE, large = false) {
   if (large) {
-    if (!SHARED_PLANE_GEO_LARGE) SHARED_PLANE_GEO_LARGE = new THREE.PlaneGeometry(0.040, 0.040)
+    if (!SHARED_PLANE_GEO_LARGE) SHARED_PLANE_GEO_LARGE = new THREE.PlaneGeometry(0.032, 0.032)
     return SHARED_PLANE_GEO_LARGE
   }
-  if (!SHARED_PLANE_GEO) SHARED_PLANE_GEO = new THREE.PlaneGeometry(0.026, 0.026)
+  if (!SHARED_PLANE_GEO) SHARED_PLANE_GEO = new THREE.PlaneGeometry(0.022, 0.022)
   return SHARED_PLANE_GEO
 }
 
 export function getSharedClusterGeo(THREE) {
-  if (!SHARED_CLUSTER_GEO) SHARED_CLUSTER_GEO = new THREE.PlaneGeometry(0.056, 0.056)
+  if (!SHARED_CLUSTER_GEO) SHARED_CLUSTER_GEO = new THREE.PlaneGeometry(0.044, 0.044)
   return SHARED_CLUSTER_GEO
 }
 

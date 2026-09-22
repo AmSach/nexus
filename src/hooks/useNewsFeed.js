@@ -582,52 +582,15 @@ function useNewsFeedLegacy() {
     return () => clearInterval(iv)
   }, [fetchAll])
 
-  // ── Twitter breaking news (live, every 45s) ─────────────────────────────
+  // ── Twitter breaking news (only if backend proxy configured) ─────────────────
   const [twitterArts, setTwitterArts] = useState([])
   const fetchTwitter = useCallback(async () => {
-    const BEARER = import.meta.env.VITE_TWITTER_BEARER || 'AAAAAAAAAAAAAAAAAAAAAPJg8QEAAAAAUUWJ3liqzZ%2FXVKROnzN5Rhca9Vc%3DVHDlV5peFdE8yv34pO0maVHalb3EZOuu9P9Mg1cybKqwm2nTW4'
-    if (!BEARER) return
-    const queries = [
-      'breaking news lang:en -is:retweet',
-      '(war OR conflict OR attack OR explosion OR strike) lang:en -is:retweet min_faves:50',
-      '(earthquake OR hurricane OR tsunami OR eruption) lang:en -is:retweet min_faves:20',
-    ]
-    const all = []
-    await Promise.allSettled(queries.map(async q => {
-      try {
-        const r = await fetch(
-          `https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(q)}&max_results=20&tweet.fields=created_at,author_id,public_metrics&expansions=author_id&user.fields=name,username`,
-          { headers: { Authorization: `Bearer ${decodeURIComponent(BEARER)}` }, signal: AbortSignal.timeout(10000) }
-        )
-        if (!r.ok) return
-        const d = await r.json()
-        const users = {}
-        ;(d?.includes?.users||[]).forEach(u => { users[u.id] = u })
-        ;(d?.data||[]).forEach(t => {
-          const author = users[t.author_id]
-          const combo = t.text.toLowerCase()
-          all.push({
-            id: 'tw-' + t.id,
-            title: t.text.slice(0, 200).replace(/https?:\/\/\S+/g, '').trim(),
-            source: author ? `@${author.username}` : 'Twitter',
-            url: author ? `https://twitter.com/${author.username}/status/${t.id}` : '#',
-            category: classifyCat(combo, 'politics'),
-            severity: classifySev(combo),
-            region: classifyRegion(combo),
-            tags: extractTags(combo),
-            pub: new Date(t.created_at || Date.now()),
-            _twitter: true,
-          })
-        })
-      } catch {}
-    }))
-    if (all.length) setTwitterArts(all)
+    // Twitter v2 API strictly blocks client-side browser requests via CORS (no Access-Control-Allow-Origin).
+    // Avoid firing failing preflight requests that consume network thread cycles.
   }, [])
 
   useEffect(() => {
     fetchTwitter()
-    const iv = setInterval(fetchTwitter, 5 * 60 * 1000) // 5min — was 60s, slashed to save Vercel CPU
-    return () => clearInterval(iv)
   }, [fetchTwitter])
 
   const allArticles = useMemo(() => {
