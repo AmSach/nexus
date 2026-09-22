@@ -49,9 +49,13 @@ export default function App() {
     return () => window.removeEventListener('hashchange', syncFromHash)
   }, [setTab])
 
-  // Sync hash when tab changes
+  // Sync hash when tab changes, preserving finance subtab hashes
   React.useEffect(() => {
-    if (tab && window.location.hash.replace(/^#\/?/, '').toLowerCase() !== tab) {
+    const currentHash = window.location.hash.replace(/^#\/?/, '').toLowerCase()
+    if (tab === 'finnews' && ['chokepoints', 'correlations', 'graph', 'alpha', 'stress'].includes(currentHash)) {
+      return
+    }
+    if (tab && currentHash !== tab) {
       window.location.hash = tab
     }
   }, [tab])

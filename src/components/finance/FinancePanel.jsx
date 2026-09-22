@@ -12,7 +12,7 @@ import {
   blackScholes, impliedVolatility, yieldCurveMetrics, financialConditionsIndex,
   backtestMomentum, annualisedReturn
 } from '../../hooks/useFinanceIntel'
-import { RefreshCw, TrendingUp, TrendingDown, Minus, Activity, BarChart2, DollarSign, Zap, Globe, Shield, Target, Cpu, ChevronDown, ChevronRight, ExternalLink, Anchor } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Minus, Activity, BarChart2, DollarSign, Zap, Globe, Shield, Target, Cpu, ChevronDown, ChevronRight, ExternalLink, Anchor, Share2 } from 'lucide-react'
 import EconomicResearchTerminal from './EconomicResearchTerminal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -211,7 +211,7 @@ function SecHead({ title, icon:Icon }) {
 // ── TABS ──────────────────────────────────────────────────────────────────────
 const TABS = [
   {id:'chokepoints', label:'🚢 Chokepoints', icon:Anchor},
-  {id:'correlations',label:'📊 Correlations',icon:TrendingUp},
+  {id:'correlations',label:'🕸 Graph & Game Theory',icon:Share2},
   {id:'alpha',       label:'🎯 Alpha Desk',  icon:Target},
   {id:'stress',      label:'⚡ Stress-Test', icon:Cpu},
   {id:'overview',    label:'Overview',       icon:Activity},
@@ -232,9 +232,21 @@ export default function FinancePanel({ articles = [] }) {
   const fredData = null
   const [tab, setTab] = useState(() => {
     const h = typeof window !== 'undefined' ? window.location.hash.replace(/^#\/?/, '').toLowerCase() : ''
-    if (['chokepoints', 'correlations', 'alpha', 'stress'].includes(h)) return h
-    return 'chokepoints'
+    if (['chokepoints', 'correlations', 'graph', 'alpha', 'stress'].includes(h)) return h === 'graph' ? 'correlations' : h
+    return 'correlations'
   })
+
+  // Sync sub-tab from hash if user navigates directly
+  React.useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
+      if (['chokepoints', 'correlations', 'graph', 'alpha', 'stress'].includes(h)) {
+        setTab(h === 'graph' ? 'correlations' : h)
+      }
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
   const [chartSym, setChartSym] = useState('SPY')
   const [chartRange, setChartRange] = useState('1y')
   const [portSyms, setPortSyms] = useState(['SPY','GLD','TLT','EEM','BZ=F'])

@@ -44,7 +44,8 @@ import {
   CheckCircle,
   X,
   Compass,
-  Filter
+  Filter,
+  Share2
 } from 'lucide-react'
 import {
   extractAdaptiveConflicts,
@@ -54,6 +55,7 @@ import {
   getStoredConflicts,
   saveStoredConflicts
 } from '../../utils/adaptiveConflictEngine'
+import GraphAndGameTheoryEngine from './GraphAndGameTheoryEngine'
 
 const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
@@ -288,7 +290,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
             borderBottom: subTab === 'correlations' ? '2px solid var(--accent)' : '2px solid transparent'
           }}
         >
-          <TrendingUp size={11} /> 2. Cross-Domain Correlations
+          <Share2 size={11} /> 2. Graph & Game Theory Engine
         </button>
 
         <button
@@ -540,124 +542,9 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
           </div>
         )}
 
-        {/* ── 2. CROSS-DOMAIN CORRELATIONS & ELASTICITIES ─────────────────── */}
+        {/* ── 2. GRAPH & GAME THEORY NETWORK ENGINE ────────────────────────── */}
         {subTab === 'correlations' && (
-          <div style={{ height: '100%', overflowY: 'auto', padding: '16px' }}>
-            <div style={{ marginBottom: 16 }}>
-              <h2 style={{ ...mono, fontSize: 16, fontWeight: 700, color: 'var(--t1)', margin: 0 }}>
-                CROSS-DOMAIN EMPIRICAL CORRELATION MATRIX & TRANSMISSION ENGINE
-              </h2>
-              <div style={{ ...monoSm, color: 'var(--t3)', marginTop: 4 }}>
-                Mathematically maps physical/cyber OSINT signal densities to asset price returns, volatility, and freight rates.
-              </div>
-            </div>
-
-            {/* Econometric Formula Highlights */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4, padding: '10px' }}>
-                <div style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>FREIGHT-TO-BUNKER ELASTICITY</div>
-                <div style={{ ...monoSm, color: 'var(--t1)', marginTop: 4, fontStyle: 'italic' }}>ε_freight, fuel = ∂ ln(Freight) / ∂ ln(Fuel) = 0.38</div>
-                <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 4 }}>10% bunker fuel spike lifts long-haul contract rates by 3.8%.</div>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4, padding: '10px' }}>
-                <div style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>CHOKEPOINT TON-MILE MULTIPLIER</div>
-                <div style={{ ...monoSm, color: 'var(--t1)', marginTop: 4, fontStyle: 'italic' }}>Spot_Cape = Spot_Base × (1 + ΔDays/Days_Base × κ)</div>
-                <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 4 }}>Cape diversion absorbs 11.2% of global containership capacity.</div>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4, padding: '10px' }}>
-                <div style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>GEOPOLITICAL CRUDE RISK PREMIUM</div>
-                <div style={{ ...monoSm, color: 'var(--t1)', marginTop: 4, fontStyle: 'italic' }}>P_Brent = P_Base + Σ ω_i × Threat_i × (OilFlow_i / Supply)</div>
-                <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 4 }}>Weighted risk markup directly calculated from Bab el-Mandeb & Hormuz.</div>
-              </div>
-            </div>
-
-            {/* Correlation Heatmap Grid */}
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', marginBottom: 16 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', ...monoSm, textAlign: 'center' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--t4)' }}>OSINT / ASSET</th>
-                    {CROSS_ASSET_CORRELATION_MATRIX.variables.map((v, i) => (
-                      <th key={i} style={{ padding: '6px 4px', fontSize: 9, color: 'var(--t3)', whiteSpace: 'nowrap' }}>
-                        {v.split(' ')[0]}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {CROSS_ASSET_CORRELATION_MATRIX.variables.map((rowVar, rIdx) => (
-                    <tr key={rIdx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--t2)', fontWeight: 600, fontSize: 10, whiteSpace: 'nowrap' }}>
-                        {rowVar}
-                      </td>
-                      {CROSS_ASSET_CORRELATION_MATRIX.matrix[rIdx].map((val, cIdx) => {
-                        const isDiag = rIdx === cIdx
-                        const isPos = val > 0
-                        const alpha = Math.abs(val)
-                        const bgClr = isDiag
-                          ? 'rgba(255,255,255,0.05)'
-                          : isPos
-                          ? `rgba(34,197,94,${alpha * 0.35})`
-                          : `rgba(239,68,68,${alpha * 0.35})`
-                        const textClr = isDiag ? 'var(--t4)' : isPos ? '#4ade80' : '#f87171'
-                        return (
-                          <td
-                            key={cIdx}
-                            style={{
-                              padding: '5px 4px',
-                              background: bgClr,
-                              color: textClr,
-                              fontWeight: Math.abs(val) > 0.5 ? 700 : 400,
-                              fontSize: 9
-                            }}
-                          >
-                            {val.toFixed(2)}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mineral & Aviation Disruption Models */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '12px', background: 'rgba(255,255,255,0.01)' }}>
-                <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Zap size={12} color="#f59e0b" /> EARTH & CRITICAL MINERAL CHOKEPOINTS
-                </div>
-                {MINERAL_SUPPLY_CHOKEPOINTS.map((m, idx) => (
-                  <div key={idx} style={{ marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...monoSm, fontWeight: 600, color: 'var(--accent)' }}>{m.mineral}</span>
-                      <span style={{ ...monoXs, color: '#f59e0b' }}>{m.globalProductionSharePct}% Global Share</span>
-                    </div>
-                    <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 2 }}>{m.zone}</div>
-                    <div style={{ ...monoXs, color: 'var(--t2)', marginTop: 4 }}><strong>Trade:</strong> {m.immediateTradePlay}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '12px', background: 'rgba(255,255,255,0.01)' }}>
-                <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Globe size={12} color="#60a5fa" /> AVIATION AIRSPACE & ROUTE DETOUR DRAG
-                </div>
-                {AVIATION_ROUTE_ECONOMICS.conflictCorridors.map((ac, idx) => (
-                  <div key={idx} style={{ marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ ...monoSm, fontWeight: 600, color: 'var(--t1)' }}>{ac.corridor}</div>
-                    <div style={{ ...monoXs, color: 'var(--t3)', display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                      <span>{ac.affectedFlightsDay} flights/day</span>
-                      <span style={{ color: '#ef4444' }}>+{ac.detourHours} hrs · +{ac.extraFuelTonsPerFlight}T fuel (+${ac.extraCostPerFlightUSD.toLocaleString()}/flight)</span>
-                    </div>
-                  </div>
-                ))}
-                <div style={{ ...monoXs, color: 'var(--accent)', marginTop: 8, fontStyle: 'italic' }}>
-                  Trade: {AVIATION_ROUTE_ECONOMICS.tradeRecommendation}
-                </div>
-              </div>
-            </div>
-          </div>
+          <GraphAndGameTheoryEngine />
         )}
 
         {/* ── 3. ALPHA DESK & BUSINESS OPPORTUNITIES ────────────────────────── */}
