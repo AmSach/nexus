@@ -15,6 +15,8 @@ import { cacheRead, cacheWrite } from '../../utils/cache'
 import { useSatellite, satelliteToPoints, SAT_COLORS } from '../../hooks/useSatellite'
 import { useLiveAlerts } from '../../hooks/useLiveAlerts'
 import { RefreshCw, X, ExternalLink, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { getSharedPlaneGeo, getSharedClusterGeo, getMarkerMaterial, getClusterMaterial } from './markerTextureCache'
+import DeepOSINTDossier from './DeepOSINTDossier'
 
 const SEV_COLORS_HEX = { critical: 0xef4444, high: 0xf97316, medium: 0xeab308, low: 0x2dd4bf }
 const SEV_COLORS_CSS = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#2dd4bf' }
@@ -392,40 +394,18 @@ export default function IntelMap({ articles }) {
     let lastFrameTime = performance.now()
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate)
+      if (document.hidden) return // Sleep GPU render when tab is inactive
+
       // Measure frame time for adaptive quality
       const now = performance.now()
       const ft = now - lastFrameTime
       lastFrameTime = now
       frameTimeSamples.push(ft)
       if (frameTimeSamples.length > 30) frameTimeSamples.shift()
-      const avgFT = frameTimeSamples.reduce((a,b)=>a+b,0) / frameTimeSamples.length
-      // Expose avg frame time so safePoints memo can adapt
+      const avgFT = frameTimeSamples.reduce((a, b) => a + b, 0) / frameTimeSamples.length
       threeRef.current._avgFrameMs = avgFT
-      const _t = Date.now() * 0.001
-      // Pulse glow on hotspots, hurricanes, ISS, critical markers
-      if (threeRef.current?.markerMeshes) {
-        threeRef.current.markerMeshes.forEach((mesh, i) => {
-          const pt = threeRef.current.markerData?.[i]
-          if (!pt || pt._trail) return
-          if (['hotspot','hurricane','iss'].includes(pt.type) || pt.severity==='critical') {
-            if (mesh.material?.opacity !== undefined && !mesh.geometry?.isRingGeometry) {
-              mesh.material.opacity = 0.60 + 0.40 * Math.abs(Math.sin(_t * 2.2 + i * 0.5))
-              mesh.material.needsUpdate = true
-            }
-          }
-          // Navigation glow: pulse the marker we just flew to from categories
-          const nav = threeRef.current._navigatedTo
-          if (nav && pt.lat && pt.lng &&
-              Math.abs(pt.lat - nav.lat) < 0.01 && Math.abs(pt.lng - nav.lng) < 0.01) {
-            const glow = 1 + 0.6 * Math.abs(Math.sin(_t * 4))
-            mesh.scale.set(glow, glow, glow)
-            if (mesh.material) {
-              mesh.material.opacity = 0.7 + 0.3 * Math.abs(Math.sin(_t * 4))
-              mesh.material.needsUpdate = true
-            }
-          }
-        })
-      }
+
+      // Auto-rotation & inertia decay
       if (autoRotateRef.current && !isDragging.current) globe.rotation.y += 0.0012
       if (!isDragging.current) {
         if (Math.abs(rotVel.current.x) > 0.0001 || Math.abs(rotVel.current.y) > 0.0001) {
@@ -435,20 +415,25 @@ export default function IntelMap({ articles }) {
           rotVel.current.y *= 0.93
         }
       }
-      // Pulse critical markers
-      const t = Date.now() * 0.003
-      ;(threeRef.current.markerMeshes || []).forEach((m, i) => {
-        const d = (threeRef.current.markerData || [])[i]
-        if (!d) return
-        if (d.severity === 'critical') {
-          const s = 1 + 0.35 * Math.sin(t * 2.2 + i)
-          m.scale.set(s, s, s)
-          if (m.material) m.material.opacity = 0.7 + 0.3 * Math.sin(t * 2.2 + i)
-        } else if (d.severity === 'high') {
-          const s = 1 + 0.15 * Math.sin(t + i * 0.7)
-          m.scale.set(s, s, s)
+
+      // Fast pulse on critical / hotspot / hurricane markers (transform-only, NO shader recompile)
+      const t = now * 0.003
+      const pulseList = threeRef.current.pulseMeshes
+      if (pulseList && pulseList.length > 0) {
+        for (let i = 0; i < pulseList.length; i++) {
+          const mesh = pulseList[i]
+          const s = 1 + 0.22 * Math.sin(t * 2.2 + i * 0.7)
+          mesh.scale.set(s, s, s)
         }
-      })
+      }
+
+      // Navigated marker focus pulse
+      const navMesh = threeRef.current._navMesh
+      if (navMesh) {
+        const s = 1 + 0.40 * Math.abs(Math.sin(t * 3.5))
+        navMesh.scale.set(s, s, s)
+      }
+
       renderer.render(scene, camera)
     }
     animate()
@@ -753,50 +738,15 @@ export default function IntelMap({ articles }) {
     ;(markerMeshes || []).forEach(m => globe.remove(m))
     threeRef.current.markerMeshes = []
     threeRef.current.markerData   = []
+    const pulseList = []
 
     clusteredPoints.forEach(pt => {
       const { x, y, z } = latLngToVec3(pt.lat, pt.lng, 1.015)
-      let geo, mat, mesh, continue_ = false
+      let geo, mat, mesh
 
-      const hexColor = SAT_COLORS[pt.type] || SEV_COLORS_HEX[pt.severity] || 0x2dd4bf
-
-      // ── Cluster — big floating emoji icon + count pill, no background circle ──
       if (pt._cluster && pt._clusterCount > 1) {
-        const cv = document.createElement('canvas')
-        cv.width = cv.height = 96
-        const cx = cv.getContext('2d')
-        const TYPE_CLR = {
-          aircraft:'#00ffcc', milaircraft:'#ff4444', ship:'#0088ff', warship:'#8888ff',
-          acled:'#ff1111', hotspot:'#ff3333', cyber:'#ff00ff', disease:'#22cc88',
-          nuclear:'#ffff00', gpsjam:'#f59e0b', firms:'#ff4400', news:'#2dd4bf',
-          notam:'#ff8844', wikiEdit:'#aaaaff', bgp:'#ff6600', viirs:'#ffffff',
-          gdacs:'#ffaa00', eonet_wildfire:'#ff3300',
-        }
-        const TYPE_ICON = {
-          aircraft:'✈', milaircraft:'✈', ship:'🚢', warship:'⚔',
-          acled:'⚔', hotspot:'🎯', cyber:'💻', disease:'🦠',
-          nuclear:'☢', gpsjam:'📡', firms:'🔥', news:'📰',
-          notam:'🚫', wikiEdit:'📝', bgp:'🌐', viirs:'🛰',
-          gdacs:'⚠', eonet_wildfire:'🔥',
-        }
-        const clrKey = pt._clusterType || pt.type
-        const clr = TYPE_CLR[clrKey] || '#2dd4bf'
-        const icon = TYPE_ICON[clrKey] || '◉'
-        // Big emoji — no circle, no background, transparent canvas
-        cx.font = '52px sans-serif'
-        cx.textAlign = 'center'; cx.textBaseline = 'middle'
-        cx.fillText(icon, 48, 40)
-        // Count pill below the icon
-        const cnt = pt._clusterCount >= 1000 ? `${Math.round(pt._clusterCount/1000)}k` : String(pt._clusterCount)
-        const pillW = cnt.length > 2 ? 22 : 18
-        cx.fillStyle = clr + 'ee'
-        cx.beginPath(); cx.roundRect(48-pillW, 70, pillW*2, 17, 8); cx.fill()
-        cx.fillStyle = '#000000'
-        cx.font = 'bold 10px monospace'
-        cx.textAlign = 'center'; cx.textBaseline = 'middle'
-        cx.fillText(cnt, 48, 79)
-        geo = new THREE.PlaneGeometry(0.09, 0.09)
-        mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false, side: THREE.DoubleSide })
+        geo = getSharedClusterGeo(THREE)
+        mat = getClusterMaterial(THREE, pt._clusterType || pt.type, pt._clusterCount)
         mesh = new THREE.Mesh(geo, mat)
         mesh.position.set(x, y, z)
         mesh.lookAt(0, 0, 0)
@@ -807,428 +757,34 @@ export default function IntelMap({ articles }) {
         return
       }
 
-      // ══════════════════════════════════════════════════════════════════
-      // ICON RENDERER — canvas-drawn asset-quality markers
-      // Each type draws a distinct recognizable symbol onto a 64×64 canvas
-      // then maps it to a billboard PlaneGeometry facing outward from globe
-      // Aircraft and ships fall through to their own heading-oriented meshes below
-      // ══════════════════════════════════════════════════════════════════
+      // Large geometry for critical hotspots or severe earthquakes
+      const isLarge = pt.severity === 'critical' || pt.type === 'hotspot' || (pt.type === 'earthquake' && (pt.meta?.mag || pt.mag || 0) >= 6)
+      geo = getSharedPlaneGeo(THREE, isLarge)
+      mat = getMarkerMaterial(THREE, pt)
 
-      const drawIcon = (drawFn, size = 0.036) => {
-        const cv = document.createElement('canvas')
-        cv.width = cv.height = 64
-        const cx = cv.getContext('2d')
-        drawFn(cx, 64)
-        geo = new THREE.PlaneGeometry(size, size)
-        mat = new THREE.MeshBasicMaterial({
-          map: new THREE.CanvasTexture(cv),
-          transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        })
+      mesh = new THREE.Mesh(geo, mat)
+      mesh.position.set(x, y, z)
+      mesh.lookAt(0, 0, 0)
+      mesh.rotateX(Math.PI)
+
+      // Orientation for aircraft and ships based on heading/track
+      if (pt.type === 'aircraft' || pt.type === 'milaircraft' || pt.type === 'ship' || pt.type === 'warship') {
+        const heading = pt.meta?.heading ?? pt.meta?.track ?? pt.heading ?? pt.track
+        if (heading != null && !isNaN(heading)) {
+          mesh.rotateZ(-heading * Math.PI / 180)
+        }
       }
 
-      // Helper: clear canvas
-      const clr = (cx, bg, alpha=1) => {
-        cx.clearRect(0,0,64,64)
-        if (bg) { cx.globalAlpha=alpha; cx.fillStyle=bg; cx.beginPath(); cx.arc(32,32,30,0,Math.PI*2); cx.fill(); cx.globalAlpha=1 }
+      // Collect pulsing meshes (critical, hotspots, storms)
+      if (pt.severity === 'critical' || pt.type === 'hotspot' || pt.type === 'hurricane') {
+        pulseList.push(mesh)
       }
 
-      if (pt.type === 'hotspot') {
-        // 🎯 TARGET CROSSHAIR — red/white targeting reticle
-        drawIcon((cx) => {
-          clr(cx)
-          // Outer ring
-          cx.strokeStyle='#ff2222'; cx.lineWidth=3; cx.beginPath(); cx.arc(32,32,26,0,Math.PI*2); cx.stroke()
-          // Inner ring
-          cx.strokeStyle='#ff4444'; cx.lineWidth=2; cx.beginPath(); cx.arc(32,32,14,0,Math.PI*2); cx.stroke()
-          // Crosshair lines (four short lines, gap in center)
-          cx.strokeStyle='#ff2222'; cx.lineWidth=2.5
-          ;[[32,4,32,18],[32,46,32,60],[4,32,18,32],[46,32,60,32]].forEach(([x1,y1,x2,y2])=>{cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke()})
-          // Center dot
-          cx.fillStyle='#ffffff'; cx.beginPath(); cx.arc(32,32,3,0,Math.PI*2); cx.fill()
-        }, 0.042)
-
-      } else if (pt.type === 'news') {
-        // 📰 NEWSPAPER icon
-        drawIcon((cx) => {
-          clr(cx,'#1a2a3a',0.85)
-          cx.fillStyle='#2dd4bf'; cx.fillRect(14,14,36,36)
-          cx.fillStyle='#0a1a2a'
-          // Newspaper lines
-          ;[[16,19,44,21],[16,24,44,26],[16,29,30,31],[16,34,30,36],[16,39,44,41]].forEach(([x1,y1,x2,y2])=>{cx.fillRect(x1,y1,x2-x1,y2-y1)})
-          // Red banner top
-          cx.fillStyle='#ef4444'; cx.fillRect(14,14,36,7)
-        }, 0.034)
-
-      } else if (pt.type === 'acled') {
-        // ⚔️ CROSSED SWORDS — conflict marker
-        drawIcon((cx) => {
-          clr(cx,'#1a0505',0.85)
-          cx.strokeStyle='#ff2222'; cx.lineWidth=4; cx.lineCap='round'
-          // Sword 1: top-left to bottom-right
-          cx.beginPath(); cx.moveTo(12,12); cx.lineTo(52,52); cx.stroke()
-          // Sword 2: top-right to bottom-left
-          cx.beginPath(); cx.moveTo(52,12); cx.lineTo(12,52); cx.stroke()
-          // Hilts
-          cx.strokeStyle='#ff8888'; cx.lineWidth=5
-          ;[[12,22,22,12],[42,52,52,42]].forEach(([x1,y1,x2,y2])=>{cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);cx.stroke()})
-          // Center circle
-          cx.fillStyle='#ff2222'; cx.beginPath(); cx.arc(32,32,5,0,Math.PI*2); cx.fill()
-        }, 0.040)
-
-      } else if (pt.type === 'firms' || pt.type === 'eonet_wildfire') {
-        // 🔥 FLAME — fire/thermal
-        drawIcon((cx) => {
-          clr(cx)
-          // Draw a flame shape using bezier curves
-          cx.fillStyle='#ff8800'
-          cx.beginPath()
-          cx.moveTo(32,58)
-          cx.bezierCurveTo(14,50,12,36,20,26)
-          cx.bezierCurveTo(18,34,26,36,28,30)
-          cx.bezierCurveTo(28,22,34,16,32,8)
-          cx.bezierCurveTo(40,18,42,28,38,34)
-          cx.bezierCurveTo(44,28,46,20,42,14)
-          cx.bezierCurveTo(52,26,52,44,32,58)
-          cx.fill()
-          // Inner flame
-          cx.fillStyle='#ffdd00'
-          cx.beginPath()
-          cx.moveTo(32,52)
-          cx.bezierCurveTo(22,44,20,34,26,28)
-          cx.bezierCurveTo(26,36,32,36,32,28)
-          cx.bezierCurveTo(36,34,40,40,32,52)
-          cx.fill()
-          // Core
-          cx.fillStyle='#ffffff'; cx.globalAlpha=0.7
-          cx.beginPath(); cx.ellipse(32,42,5,8,0,0,Math.PI*2); cx.fill()
-          cx.globalAlpha=1
-        }, 0.034)
-
-      } else if (pt.type === 'earthquake') {
-        // 💎 SEISMIC WAVE DIAMOND — size by magnitude
-        const m = pt.meta?.mag || 3
-        const sz = m >= 7.5 ? 0.052 : m >= 7 ? 0.044 : m >= 6 ? 0.036 : m >= 5 ? 0.028 : m >= 4 ? 0.022 : 0.018
-        const clrE = m >= 7 ? '#ff0000' : m >= 6 ? '#ff4400' : m >= 5 ? '#ff8800' : m >= 4 ? '#ffaa00' : '#ffcc44'
-        drawIcon((cx) => {
-          clr(cx)
-          // Diamond shape
-          cx.fillStyle = clrE
-          cx.beginPath(); cx.moveTo(32,4); cx.lineTo(58,32); cx.lineTo(32,60); cx.lineTo(6,32); cx.closePath(); cx.fill()
-          // Seismic wave inside
-          cx.strokeStyle='rgba(0,0,0,0.4)'; cx.lineWidth=2; cx.beginPath()
-          cx.moveTo(14,32); cx.lineTo(20,20); cx.lineTo(26,44); cx.lineTo(32,28); cx.lineTo(38,40); cx.lineTo(44,22); cx.lineTo(50,32)
-          cx.stroke()
-          // Magnitude label for big quakes
-          if (m >= 5) {
-            cx.fillStyle='#ffffff'; cx.font='bold 16px sans-serif'; cx.textAlign='center'; cx.textBaseline='middle'
-            cx.fillText(`${m.toFixed(1)}`, 32, 32)
-          }
-        }, sz)
-
-      } else if (pt.type === 'hurricane' || pt.type === 'eonet_severe_storms') {
-        // 🌀 HURRICANE SPIRAL — rotating storm eye
-        drawIcon((cx) => {
-          clr(cx,'#1a0030',0.8)
-          // Draw spiral rings
-          cx.strokeStyle='#cc44ff'; cx.lineWidth=3
-          ;[22,16,10].forEach((r,i)=>{
-            cx.globalAlpha=1-i*0.25
-            cx.beginPath(); cx.arc(32,32,r,0,Math.PI*1.7); cx.stroke()
-          })
-          cx.globalAlpha=1
-          // Outer ring
-          cx.strokeStyle='#dd66ff'; cx.lineWidth=2; cx.beginPath(); cx.arc(32,32,28,0,Math.PI*2); cx.stroke()
-          // Eye
-          cx.fillStyle='#ffffff'; cx.beginPath(); cx.arc(32,32,5,0,Math.PI*2); cx.fill()
-          cx.fillStyle='#cc44ff'; cx.beginPath(); cx.arc(32,32,3,0,Math.PI*2); cx.fill()
-        }, 0.048)
-
-      } else if (pt.type === 'volcano' || pt.type === 'eonet_volcanoes') {
-        // 🌋 VOLCANO — mountain with eruption plume
-        drawIcon((cx) => {
-          clr(cx)
-          // Lava glow base
-          cx.fillStyle='#ff4400'
-          cx.beginPath(); cx.ellipse(32,56,20,8,0,0,Math.PI*2); cx.fill()
-          // Mountain triangle
-          cx.fillStyle='#882200'
-          cx.beginPath(); cx.moveTo(32,10); cx.lineTo(56,56); cx.lineTo(8,56); cx.closePath(); cx.fill()
-          // Snow/rock top
-          cx.fillStyle='#884422'
-          cx.beginPath(); cx.moveTo(32,10); cx.lineTo(40,28); cx.lineTo(24,28); cx.closePath(); cx.fill()
-          // Crater
-          cx.fillStyle='#ff2200'
-          cx.beginPath(); cx.ellipse(32,13,5,3,0,0,Math.PI*2); cx.fill()
-          // Eruption plume
-          cx.fillStyle='#ff8800'; cx.globalAlpha=0.9
-          ;[[32,8,4,14],[26,6,3,10],[38,7,3,10]].forEach(([x,y,rx,ry])=>{
-            cx.beginPath(); cx.ellipse(x,y,rx,ry,-0.3,0,Math.PI*2); cx.fill()
-          })
-          cx.globalAlpha=1
-        }, 0.042)
-
-      } else if (pt.type === 'flood') {
-        // 🌊 FLOOD WAVES — water surge
-        drawIcon((cx) => {
-          clr(cx,'#001155',0.85)
-          cx.fillStyle='#0055ff'; cx.fillRect(8,36,48,20)
-          // Wave layers
-          ;['#0077ff','#0099ff','#00bbff'].forEach((col,i)=>{
-            cx.fillStyle=col; cx.beginPath()
-            cx.moveTo(8,36-i*5)
-            cx.bezierCurveTo(18,28-i*5,26,38-i*5,32,34-i*5)
-            cx.bezierCurveTo(38,30-i*5,48,40-i*5,56,32-i*5)
-            cx.lineTo(56,36-i*5+8); cx.lineTo(8,36-i*5+8); cx.closePath(); cx.fill()
-          })
-          // House/building being flooded
-          cx.fillStyle='#cc4400'; cx.beginPath()
-          cx.moveTo(28,8); cx.lineTo(36,8); cx.lineTo(40,16); cx.lineTo(24,16); cx.closePath(); cx.fill()
-          cx.fillStyle='#aa3300'; cx.fillRect(26,16,12,16)
-        }, 0.038)
-
-      } else if (pt.type === 'weather') {
-        // ⛈ THUNDERSTORM
-        drawIcon((cx) => {
-          clr(cx)
-          // Cloud
-          cx.fillStyle='#334466'
-          ;[[32,28,16],[22,32,12],[42,32,12],[32,36,14]].forEach(([x,y,r])=>{cx.beginPath();cx.arc(x,y,r,0,Math.PI*2);cx.fill()})
-          // Lightning bolt
-          cx.fillStyle='#ffee00'
-          cx.beginPath(); cx.moveTo(35,20); cx.lineTo(28,36); cx.lineTo(33,36); cx.lineTo(26,54); cx.lineTo(38,34); cx.lineTo(33,34); cx.closePath(); cx.fill()
-          // Rain drops
-          cx.fillStyle='#6699cc'; cx.globalAlpha=0.8
-          ;[[20,50,2,5],[28,54,2,5],[44,48,2,5]].forEach(([x,y,rx,ry])=>{cx.beginPath();cx.ellipse(x,y,rx,ry,0,0,Math.PI*2);cx.fill()})
-          cx.globalAlpha=1
-        }, 0.034)
-
-      } else if (pt.type === 'gdacs') {
-        // ⚠️ ALERT TRIANGLE — color by severity
-        const gdacsC = pt.meta?.alertlevel==='red'?'#ff1111':pt.meta?.alertlevel==='orange'?'#ff7700':'#22cc44'
-        drawIcon((cx) => {
-          clr(cx)
-          // Triangle
-          cx.fillStyle = gdacsC
-          cx.beginPath(); cx.moveTo(32,6); cx.lineTo(58,54); cx.lineTo(6,54); cx.closePath(); cx.fill()
-          // Border
-          cx.strokeStyle='#ffffff'; cx.lineWidth=2; cx.beginPath(); cx.moveTo(32,6); cx.lineTo(58,54); cx.lineTo(6,54); cx.closePath(); cx.stroke()
-          // Exclamation mark
-          cx.fillStyle='#ffffff'; cx.font='bold 22px sans-serif'; cx.textAlign='center'; cx.textBaseline='middle'
-          cx.fillText('!', 32, 38)
-        }, 0.038)
-
-      } else if (pt.type === 'copernicus') {
-        // 🛰️ SATELLITE
-        drawIcon((cx) => {
-          clr(cx)
-          // Solar panels
-          cx.fillStyle='#3388ff'
-          cx.fillRect(4,26,18,12); cx.fillRect(42,26,18,12)
-          // Panel grid lines
-          cx.strokeStyle='#0044aa'; cx.lineWidth=1
-          ;[10,16].forEach(x=>{ cx.beginPath(); cx.moveTo(x,26); cx.lineTo(x,38); cx.stroke() })
-          ;[30,32].forEach(y=>{ cx.beginPath(); cx.moveTo(4,y); cx.lineTo(22,y); cx.stroke() })
-          ;[48,54].forEach(x=>{ cx.beginPath(); cx.moveTo(x,26); cx.lineTo(x,38); cx.stroke() })
-          // Satellite body
-          cx.fillStyle='#aaaaaa'; cx.fillRect(22,22,20,20)
-          cx.fillStyle='#cccccc'; cx.fillRect(24,24,16,16)
-          // Antenna dish
-          cx.strokeStyle='#00ddff'; cx.lineWidth=2; cx.beginPath()
-          cx.arc(32,18,8,Math.PI,0); cx.stroke()
-          cx.beginPath(); cx.moveTo(32,10); cx.lineTo(32,22); cx.stroke()
-          // Signal dot
-          cx.fillStyle='#00ffff'; cx.beginPath(); cx.arc(32,22,3,0,Math.PI*2); cx.fill()
-        }, 0.038)
-
-      } else if (pt.type === 'sigmet') {
-        // ⚡ AVIATION HAZARD hexagon
-        drawIcon((cx) => {
-          clr(cx)
-          // Hexagon
-          cx.fillStyle='#ffee00'
-          cx.beginPath()
-          for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6;cx.lineTo(32+28*Math.cos(a),32+28*Math.sin(a))}
-          cx.closePath(); cx.fill()
-          // Inner hexagon border
-          cx.strokeStyle='#aa9900'; cx.lineWidth=2; cx.beginPath()
-          for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6;cx.lineTo(32+24*Math.cos(a),32+24*Math.sin(a))}
-          cx.closePath(); cx.stroke()
-          // Lightning bolt
-          cx.fillStyle='#333300'
-          cx.beginPath(); cx.moveTo(35,12); cx.lineTo(28,32); cx.lineTo(33,32); cx.lineTo(26,52); cx.lineTo(38,28); cx.lineTo(33,28); cx.closePath(); cx.fill()
-        }, 0.032)
-
-      } else if (pt.type === 'iss') {
-        // 🛸 ISS — stylized space station
-        drawIcon((cx) => {
-          clr(cx,'#000828',0.9)
-          // Solar panel arrays (horizontal bars)
-          cx.fillStyle='#2255cc'
-          cx.fillRect(4,26,20,12); cx.fillRect(40,26,20,12)
-          // Panel detail
-          cx.strokeStyle='#113399'; cx.lineWidth=1
-          ;[8,12,16].forEach(x=>{ cx.beginPath(); cx.moveTo(x,26); cx.lineTo(x,38); cx.stroke() })
-          ;[44,48,52,56].forEach(x=>{ cx.beginPath(); cx.moveTo(x,26); cx.lineTo(x,38); cx.stroke() })
-          // Main truss
-          cx.fillStyle='#888888'; cx.fillRect(22,30,20,4)
-          // Habitat modules
-          cx.fillStyle='#aaaaaa'
-          cx.beginPath(); cx.arc(32,32,10,0,Math.PI*2); cx.fill()
-          cx.fillStyle='#999999'
-          cx.beginPath(); cx.ellipse(32,32,8,6,0,0,Math.PI*2); cx.fill()
-          // Glow
-          cx.strokeStyle='#00aaff'; cx.lineWidth=2; cx.globalAlpha=0.7
-          cx.beginPath(); cx.arc(32,32,14,0,Math.PI*2); cx.stroke()
-          cx.globalAlpha=1
-          // Orbit dot trail
-          cx.fillStyle='#00ccff'; cx.beginPath(); cx.arc(32,32,3,0,Math.PI*2); cx.fill()
-        }, 0.048)
-
-      } else if (pt.type === 'launch') {
-        // 🚀 ROCKET
-        drawIcon((cx) => {
-          clr(cx)
-          // Exhaust plume
-          cx.fillStyle='#ff5500'; cx.globalAlpha=0.8
-          cx.beginPath(); cx.moveTo(26,54); cx.bezierCurveTo(20,62,32,58,32,58); cx.bezierCurveTo(32,58,44,62,38,54); cx.closePath(); cx.fill()
-          cx.globalAlpha=1
-          cx.fillStyle='#ffaa00'; cx.beginPath(); cx.ellipse(32,56,5,4,0,0,Math.PI*2); cx.fill()
-          // Rocket body
-          cx.fillStyle='#dddddd'
-          cx.beginPath(); cx.moveTo(32,6); cx.bezierCurveTo(22,16,20,36,20,48); cx.lineTo(44,48); cx.bezierCurveTo(44,36,42,16,32,6); cx.closePath(); cx.fill()
-          // Nose cone
-          cx.fillStyle='#ff2222'
-          cx.beginPath(); cx.moveTo(32,6); cx.bezierCurveTo(26,14,20,24,20,28); cx.lineTo(44,28); cx.bezierCurveTo(44,24,38,14,32,6); cx.closePath(); cx.fill()
-          // Window
-          cx.fillStyle='#88ddff'; cx.strokeStyle='#555555'; cx.lineWidth=1.5
-          cx.beginPath(); cx.arc(32,34,5,0,Math.PI*2); cx.fill(); cx.stroke()
-          // Fins
-          cx.fillStyle='#ff2222'
-          cx.beginPath(); cx.moveTo(20,42); cx.lineTo(12,52); cx.lineTo(20,48); cx.closePath(); cx.fill()
-          cx.beginPath(); cx.moveTo(44,42); cx.lineTo(52,52); cx.lineTo(44,48); cx.closePath(); cx.fill()
-        }, 0.042)
-
-      } else if (pt.type === 'eonet_sea_and_lake_ice') {
-        // 🧊 ICE CRYSTAL
-        drawIcon((cx) => {
-          clr(cx,'#002244',0.8)
-          cx.strokeStyle='#88ddff'; cx.lineWidth=3
-          // 6-pointed snowflake
-          for(let i=0;i<6;i++){
-            const a=i*Math.PI/3; cx.beginPath()
-            cx.moveTo(32,32); cx.lineTo(32+24*Math.cos(a),32+24*Math.sin(a)); cx.stroke()
-          }
-          // Cross bars
-          for(let i=0;i<6;i++){
-            const a=i*Math.PI/3; const d=14
-            ;[-1,1].forEach(s=>{
-              const ba=a+s*Math.PI/6
-              cx.beginPath()
-              cx.moveTo(32+d*Math.cos(a)-5*Math.cos(ba),32+d*Math.sin(a)-5*Math.sin(ba))
-              cx.lineTo(32+d*Math.cos(a)+5*Math.cos(ba),32+d*Math.sin(a)+5*Math.sin(ba))
-              cx.stroke()
-            })
-          }
-          cx.fillStyle='#aaeeff'; cx.beginPath(); cx.arc(32,32,4,0,Math.PI*2); cx.fill()
-        }, 0.032)
-
-      } else if (pt.type === 'aircraft') {
-        // ✈ AIRCRAFT SILHOUETTE — top-down view, oriented by heading
-        const heading = (pt.meta?.heading || pt.heading || 0) * Math.PI / 180
-        drawIcon((cx) => {
-          clr(cx)
-          cx.save()
-          cx.translate(32, 32)
-          cx.rotate(heading)
-          // Military = red tint, civil = cyan
-          const isMil = /^(RCH|JAKE|KNIFE|REACH|NATO|RRR|USAF|THUD|BART|TOPOL|SPAR|SAM|VENUS|VIPER|ATLAS)/i.test(pt.meta?.callsign || '')
-          const bodyClr = isMil ? '#ff4444' : '#00ffcc'
-          const wingClr = isMil ? '#ff8888' : '#88ffee'
-          // Fuselage
-          cx.fillStyle = bodyClr
-          cx.beginPath(); cx.ellipse(0, 0, 5, 22, 0, 0, Math.PI*2); cx.fill()
-          // Wings
-          cx.fillStyle = wingClr
-          cx.beginPath(); cx.moveTo(0,-4); cx.lineTo(-26,8); cx.lineTo(-22,14); cx.lineTo(0,6); cx.closePath(); cx.fill()
-          cx.beginPath(); cx.moveTo(0,-4); cx.lineTo(26,8); cx.lineTo(22,14); cx.lineTo(0,6); cx.closePath(); cx.fill()
-          // Tail fins
-          cx.fillStyle = bodyClr
-          cx.beginPath(); cx.moveTo(0,18); cx.lineTo(-10,26); cx.lineTo(-7,28); cx.lineTo(0,22); cx.closePath(); cx.fill()
-          cx.beginPath(); cx.moveTo(0,18); cx.lineTo(10,26); cx.lineTo(7,28); cx.lineTo(0,22); cx.closePath(); cx.fill()
-          // Nose dot
-          cx.fillStyle = '#ffffff'; cx.globalAlpha = 0.8
-          cx.beginPath(); cx.arc(0,-20,3,0,Math.PI*2); cx.fill()
-          cx.globalAlpha = 1
-          cx.restore()
-          // Severity pulse ring for emergencies
-          if (pt.severity === 'critical') {
-            cx.strokeStyle = '#ff2222'; cx.lineWidth = 3; cx.globalAlpha = 0.7
-            cx.beginPath(); cx.arc(32,32,29,0,Math.PI*2); cx.stroke()
-            cx.globalAlpha = 1
-          }
-        }, pt.severity==='critical' ? 0.048 : 0.036)
-
-      } else if (pt.type === 'ship') {
-        // 🚢 SHIP HULL — top-down vessel silhouette
-        drawIcon((cx) => {
-          clr(cx)
-          cx.save()
-          cx.translate(32, 32)
-          const shipType = (pt.meta?.shipType || pt.meta?.vesselType || '').toLowerCase()
-          const isTanker = shipType.includes('tanker') || shipType.includes('cargo')
-          const isWarship = shipType.includes('naval') || shipType.includes('destroyer') || shipType.includes('carrier')
-          const hullClr = isWarship ? '#8888ff' : isTanker ? '#ff8800' : '#0088ff'
-          const deckClr = isWarship ? '#aaaaff' : isTanker ? '#ffaa44' : '#44aaff'
-          // Hull - pointed bow, flat stern
-          cx.fillStyle = hullClr
-          cx.beginPath()
-          cx.moveTo(0, -26)      // bow
-          cx.bezierCurveTo(10,-20, 12,0, 11,20)   // starboard
-          cx.lineTo(11, 24); cx.lineTo(-11, 24)    // stern
-          cx.lineTo(-11, 20)
-          cx.bezierCurveTo(-12,0, -10,-20, 0,-26)  // port
-          cx.closePath(); cx.fill()
-          // Deck structures
-          cx.fillStyle = deckClr
-          cx.fillRect(-6, -16, 12, 20)  // main deck house
-          cx.fillStyle = '#ffffff'; cx.globalAlpha = 0.6
-          cx.fillRect(-3, -20, 6, 6)    // bridge
-          cx.globalAlpha = 1
-          // Wake (movement indicator)
-          if (pt.meta?.speed > 2) {
-            cx.strokeStyle = '#ffffff'; cx.lineWidth = 1.5; cx.globalAlpha = 0.3
-            cx.beginPath(); cx.moveTo(-8,24); cx.lineTo(-16,32); cx.stroke()
-            cx.beginPath(); cx.moveTo(8,24); cx.lineTo(16,32); cx.stroke()
-            cx.globalAlpha = 1
-          }
-          cx.restore()
-        }, 0.038)
-
-      } else {
-        // DEFAULT: colored dot with severity ring
-        const r = pt.severity==='critical'?0.016:pt.severity==='high'?0.012:0.009
-        drawIcon((cx) => {
-          clr(cx)
-          const sevClr = pt.severity==='critical'?'#ff2222':pt.severity==='high'?'#ff8800':pt.severity==='medium'?'#ffdd00':'#2dd4bf'
-          cx.fillStyle=sevClr; cx.beginPath(); cx.arc(32,32,22,0,Math.PI*2); cx.fill()
-          cx.strokeStyle='#ffffff'; cx.lineWidth=2; cx.globalAlpha=0.5
-          cx.beginPath(); cx.arc(32,32,26,0,Math.PI*2); cx.stroke()
-          cx.globalAlpha=1
-        }, r*2.5)
-      }
-
-      if (!continue_) {
-        mesh = new THREE.Mesh(geo, mat)
-        mesh.position.set(x, y, z)
-        // Billboard: face outward from globe center (lookAt center then flip)
-        mesh.lookAt(0, 0, 0)
-        mesh.rotateX(Math.PI)
-        globe.add(mesh)
-        threeRef.current.markerMeshes.push(mesh)
-        threeRef.current.markerData.push(pt)
-      }
-      continue_ = false
+      globe.add(mesh)
+      threeRef.current.markerMeshes.push(mesh)
+      threeRef.current.markerData.push(pt)
     })
+    threeRef.current.pulseMeshes = pulseList
   }, [clusteredPoints, threeReady])
 
   // ── Mouse interactions ────────────────────────────────────────────────
@@ -1257,6 +813,11 @@ export default function IntelMap({ articles }) {
       setHovered(null) // clear hover while dragging
       return
     }
+
+    // Throttle hover raycasting to ~30 FPS (every 32ms) to prevent CPU hitching during mouse moves
+    const now = performance.now()
+    if (now - (onMouseMove._lastRaycast || 0) < 32) return
+    onMouseMove._lastRaycast = now
 
     // Hover detection — raycast on mouse move (not click)
     const { THREE, camera, raycaster, markerMeshes, markerData, globe } = threeRef.current
@@ -1301,17 +862,8 @@ export default function IntelMap({ articles }) {
         setExpandedCluster(null)
         const hov = threeRef.current._hovered
         if (hov && !hov._trail) {
-          // Fly globe to clicked point AND open detail panel simultaneously
-          if (hov.lat != null && hov.lng != null && threeRef.current?.globe) {
-            const theta = (hov.lng + 180) * (Math.PI / 180)
-            threeRef.current.globe.rotation.y = Math.PI / 2 - theta
-            const phi = (90 - hov.lat) * (Math.PI / 180)
-            threeRef.current.globe.rotation.x = Math.max(-0.65, Math.min(0.65, -(phi - Math.PI / 2)))
-            autoRotateRef.current = false
-            setAutoRotate(false)
-            threeRef.current._navigatedTo = hov
-            setTimeout(() => { if (threeRef.current) threeRef.current._navigatedTo = null }, 4000)
-            if (threeRef.current.camera) setCameraZ(threeRef.current.camera.position.z)
+          if (hov.lat != null && hov.lng != null) {
+            globeTo(hov.lat, hov.lng)
           }
           setSelected(hov)
         } else {
@@ -1319,6 +871,19 @@ export default function IntelMap({ articles }) {
         }
       }
     }
+  }, [globeTo])
+
+  const globeTo = useCallback((lat, lng) => {
+    if (lat == null || lng == null || !threeRef.current?.globe) return
+    const theta = (lng + 180) * (Math.PI / 180)
+    threeRef.current.globe.rotation.y = Math.PI / 2 - theta
+    const phi = (90 - lat) * (Math.PI / 180)
+    threeRef.current.globe.rotation.x = Math.max(-0.65, Math.min(0.65, -(phi - Math.PI / 2)))
+    autoRotateRef.current = false
+    setAutoRotate(false)
+    threeRef.current._navigatedTo = { lat, lng }
+    setTimeout(() => { if (threeRef.current) threeRef.current._navigatedTo = null }, 4000)
+    if (threeRef.current.camera) setCameraZ(threeRef.current.camera.position.z)
   }, [])
 
   const onWheel = useCallback(e => {
@@ -1709,369 +1274,13 @@ export default function IntelMap({ articles }) {
         )}
 
         {selected && (
-          <div style={{ position:'absolute', top:0, right:0, bottom:0, width:'280px', zIndex:20, borderLeft:'1px solid var(--border)', background:'var(--void)', display:'flex', flexDirection:'column', overflow:'hidden', backdropFilter:'blur(4px)' }} className="fade-in">
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-              <span className="mono" style={{ fontSize: '8px', padding: '2px 6px', borderRadius: '2px', background: (SEV_COLORS_CSS[selected.severity||'low'] || '#2dd4bf') + '20', color: SEV_COLORS_CSS[selected.severity||'low'] || '#2dd4bf', fontWeight: 700 }}>
-                {(selected.severity || 'info').toUpperCase()}
-              </span>
-              {selected.type === 'acled'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ef444420', color: '#ef4444', borderRadius: '2px' }}>◆ ACLED</span>}
-              {selected.type === 'firms'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#fbbf2420', color: '#fbbf24', borderRadius: '2px' }}>🔥 FIRMS</span>}
-              {selected.type === 'hotspot' && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: 'rgba(249,115,22,0.1)', color: 'var(--orange)', borderRadius: '2px' }}>◎ HOTSPOT</span>}
-              {selected.type === 'news'    && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: 'rgba(45,212,191,0.1)', color: 'var(--accent)', borderRadius: '2px' }}>◉ NEWS</span>}
-              {selected.type === 'earthquake' && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff660020', color: '#ff6600', borderRadius: '2px' }}>⚡ USGS QUAKE</span>}
-              {selected.type === 'hurricane' && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#cc44ff20', color: '#cc44ff', borderRadius: '2px' }}>🌀 NOAA STORM</span>}
-              {selected.type === 'volcano'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff220020', color: '#ff2200', borderRadius: '2px' }}>🌋 VOLCANO</span>}
-              {selected.type === 'gdacs'     && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffaa0020', color: '#ffaa00', borderRadius: '2px' }}>⚠ GDACS</span>}
-              {selected.type === 'aircraft'  && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#00ffcc20', color: '#00ffcc', borderRadius: '2px' }}>✈ ADS-B</span>}
-              {selected.type === 'ship'      && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#0088ff20', color: '#0088ff', borderRadius: '2px' }}>🚢 AIS</span>}
-              {selected.type === 'copernicus' && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#00ccff20', color: '#00ccff', borderRadius: '2px' }}>🛰 COPERNICUS</span>}
-              {selected.type?.startsWith('eonet') && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff330020', color: '#ff3300', borderRadius: '2px' }}>🛰 NASA EONET</span>}
-              {selected.type === 'flood'    && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#0044ff20', color: '#4488ff', borderRadius: '2px' }}>🌊 DFO FLOOD</span>}
-              {selected.type === 'weather'  && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#4488ff20', color: '#88aaff', borderRadius: '2px' }}>⛈ NOAA WEATHER</span>}
-              {selected.type === 'iss'      && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffffff20', color: '#cccccc', borderRadius: '2px' }}>🛸 ISS LIVE</span>}
-              {selected.type === 'launch'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff880020', color: '#ff8800', borderRadius: '2px' }}>🚀 LAUNCH</span>}
-              {selected.type === 'sigmet'    && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffff0020', color: '#ffff00', borderRadius: '2px' }}>✈ SIGMET</span>}
-              {selected.type === 'disease'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#22cc8820', color: '#22cc88', borderRadius: '2px' }}>🦠 DISEASE</span>}
-              {selected.type === 'cyber'     && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff00ff20', color: '#ff00ff', borderRadius: '2px' }}>💻 CYBER</span>}
-              {selected.type === 'gpsjam'    && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#f59e0b20', color: '#f59e0b', borderRadius: '2px' }}>📡 GPS JAM</span>}
-              {selected.type === 'notam'     && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff884420', color: '#ff8844', borderRadius: '2px' }}>✈ NOTAM</span>}
-              {selected.type === 'telegram'  && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#2dd4bf20', color: '#2dd4bf', borderRadius: '2px' }}>📡 TELEGRAM</span>}
-              {selected.type === 'wikiEdit'  && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#aaaaff20', color: '#aaaaff', borderRadius: '2px' }}>📝 WIKI EDIT</span>}
-              {selected.type === 'bgp'       && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff660020', color: '#ff6600', borderRadius: '2px' }}>🌐 BGP</span>}
-              {selected.type === 'maritime'  && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#0055cc20', color: '#0055cc', borderRadius: '2px' }}>⚓ MARITIME</span>}
-              {selected.type === 'nuclear'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffff0020', color: '#ffff00', borderRadius: '2px' }}>☢️ NUCLEAR</span>}
-              {selected.type === 'crowd'     && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#f472b620', color: '#f472b6', borderRadius: '2px' }}>👥 CROWD</span>}
-              {selected.type === 'viirs'     && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffffff20', color: '#cccccc', borderRadius: '2px' }}>🛰 VIIRS</span>}
-              {selected.type === 'milaircraft' && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff444420', color: '#ff4444', borderRadius: '2px' }}>✈ MILITARY</span>}
-              {selected.type === 'warship'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#8888ff20', color: '#8888ff', borderRadius: '2px' }}>⚔ WARSHIP</span>}
-              {selected.type === 'acled'     && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ef444420', color: '#ef4444', borderRadius: '2px' }}>⚔️ CONFLICT</span>}
-              {selected.type === 'hotspot'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff333320', color: '#ff3333', borderRadius: '2px' }}>🎯 HOTSPOT</span>}
-              {selected.type === 'vuln'      && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff660020', color: '#ff6600', borderRadius: '2px' }}>🔓 EXPOSED INFRA</span>}
-              {selected.type === 'cve'       && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffaa0020', color: '#ffaa00', borderRadius: '2px' }}>⚠️ CVE</span>}
-              {selected.type === 'nuclear'   && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ffff0020', color: '#ffff00', borderRadius: '2px' }}>☢️ NUCLEAR</span>}
-              {selected.type === 'maritime'  && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#0055cc20', color: '#4488ff', borderRadius: '2px' }}>⚓ MARITIME</span>}
-              {selected.type === 'humanitarian' && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff880020', color: '#ff8800', borderRadius: '2px' }}>🆘 CRISIS</span>}
-              {selected.type === 'social'    && <span className="mono" style={{ fontSize: '7px', padding: '1px 5px', background: '#ff660020', color: '#ff6600', borderRadius: '2px' }}>📡 SIGNAL</span>}
-              <button onClick={() => setSelected(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)' }}><X size={12}/></button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', lineHeight: 1.4, marginBottom: '8px' }}>{selected.title || selected.name || selected.desc?.slice(0,80) || 'Signal'}</div>
-
-              {/* Coordinates + quick map links */}
-              {(selected.lat && selected.lng) && (
-                <div style={{ marginBottom: '8px', padding: '5px 8px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: 'var(--t4)', marginBottom: '3px', letterSpacing: '0.1em' }}>COORDINATES</div>
-                  <div className="mono" style={{ fontSize: '10px', color: 'var(--accent)', marginBottom: '3px' }}>
-                    {Number(selected.lat).toFixed(4)}°&nbsp;&nbsp;{Number(selected.lng).toFixed(4)}°
-                  </div>
-                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                    <a href={`https://www.google.com/maps?q=${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '8px', color: 'var(--t3)', textDecoration: 'none' }}>↗ Google Maps</a>
-                    <a href={`https://www.openstreetmap.org/?mlat=${selected.lat}&mlon=${selected.lng}&zoom=10`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '8px', color: 'var(--t3)', textDecoration: 'none' }}>↗ OpenStreetMap</a>
-                    <a href={`https://zoom.earth/#view=${selected.lat},${selected.lng},12z`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '8px', color: 'var(--t3)', textDecoration: 'none' }}>↗ Zoom.Earth (satellite)</a>
-                  </div>
-                </div>
-              )}
-
-              {/* Data source + last snapshot timestamp */}
-              {(() => {
-                // Per-event date from the data itself
-                const eventDate = selected.date || selected.time || selected.pub
-                  || selected.meta?.date || selected.meta?.time || null
-                // Source label by type
-                const SOURCE_LABELS = {
-                  aircraft:'ADS-B (adsb.fi / OpenSky)', ship:'AIS (AISStream / MarineTraffic)',
-                  earthquake:'USGS Earthquake Hazards', gdacs:'GDACS UN Disaster Alerts',
-                  hurricane:'NOAA National Hurricane Center', volcano:'GVP Smithsonian Institution',
-                  flood:'DFO Flood Observatory', eonet_wildfire:'NASA EONET', eonet_severe_storms:'NASA EONET',
-                  eonet_other:'NASA EONET', copernicus:'Copernicus EMS (ESA)', sigmet:'NOAA Aviation Weather',
-                  firms:'NASA FIRMS (VIIRS/MODIS)', iss:'NASA Open Notify', launch:'Launch Library 2',
-                  disease:'WHO Disease Outbreak News / ProMED', nuclear:'IAEA Nuclear Events',
-                  maritime:'EMSA SafeSeaNet', humanitarian:'UN ReliefWeb',
-                  cyber:'CISA US-CERT / Abuse.ch Feodo', social:'Reddit (OSINTed)',
-                  news:'GDELT Project', acled:'ACLED Conflict Monitor',
-                  hotspot:'NEXUS Intelligence Database',
-                }
-                const src = SOURCE_LABELS[selected.type] || (selected.meta?.source) || 'Satellite API'
-                // Snapshot time — either per-event or global fetch time
-                const snapTime = selected._fetchedAt || satData?.summary?.fetchedAt
-                const snapStr = snapTime ? new Date(snapTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' ' + new Date(snapTime).toLocaleDateString([], {month:'short',day:'numeric'}) : null
-                return (
-                  <div style={{ marginBottom:'8px', padding:'4px 8px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'3px', display:'flex', flexDirection:'column', gap:'2px' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <span className="mono" style={{ fontSize:'7px', color:'var(--t4)', letterSpacing:'0.08em' }}>SOURCE</span>
-                      {snapStr && <span className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>snapshot {snapStr}</span>}
-                    </div>
-                    <span className="mono" style={{ fontSize:'8px', color:'var(--t3)' }}>{src}</span>
-                    {eventDate && (
-                      <span className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>
-                        event: {typeof eventDate === 'number' ? new Date(eventDate).toLocaleString() : String(eventDate).slice(0,19).replace('T',' ')}
-                      </span>
-                    )}
-                  </div>
-                )
-              })()}
-
-              {/* Description — shown for all types */}
-              {(selected.desc || selected.callsign || selected.mmsi || selected.altitude != null) && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'var(--panel)', border: `1px solid ${SEV_COLORS_CSS[selected.severity||'low']||'var(--border)'}30`, borderRadius: '3px' }}>
-                  {selected.desc && <div style={{ fontSize: '10px', color: 'var(--t2)', lineHeight: 1.7, marginBottom: selected.callsign||selected.mmsi ? '4px' : 0 }}>{selected.desc}</div>}
-                  {(selected.callsign||selected.mmsi) && <div className="mono" style={{ fontSize:'9px', color:'var(--accent)' }}>ID: {selected.callsign||selected.mmsi||''}</div>}
-                  {selected.altitude != null && <div className="mono" style={{ fontSize:'9px', color:'var(--t3)' }}>Alt: {Math.round(selected.altitude).toLocaleString()} ft{selected.velocity ? ` · ${Math.round(selected.velocity)} kts` : ''}{selected.heading != null ? ` · hdg ${Math.round(selected.heading)}°` : ''}</div>}
-                  {selected.speed != null && !selected.altitude && <div className="mono" style={{ fontSize:'9px', color:'var(--t3)' }}>Speed: {selected.speed} kn{selected.heading != null ? ` · hdg ${Math.round(selected.heading)}°` : ''}</div>}
-                </div>
-              )}
-
-              {/* Type-specific metadata */}
-              {selected.type === 'earthquake' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(255,102,0,0.06)', border: '1px solid rgba(255,102,0,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#ff6600', marginBottom: '4px', letterSpacing: '0.1em' }}>⚡ USGS EARTHQUAKE DATA</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                    <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Magnitude: <strong style={{ color: '#ff6600' }}>M{selected.meta.mag?.toFixed(1)}</strong></div>
-                    <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Depth: {selected.meta.depth?.toFixed(0)}km</div>
-                    {selected.meta.tsunami && <div className="mono" style={{ fontSize: '9px', color: '#ef4444', fontWeight: 700, gridColumn: 'span 2' }}>⚠ TSUNAMI WARNING ISSUED</div>}
-                  </div>
-                </div>
-              )}
-
-              {selected.type === 'hurricane' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(204,68,255,0.06)', border: '1px solid rgba(204,68,255,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#cc44ff', marginBottom: '4px', letterSpacing: '0.1em' }}>🌀 NOAA NHC TROPICAL STORM</div>
-                  <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Wind: {selected.meta.intensity} kt &nbsp;|&nbsp; Pressure: {selected.meta.pressure} mb</div>
-                </div>
-              )}
-
-              {selected.type === 'aircraft' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(0,255,204,0.06)', border: '1px solid rgba(0,255,204,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#00ffcc', marginBottom: '4px', letterSpacing: '0.1em' }}>✈ OPENSKY NETWORK — ADS-B</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px' }}>
-                    {selected.meta.callsign && <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Flight: <strong>{selected.meta.callsign}</strong></div>}
-                    {selected.meta.icao24 && <div className="mono" style={{ fontSize: '9px', color: 'var(--t4)' }}>ICAO24: {selected.meta.icao24}</div>}
-                    {selected.meta.alt != null && <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Alt: {(selected.meta.alt/1000).toFixed(1)}km</div>}
-                    {selected.meta.spd != null && <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Speed: {(selected.meta.spd*1.944).toFixed(0)} kt</div>}
-                  </div>
-                </div>
-              )}
-
-              {selected.type === 'ship' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(0,136,255,0.06)', border: '1px solid rgba(0,136,255,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#0088ff', marginBottom: '4px', letterSpacing: '0.1em' }}>🚢 AIS VESSEL DATA</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px' }}>
-                    {selected.meta.mmsi && <div className="mono" style={{ fontSize: '9px', color: 'var(--t4)', gridColumn:'1/-1' }}>MMSI: {selected.meta.mmsi}</div>}
-                    {selected.meta.name && <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)', gridColumn:'1/-1', fontWeight:700 }}>{selected.meta.name}</div>}
-                    {selected.meta.speed != null && <div className="mono" style={{ fontSize: '9px', color: '#0088ff' }}>⚡ {selected.meta.speed} kn</div>}
-                    {selected.meta.heading != null && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)' }}>↗ {Math.round(selected.meta.heading)}°</div>}
-                    {selected.meta.shipType && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)' }}>Type: {selected.meta.shipType}</div>}
-                    {selected.meta.flag && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)' }}>Flag: {selected.meta.flag}</div>}
-                    {selected.meta.destination && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)', gridColumn:'1/-1' }}>→ {selected.meta.destination}</div>}
-                    {selected.meta.zone && <div className="mono" style={{ fontSize: '8px', color: 'var(--t4)', gridColumn:'1/-1' }}>Zone: {selected.meta.zone}</div>}
-                    {selected.meta.length && <div className="mono" style={{ fontSize: '8px', color: 'var(--t4)' }}>{selected.meta.length}m LOA</div>}
-                  </div>
-                  <a href={selected.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#0088ff', display:'block', marginTop:'4px' }}>→ Track on MarineTraffic</a>
-                </div>
-              )}
-
-              {selected.type === 'warship' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(136,136,255,0.06)', border: '1px solid rgba(136,136,255,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#8888ff', marginBottom: '4px', letterSpacing: '0.1em' }}>⚔ NAVAL VESSEL — {selected.meta._livePos ? '🟢 LIVE AIS' : '🔴 HOME PORT'}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px' }}>
-                    {selected.meta.mmsi && <div className="mono" style={{ fontSize: '9px', color: 'var(--t4)', gridColumn:'1/-1' }}>MMSI: {selected.meta.mmsi}</div>}
-                    {selected.meta.name && <div className="mono" style={{ fontSize: '9px', color: 'var(--t1)', gridColumn:'1/-1', fontWeight:700 }}>{selected.meta.name}</div>}
-                    {selected.meta.flag && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)' }}>Flag: {selected.meta.flag}</div>}
-                    {selected.meta.shipType && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)' }}>Class: {selected.meta.shipType}</div>}
-                    {selected.meta.speed != null && selected.meta.speed > 0 && <div className="mono" style={{ fontSize: '9px', color: '#8888ff' }}>⚡ {selected.meta.speed} kn</div>}
-                    {selected.meta.heading != null && selected.meta.heading > 0 && <div className="mono" style={{ fontSize: '9px', color: 'var(--t3)' }}>↗ {Math.round(selected.meta.heading)}°</div>}
-                    {selected.meta.zone && <div className="mono" style={{ fontSize: '8px', color: 'var(--t4)', gridColumn:'1/-1' }}>Zone: {selected.meta.zone}</div>}
-                  </div>
-                  {!selected.meta._livePos && <div className="mono" style={{ fontSize:'7px', color:'#f97316', marginTop:'4px' }}>⚠ Position = home port. Military vessels often disable AIS at sea.</div>}
-                </div>
-              )}
-
-              {selected.type === 'gdacs' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.25)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#ffaa00', marginBottom: '4px', letterSpacing: '0.1em' }}>⚠ GDACS UN DISASTER ALERT</div>
-                  <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>
-                    Type: {selected.meta.eventtype} &nbsp;|&nbsp; Alert: <span style={{ color: selected.meta.alertlevel === 'red' ? '#ef4444' : selected.meta.alertlevel === 'orange' ? '#f97316' : '#4ade80', fontWeight: 700 }}>{selected.meta.alertlevel?.toUpperCase()}</span>
-                  </div>
-                </div>
-              )}
-
-              {(selected.type === 'volcano' || selected.type === 'eonet_volcanoes') && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(255,34,0,0.06)', border: '1px solid rgba(255,34,0,0.25)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#ff2200', marginBottom: '4px', letterSpacing: '0.1em' }}>🌋 GVP ACTIVE ERUPTION</div>
-                  <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>
-                    {selected.meta.vei != null && `VEI: ${selected.meta.vei} · `}Country: {selected.meta.country}
-                  </div>
-                </div>
-              )}
-
-              {selected.type === 'acled' && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: 'var(--red)', marginBottom: '4px', letterSpacing: '0.1em' }}>◆ ACLED CONFLICT EVENT</div>
-                  {selected.pub && <div style={{ fontSize: '10px', color: 'var(--t2)', marginBottom: '2px' }}>📅 {new Date(selected.pub).toLocaleDateString()}</div>}
-                  {selected.country && <div style={{ fontSize: '10px', color: 'var(--t2)', marginBottom: '2px' }}>📍 {selected.country}</div>}
-                  {selected.eventType && <div style={{ fontSize: '10px', color: 'var(--t2)', marginBottom: '2px' }}>⚔ {selected.eventType}</div>}
-                  {selected.fatalities > 0 && <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 700, marginTop: '4px' }}>💀 {selected.fatalities} fatalities</div>}
-                </div>
-              )}
-
-              {selected.type === 'firms' && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#fbbf24', marginBottom: '4px', letterSpacing: '0.1em' }}>🔥 NASA FIRMS — THERMAL ANOMALY</div>
-                  {selected.meta?.brightness && <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Brightness: {selected.meta.brightness?.toFixed(0)}K · Product: {selected.meta.product||'VIIRS'}</div>}
-                </div>
-              )}
-              {selected.type === 'flood' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(0,68,255,0.06)', border: '1px solid rgba(0,68,255,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#0044ff', marginBottom: '4px', letterSpacing: '0.1em' }}>🌊 DFO FLOOD OBSERVATORY</div>
-                  {selected.meta.displaced>0 && <div style={{ fontSize: '10px', color: '#4488ff' }}>🏠 {selected.meta.displaced?.toLocaleString()} displaced</div>}
-                  {selected.meta.dead>0 && <div style={{ fontSize: '10px', color: '#ef4444', fontWeight:700 }}>💀 {selected.meta.dead} fatalities</div>}
-                </div>
-              )}
-              {selected.type === 'iss' && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#ffffff', marginBottom: '4px', letterSpacing: '0.1em' }}>🛸 LIVE ISS POSITION</div>
-                  <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Altitude: ~{selected.meta?.altitude}km · Speed: ~{selected.meta?.velocity?.toLocaleString()}km/h</div>
-                  <div style={{ fontSize: '9px', color: 'var(--t3)', marginTop: '3px' }}>Orbits Earth every 92 minutes · 6 crew on board</div>
-                </div>
-              )}
-              {selected.type === 'launch' && selected.meta && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(255,136,0,0.06)', border: '1px solid rgba(255,136,0,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#ff8800', marginBottom: '4px', letterSpacing: '0.1em' }}>🚀 UPCOMING LAUNCH</div>
-                  <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Vehicle: {selected.meta.vehicle} · Provider: {selected.meta.provider}</div>
-                  {selected.meta.probability && <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Launch probability: {selected.meta.probability}%</div>}
-                </div>
-              )}
-
-              {selected.type === 'copernicus' && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(0,204,255,0.06)', border: '1px solid rgba(0,204,255,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#00ccff', marginBottom: '4px', letterSpacing: '0.1em' }}>🛰 COPERNICUS EU — SATELLITE ACTIVATION</div>
-                  <div style={{ fontSize: '10px', color: 'var(--t3)', lineHeight: 1.6 }}>EU satellite imagery has been formally tasked for this event. Processed satellite maps available at source link.</div>
-                </div>
-              )}
-
-              {(selected.type === 'eonet_wildfire' || selected.type === 'eonet_severe_storms' || selected.type?.startsWith('eonet')) && (
-                <div style={{ marginBottom: '8px', padding: '6px 8px', background: 'rgba(255,51,0,0.06)', border: '1px solid rgba(255,51,0,0.2)', borderRadius: '3px' }}>
-                  <div className="mono" style={{ fontSize: '7px', color: '#ff3300', marginBottom: '4px', letterSpacing: '0.1em' }}>🛰 NASA EONET — NATURAL EVENT</div>
-                  <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)' }}>Category: {selected.meta?.category}</div>
-                </div>
-              )}
-              {selected.type === 'disease' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(34,204,136,0.06)', border:'1px solid rgba(34,204,136,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#22cc88', marginBottom:'4px', letterSpacing:'0.1em' }}>🦠 {selected.meta?.source||'DISEASE SURVEILLANCE'}</div>
-                  <div style={{ fontSize:'10px', color:'var(--t3)', lineHeight:1.6 }}>Disease outbreak alert. Click source for full epidemiological report.</div>
-                </div>
-              )}
-              {selected.type === 'cyber' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(255,0,255,0.06)', border:'1px solid rgba(255,0,255,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#ff00ff', marginBottom:'4px', letterSpacing:'0.1em' }}>💻 {selected.meta?.source||'CYBER THREAT INTEL'}</div>
-                  {selected.meta?.ip && (
-                    <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center', marginBottom:'3px' }}>
-                      <div className="mono" style={{ fontSize:'9px', color:'var(--t2)' }}>IP: <strong>{selected.meta.ip}</strong></div>
-                      {selected.meta?.country && <div className="mono" style={{ fontSize:'9px', color:'var(--t4)' }}>{selected.meta.country}</div>}
-                      <a href={`https://www.shodan.io/host/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#f97316' }}>↗ Shodan</a>
-                      <a href={`https://internetdb.shodan.io/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#0088ff' }}>↗ InternetDB</a>
-                      <a href={`https://search.censys.io/hosts/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#a78bfa' }}>↗ Censys</a>
-                      <a href={`https://www.virustotal.com/gui/ip-address/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#22cc88' }}>↗ VirusTotal</a>
-                    </div>
-                  )}
-                  {selected.meta?.vulns?.length > 0 && (
-                    <div style={{ padding:'3px 6px', background:'rgba(239,68,68,0.1)', borderRadius:'2px', marginBottom:'3px' }}>
-                      <div className="mono" style={{ fontSize:'7px', color:'#ef4444', fontWeight:700 }}>⚠️ KNOWN VULNERABILITIES: {selected.meta.vulns.join(' · ')}</div>
-                    </div>
-                  )}
-                  {selected.meta?.cveID && (
-                    <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center' }}>
-                      <div className="mono" style={{ fontSize:'9px', color:'#ff00ff', fontWeight:700 }}>CVE: {selected.meta.cveID}</div>
-                      {selected.meta?.cvss && <div className="mono" style={{ fontSize:'9px', color:parseFloat(selected.meta.cvss)>=9?'#ef4444':parseFloat(selected.meta.cvss)>=7?'#f97316':'#eab308' }}>CVSS {selected.meta.cvss}</div>}
-                      <a href={selected.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#ff00ff' }}>↗ NVD</a>
-                    </div>
-                  )}
-                </div>
-              )}
-              {selected.type === 'vuln' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(255,102,0,0.06)', border:'1px solid rgba(255,102,0,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#ff6600', marginBottom:'4px', letterSpacing:'0.1em' }}>🔓 {selected.meta?.source||'EXPOSED INFRASTRUCTURE'}</div>
-                  {selected.meta?.ip && (
-                    <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', alignItems:'center', marginBottom:'3px' }}>
-                      <div className="mono" style={{ fontSize:'9px', color:'var(--t2)' }}>IP: <strong>{selected.meta.ip}</strong></div>
-                      {selected.meta?.country && <div className="mono" style={{ fontSize:'9px', color:'var(--t4)' }}>{selected.meta.country}</div>}
-                      {selected.meta?.ip && <a href={`https://www.shodan.io/host/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#f97316' }}>↗ Shodan</a>}
-                      {selected.meta?.ip && <a href={`https://internetdb.shodan.io/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#0088ff' }}>↗ InternetDB</a>}
-                      {selected.meta?.ip && <a href={`https://search.censys.io/hosts/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#a78bfa' }}>↗ Censys</a>}
-                      {selected.meta?.ip && <a href={`https://www.virustotal.com/gui/ip-address/${selected.meta.ip}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#22cc88' }}>↗ VirusTotal</a>}
-                    </div>
-                  )}
-                  {selected.meta?.vulns?.length > 0 && (
-                    <div style={{ padding:'3px 6px', background:'rgba(239,68,68,0.1)', borderRadius:'2px' }}>
-                      <div className="mono" style={{ fontSize:'7px', color:'#ef4444', fontWeight:700 }}>⚠️ KNOWN CVEs: {selected.meta.vulns.slice(0,5).join(' · ')}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {selected.type === 'cve' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(255,170,0,0.06)', border:'1px solid rgba(255,170,0,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#ffaa00', marginBottom:'4px', letterSpacing:'0.1em' }}>⚠️ {selected.meta?.source||'CVE / KEV'}</div>
-                  {selected.meta?.cveID && (
-                    <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center' }}>
-                      <div className="mono" style={{ fontSize:'10px', color:'#ffaa00', fontWeight:700 }}>{selected.meta.cveID}</div>
-                      {selected.meta?.cvss && <div className="mono" style={{ fontSize:'9px', fontWeight:700,
-                        color: parseFloat(selected.meta.cvss)>=9?'#ef4444':parseFloat(selected.meta.cvss)>=7?'#f97316':'#eab308' }}>CVSS {selected.meta.cvss}</div>}
-                      {selected.url && <a href={selected.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'#ffaa00' }}>↗ NVD</a>}
-                      <a href={`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${selected.meta.cveID}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:'8px', color:'var(--t3)' }}>↗ MITRE</a>
-                    </div>
-                  )}
-                </div>
-              )}
-              {selected.type === 'nuclear' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(255,255,0,0.05)', border:'1px solid rgba(255,255,0,0.2)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#ffff00', marginBottom:'4px', letterSpacing:'0.1em' }}>☢️ IAEA — NUCLEAR EVENT MONITOR</div>
-                  <div style={{ fontSize:'10px', color:'var(--t3)', lineHeight:1.6 }}>IAEA alert. Location approximated to nearest known facility.</div>
-                </div>
-              )}
-              {selected.type === 'maritime' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(0,85,204,0.06)', border:'1px solid rgba(0,85,204,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#4488ff', marginBottom:'4px', letterSpacing:'0.1em' }}>⚓ EMSA — MARITIME INCIDENT</div>
-                  <div style={{ fontSize:'10px', color:'var(--t3)', lineHeight:1.6 }}>European Maritime Safety Agency. Source: SafeSeaNet.</div>
-                </div>
-              )}
-              {selected.type === 'humanitarian' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(255,136,0,0.06)', border:'1px solid rgba(255,136,0,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#ff8800', marginBottom:'4px', letterSpacing:'0.1em' }}>🆘 UN RELIEFWEB — ACTIVE CRISIS</div>
-                  {selected.meta?.country && <div className="mono" style={{ fontSize:'9px', color:'var(--t2)' }}>Country: {selected.meta.country}</div>}
-                </div>
-              )}
-              {selected.type === 'social' && (
-                <div style={{ marginBottom:'8px', padding:'6px 8px', background:'rgba(255,102,0,0.06)', border:'1px solid rgba(255,102,0,0.25)', borderRadius:'3px' }}>
-                  <div className="mono" style={{ fontSize:'7px', color:'#ff6600', marginBottom:'4px', letterSpacing:'0.1em' }}>📡 REDDIT — BREAKING SIGNAL</div>
-                  {selected.meta?.subreddit && <div className="mono" style={{ fontSize:'9px', color:'var(--t2)' }}>r/{selected.meta.subreddit}</div>}
-                  {selected.meta?.score != null && <div className="mono" style={{ fontSize:'9px', color:'#ff6600', fontWeight:700 }}>{selected.meta.score?.toLocaleString()} upvotes</div>}
-                </div>
-              )}
-
-              {selected.summary && <p style={{ fontSize: '11px', color: 'var(--t2)', lineHeight: 1.7, marginBottom: '10px' }}>{selected.summary}</p>}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '8px' }}>
-                {selected.url && selected.url !== '#' && selected.url !== 'null' && (
-                  <a href={selected.url} target="_blank" rel="noopener noreferrer" className="btn" style={{ justifyContent: 'center', fontSize: '10px' }}>
-                    <ExternalLink size={10}/> view source data
-                  </a>
-                )}
-                <button className="btn btn-accent" style={{ justifyContent: 'center', fontSize: '10px' }}
-                  onClick={() => addNode({
-                    type: ['acled','firms'].includes(selected.type) ? 'event' : selected.type === 'aircraft' ? 'entity' : selected.type === 'ship' ? 'entity' : 'location',
-                    label: (selected.title || selected.name || '').slice(0, 55),
-                    detail: selected.desc || '',
-                    source: selected.source || selected.type || 'Intel Map',
-                    url: selected.url || '#',
-                    color: SEV_COLORS_CSS[selected.severity],
-                    x: 200 + Math.random() * 400, y: 150 + Math.random() * 300,
-                  })}>
-                  + save to board
-                </button>
-              </div>
-            </div>
-          </div>
+          <DeepOSINTDossier
+            selected={selected}
+            articles={articles}
+            onClose={() => setSelected(null)}
+            onSaveToBoard={addNode}
+            flyTo={globeTo}
+          />
         )}
 
         {/* ── Watcher Alert Toasts — top center ────────────────────────── */}
