@@ -136,8 +136,54 @@ export const SEED_SATELLITE_BASELINE = {
     { lat: 34.90, lng: 35.88, target: 'Tartus Naval Base, Syria', title: 'Sentinel-1 SAR: Russian Submarine & Frigate Berth Changes', desc: 'Radar penetration through Mediterranean cloud cover revealing frigate and submarine movements at Russian naval support facilities.', severity: 'medium', platform: 'Sentinel-1 C-SAR' },
   ],
 
+  warships: [
+    { name: 'USS DWIGHT D. EISENHOWER (CVN-69)', mmsi: '369970669', flag: 'US', shipType: 'Aircraft Carrier Strike Group', lat: 14.85, lng: 42.60, speed: 22, heading: 140, status: 'Combat Operations', strikeGroup: 'Carrier Strike Group 2 (CSG-2)', zone: 'Southern Red Sea / Bab el-Mandeb' },
+    { name: 'USS ABRAHAM LINCOLN (CVN-72)', mmsi: '369970672', flag: 'US', shipType: 'Aircraft Carrier Strike Group', lat: 24.10, lng: 59.30, speed: 20, heading: 210, status: 'Active Patrol', strikeGroup: 'Carrier Strike Group 3 (CSG-3)', zone: 'North Arabian Sea / Gulf of Oman' },
+    { name: 'HMS DIAMOND (D34)', mmsi: '235010034', flag: 'GB', shipType: 'Type 45 Guided Missile Destroyer', lat: 13.20, lng: 43.10, speed: 18, heading: 320, status: 'Air Defense Escort', strikeGroup: 'Royal Navy Red Sea Task Group', zone: 'Bab el-Mandeb Chokepoint' },
+    { name: 'FS ALSACE (D656)', mmsi: '228065600', flag: 'FR', shipType: 'FREMM Multi-Mission Frigate', lat: 12.80, lng: 44.50, speed: 19, heading: 90, status: 'Operation Aspides Escort', strikeGroup: 'French Marine Nationale', zone: 'Gulf of Aden Transit Corridor' },
+    { name: 'PLAN SHANDONG (CV-17)', mmsi: '412000017', flag: 'CN', shipType: 'Aircraft Carrier Strike Group', lat: 20.80, lng: 122.50, speed: 16, heading: 60, status: 'Naval Combat Drills', strikeGroup: 'PLA Navy Carrier Strike Group', zone: 'Luzon Strait / Western Pacific' },
+    { name: 'JS KAGA (DDH-184)', mmsi: '431999184', flag: 'JP', shipType: 'Helicopter Destroyer (F-35B Carrier)', lat: 31.40, lng: 132.80, speed: 17, heading: 190, status: 'Anti-Submarine Patrol', strikeGroup: 'JMSDF Escort Flotilla 4', zone: 'East China Sea / Ryukyu Arc' },
+    { name: 'USS LABOON (DDG-58)', mmsi: '369970058', flag: 'US', shipType: 'Arleigh Burke Guided Missile Destroyer', lat: 15.60, lng: 41.80, speed: 24, heading: 175, status: 'Ballistic Missile Defense', strikeGroup: 'Operation Prosperity Guardian', zone: 'Central Red Sea' },
+    { name: 'INS VIKRANT (R11)', mmsi: '419001111', flag: 'IN', shipType: 'Indigenous Aircraft Carrier', lat: 14.50, lng: 72.80, speed: 18, heading: 160, status: 'Western Fleet Exercises', strikeGroup: 'Indian Navy Western Fleet', zone: 'Arabian Sea Corridor' },
+  ],
+
+  shodanLatest: [
+    { ip: '198.51.100.12', country: 'US', product: 'Siemens S7-1500 PLC / Modbus ICS', org: 'Municipal Water SCADA', ports: [80, 102, 502, 443], vulns: ['CVE-2023-46805', 'CVE-2024-21887'], tags: ['ics', 'scada'], sector: 'Water Treatment Infrastructure', protocol: 'Modbus / S7comm', cvssMax: 9.8, mitreTechniques: ['T0855', 'T0812'] },
+    { ip: '194.26.29.112', country: 'DE', product: 'Palo Alto PAN-OS GlobalProtect', org: 'Energy Grid Telemetry Egress', ports: [443, 8443], vulns: ['CVE-2024-3400'], tags: ['vpn', 'firewall'], sector: 'Electrical Power Grid', protocol: 'HTTPS / GlobalProtect', cvssMax: 10.0, mitreTechniques: ['T1190', 'T1059'] },
+    { ip: '185.196.220.45', country: 'NL', product: 'Ivanti Connect Secure SSL-VPN', org: 'Maritime Logistics Terminal', ports: [443, 8443], vulns: ['CVE-2023-46805', 'CVE-2024-21893'], tags: ['vpn'], sector: 'Maritime Port Operations', protocol: 'HTTPS / SAML', cvssMax: 9.8, mitreTechniques: ['T1190', 'T1078'] },
+    { ip: '140.112.2.34', country: 'TW', product: 'Advantech WebAccess SCADA', org: 'Semiconductor Fabrication Node', ports: [80, 502, 8080], vulns: ['CVE-2022-38606'], tags: ['ics', 'industrial'], sector: 'Critical Manufacturing', protocol: 'Modbus / WebAccess', cvssMax: 9.8, mitreTechniques: ['T0855'] },
+    { ip: '193.106.191.66', country: 'UA', product: 'Schneider Electric EcoStruxure', org: 'Substation Telecontrol Unit', ports: [502, 2404, 4840], vulns: ['CVE-2021-32955'], tags: ['ics', 'scada', 'substation'], sector: 'Transmission Substation', protocol: 'IEC 60870-5-104', cvssMax: 9.8, mitreTechniques: ['T0885'] },
+    { ip: '133.242.18.91', country: 'JP', product: 'Yokogawa CENTUM VP DCS', org: 'Petrochemical Refining Hub', ports: [443, 502, 10001], vulns: ['CVE-2023-2244'], tags: ['ics', 'refinery'], sector: 'Petroleum & Gas Pipeline', protocol: 'CENTUM Vnet/IP', cvssMax: 8.8, mitreTechniques: ['T0814'] },
+    { ip: '203.0.113.88', country: 'SG', product: 'Moxa NPort 5110 Serial Server', org: 'Container Gantry Automation', ports: [23, 80, 4800], vulns: ['CVE-2022-20705'], tags: ['ics', 'serial'], sector: 'Maritime Logistics Chokepoint', protocol: 'Telnet / NPort', cvssMax: 8.5, mitreTechniques: ['T0812'] },
+    { ip: '185.220.101.5', country: 'RU', product: 'MikroTik RouterOS Winbox', org: 'Autonomous System Transit Node', ports: [80, 443, 8291], vulns: ['CVE-2023-30799'], tags: ['router', 'telecom'], sector: 'Core Internet Routing', protocol: 'Winbox / BGP', cvssMax: 9.1, mitreTechniques: ['T1190'] }
+  ],
+
+  kev: [
+    { cveID: 'CVE-2024-3400', vendorProject: 'Palo Alto Networks', product: 'PAN-OS GlobalProtect', vulnerabilityName: 'Palo Alto PAN-OS Command Injection Vulnerability', cvss: 10.0, cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H', mitreAttack: 'T1190 Exploit Public-Facing Application', bod22_01: 'Immediate patch mandate or interface shutdown', dueDate: '2024-04-19', ransomware: true, exploitStatus: 'Known in wild' },
+    { cveID: 'CVE-2023-46805', vendorProject: 'Ivanti', product: 'Connect Secure and Policy Secure', vulnerabilityName: 'Ivanti Connect Secure Authentication Bypass', cvss: 9.8, cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', mitreAttack: 'T1078 Valid Accounts', bod22_01: 'Immediate mitigation script application', dueDate: '2024-01-22', ransomware: true, exploitStatus: 'Actively weaponized' },
+    { cveID: 'CVE-2024-21887', vendorProject: 'Ivanti', product: 'Connect Secure and Policy Secure', vulnerabilityName: 'Ivanti Connect Secure Command Injection', cvss: 9.1, cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H', mitreAttack: 'T1059 Command and Scripting Interpreter', bod22_01: 'Factory reset & appliance re-imaging required', dueDate: '2024-01-22', ransomware: true, exploitStatus: 'Widespread exploitation' },
+    { cveID: 'CVE-2024-1709', vendorProject: 'ConnectWise', product: 'ScreenConnect', vulnerabilityName: 'ConnectWise ScreenConnect Authentication Bypass', cvss: 10.0, cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H', mitreAttack: 'T1190 Exploit Public-Facing Application', bod22_01: 'Emergency patch within 24 hours', dueDate: '2024-02-29', ransomware: true, exploitStatus: 'Mass ransomware delivery' },
+    { cveID: 'CVE-2023-38606', vendorProject: 'Apple', product: 'iOS and iPadOS', vulnerabilityName: 'Apple iOS/iPadOS Kernel Memory Vulnerability (Operation Triangulation)', cvss: 9.8, cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', mitreAttack: 'T1068 Exploitation for Privilege Escalation', bod22_01: 'State-sponsored zero-click spyware vector', dueDate: '2023-07-14', ransomware: false, exploitStatus: 'Commercial spyware targeting' },
+    { cveID: 'CVE-2024-27198', vendorProject: 'JetBrains', product: 'TeamCity', vulnerabilityName: 'JetBrains TeamCity Authentication Bypass in CI/CD', cvss: 9.8, cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', mitreAttack: 'T1195 Supply Chain Compromise', bod22_01: 'CI/CD pipeline credential rotation mandated', dueDate: '2024-03-08', ransomware: true, exploitStatus: 'Nation-state CI/CD compromise' }
+  ],
+
+  botnetC2: [
+    { ip: '185.196.220.45', port: 443, malware: 'Cobalt Strike Team Server', asname: 'Bulletproof Host AS204128', country: 'NL', lat: 52.13, lng: 5.29, confidence: 95, threatType: 'botnet_cc', source: 'Abuse.ch Feodo / ThreatFox' },
+    { ip: '194.26.29.112', port: 8443, malware: 'QakBot / Pinkslipbot C2', asname: 'Host Europe GmbH AS20773', country: 'DE', lat: 51.16, lng: 10.45, confidence: 100, threatType: 'botnet_cc', source: 'Abuse.ch Feodo Tracker' },
+    { ip: '45.154.255.89', port: 4443, malware: 'IcedID Loader Command Node', asname: 'Stark Industries Solutions AS44477', country: 'RU', lat: 55.75, lng: 37.61, confidence: 90, threatType: 'botnet_cc', source: 'Abuse.ch ThreatFox' },
+    { ip: '91.92.245.18', port: 8080, malware: 'AsyncRAT C2 Infrastructure', asname: 'Mevspace Sp. z o.o. AS49981', country: 'PL', lat: 51.91, lng: 19.14, confidence: 92, threatType: 'botnet_cc', source: 'Abuse.ch ThreatFox' },
+    { ip: '198.51.100.77', port: 2222, malware: 'Mirai IoT Botnet Scanner', asname: 'DigitalOcean Autonomous System AS14061', country: 'US', lat: 37.75, lng: -95.71, confidence: 88, threatType: 'botnet_cc', source: 'Abuse.ch Feodo Tracker' },
+  ],
+
+  notams: [
+    { id: 'EASA-CZIB-2024-01', location: 'UKRAINE / SIMFEROPOL FIR', lat: 48.4, lng: 31.2, alt: 'SFC-UNL', description: 'Total civilian aviation prohibition due to military combat operations and active SAM engagements.', source: 'EASA Conflict Zone Information Bulletin' },
+    { id: 'FAA-KICZ-A0012/24', location: 'TEHRAN FIR (OIIX)', lat: 32.4, lng: 53.7, alt: 'SFC-FL320', description: 'Heightened risk to civil aviation operations from military anti-aircraft missile batteries and GPS spoofing.', source: 'FAA Flight Prohibition' },
+    { id: 'ICAO-NOTAM-SANA', location: 'SANAA / YEMEN FIR (OYSC)', lat: 15.5, lng: 48.5, alt: 'SFC-UNL', description: 'Airspace restriction due to armed conflict, anti-ship ballistic missile launches, and drone sorties.', source: 'ICAO Conflict Monitor' },
+    { id: 'EASA-CZIB-LEBANON', location: 'BEIRUT FIR (OLBA)', lat: 33.9, lng: 35.5, alt: 'SFC-FL250', description: 'Severe GPS spoofing and electronic interference affecting approach navigation aids.', source: 'EASA Safety Advisory' }
+  ],
+
   summary: {
-    total: 125,
+    total: 185,
     fetchedAt: new Date().toISOString(),
   }
 }

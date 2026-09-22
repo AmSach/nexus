@@ -1084,7 +1084,7 @@ export function satelliteToPoints(satData, layers) {
   }
 
   // ── Worldwide cyber threats + vulnerable infrastructure ─────────────────
-  if (layers.cyber) {
+  if (layers.cyber || layers.cve) {
     // Full 60-country geo-lookup
     const CLOCS = {
       'US':[37.1,-95.7],'CN':[35.8,104.2],'RU':[55.7,37.6],'DE':[51.2,10.4],
@@ -1299,7 +1299,7 @@ export function satelliteToPoints(satData, layers) {
   }
 
   // Exposed infrastructure (Shodan/GreyNoise/Censys) — separate 'vuln' layer
-  if (layers.vuln) {
+  if (layers.vuln || layers.cyber) {
     const CLOCS_V = {
       'US':[37.1,-95.7],'CN':[35.8,104.2],'RU':[55.7,37.6],'DE':[51.2,10.4],
       'NL':[52.1,5.3],'GB':[51.5,-0.1],'FR':[46.2,2.2],'UA':[48.4,31.2],
