@@ -117,15 +117,16 @@ export default function IntelMap({ articles }) {
     // ENV mode defaults — matches what the mapMode effect sets for 'environment'
     aircraft:true, ships:true, gdacs:true, firms:true, eonet:true,
     iss:true, launches:true, copernicus:true, sigmets:true, disease:true,
-    // Everything else off by default
+    earthquakes:true, volcanoes:true, hurricanes:true, globalFires:true,
+    // Everything else off by default in ENV mode
     hotspots:false, acled:false, milaircraft:false, warships:false, news:false,
     cyber:false, gpsjam:false, nuclear:false, humanitarian:false,
     vuln:false, cve:false, crowds:false, maritime:false,
-    iris:false, redditSignals:false, globalFires:false,
-    earthquakes:false, volcanoes:false, hurricanes:false, floods:false, weatherAlerts:false,
+    iris:false, redditSignals:false,
+    floods:false, weatherAlerts:false,
     notams:false, wikiEdits:false, bgp:false, viirs:false,
     telegram:false, preaction:false, darkfleet:false, sar:false,
-    ucdp:true, sanctions:false, osmMilitary:false, wikiConflicts:true, arms:false,
+    ucdp:false, sanctions:false, osmMilitary:false, wikiConflicts:false, arms:false,
   })
   const [autoRotate, setAutoRotate] = useState(true)
   const [mapMode,    setMapMode]    = useState('environment') // 'environment' | 'intelligence'
@@ -157,11 +158,12 @@ export default function IntelMap({ articles }) {
       setLayers(l => ({ ...l,
         aircraft:true, ships:true, gdacs:true, firms:true, eonet:true,
         iss:true, launches:true, copernicus:true, sigmets:true, disease:true,
+        earthquakes:true, volcanoes:true, hurricanes:true, globalFires:true,
         hotspots:false, acled:false, milaircraft:false, warships:false, news:false,
         cyber:false, gpsjam:false, nuclear:false, maritime:false, vuln:false, cve:false,
         humanitarian:false, crowds:false, redditSignals:false, notams:false, wikiEdits:false, bgp:false, viirs:false,
         telegram:false, preaction:false, darkfleet:false, sar:false,
-        earthquakes:false, volcanoes:false, hurricanes:false, floods:false, weatherAlerts:false,
+        floods:false, weatherAlerts:false,
       }))
     }
   }, [mapMode])
