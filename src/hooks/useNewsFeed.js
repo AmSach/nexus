@@ -112,33 +112,7 @@ function detectLang(text) {
 }
 
 async function autoTranslate(text) {
-  if (!text || text.length < 5) return text
-  // Fast path: skip if mostly ASCII (English/French/German/Spanish etc.)
-  const nonAscii = (text.match(/[^\x00-\x7F]/g) || []).length
-  if (nonAscii / text.length < 0.25) return text  // only CJK/Arabic/Cyrillic/etc.
-  if (translateCallsThisSession >= MAX_TRANSLATE_PER_SESSION) return text
-  const cacheKey = text.slice(0, 60)
-  if (translationCache.has(cacheKey)) return translationCache.get(cacheKey)
-  const srcLang = detectLang(text) || 'ru'  // default Cyrillic if undetected
-  translateCallsThisSession++
-  try {
-    const r = await fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text.slice(0, 200)) + '&langpair=' + srcLang + '|en', { signal: AbortSignal.timeout(1500) })
-    if (r.status === 429) {
-      // Immediately freeze further translation attempts if API signals rate limiting
-      translateCallsThisSession = MAX_TRANSLATE_PER_SESSION
-      return text
-    }
-    if (!r.ok) return text
-    const d = await r.json()
-    const t = d?.responseData?.translatedText
-    if (t && t.length > 5 && t !== text && !t.includes('MYMEMORY')) {
-      translationCache.set(cacheKey, t + ' [tr]')
-      return t + ' [tr]'
-    }
-  } catch {
-    // On timeout or failure, skip subsequent requests
-    translateCallsThisSession += 2
-  }
+  // Preserve original title immediately; avoid unprompted network translation socket exhaustion
   return text
 }
 

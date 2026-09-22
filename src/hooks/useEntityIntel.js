@@ -185,12 +185,11 @@ async function synthesizeGroq(name, data, groqKey) {
   if(wikiLinks?.links?.length) sections.push(`=== WIKIPEDIA LINKED ENTITIES ===\n${wikiLinks.links.slice(0,20).join(', ')}\nCategories: ${wikiLinks.categories?.slice(0,10).join(', ')}`)
   if(!sections.length) return null
 
-  const hasFlags=icij?.length||sanctions?.length||occrp?.length
-  const totalNews=(gdelt?.articleCount||0)+(newsapi?.length||0)+(googleNews?.length||0)+(bingNews?.length||0)+(rssNews?.length||0)+(reddit?.length||0)
-
-  const _MODELS=['llama-3.3-70b-versatile','llama-3.1-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it','llama3-70b-8192','llama3-8b-8192']
-  for(const _m of _MODELS){try{
-    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+  if (!groqKey || groqKey.trim().length < 10) return null
+  const _MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+  for (const _m of _MODELS) {
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${groqKey}`},
       signal:AbortSignal.timeout(60000),

@@ -4,15 +4,9 @@ import { useStore } from '../store'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 // Model fallback chain — tries each in order until one succeeds
-// Primary is highest quality; fallbacks activate on rate-limit (429) or model errors
 const MODELS = [
   'llama-3.3-70b-versatile',        // Primary: best quality, 128K context
-  'llama-3.1-70b-versatile',        // Fallback 1: stable 70B
-  'llama-3.1-8b-instant',           // Fallback 2: fast, lower quality
-  'mixtral-8x7b-32768',             // Fallback 3: Mixtral 32K context
-  'gemma2-9b-it',                   // Fallback 4: Google Gemma
-  'llama3-70b-8192',                // Fallback 5: Llama3 70B 8K
-  'llama3-8b-8192',                 // Fallback 6: smallest, most available
+  'llama-3.1-8b-instant',           // Fallback 1: fast 8B
 ]
 const MODEL = MODELS[0]  // keep for backward compat
 
@@ -26,9 +20,10 @@ const SYS = `You are a senior intelligence analyst. Non-negotiable rules:
 - If a signal contradicts another: flag the contradiction explicitly.`
 
 async function streamWithModel(key, model, sysOverride, userPrompt, onToken, maxTok) {
+  if (!key || key.trim().length < 10) throw new Error('API key required')
   const r = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key.trim()}` },
     body: JSON.stringify({
       model,
       messages: [

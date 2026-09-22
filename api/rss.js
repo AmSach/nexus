@@ -152,10 +152,10 @@ export default async function handler(req, res) {
 
   try {
     const txt = await fetchURL(url)
-    if (!txt) return res.status(502).json({ error: 'All fetch attempts failed for ' + url, items: [] })
+    if (!txt) return res.status(200).json({ status: 'warn', error: 'All fetch attempts failed for ' + url, items: [] })
     const parsed = parseRSS(txt, url).slice(0, parseInt(count))
     return res.status(200).json({ status: 'ok', items: parsed, count: parsed.length })
   } catch (e) {
-    return res.status(500).json({ error: e.message, items: [] })
+    return res.status(200).json({ status: 'error', error: e.message, items: [] })
   }
 }

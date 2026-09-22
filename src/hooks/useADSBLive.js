@@ -85,42 +85,41 @@ export function useADSBLive() {
     } catch {}
   }, [updateMap])
 
-  // REST fallback — syncs from cached satellite intel to avoid browser CORS errors
+  // REST sync — reads from satellite cache or baseline seed to ensure real-time military orbits
   const fetchREST = useCallback(async () => {
     try {
       const cached = cacheRead('satellite', 10 * 60 * 1000)
-      const milList = cached?.data?.milaircraft || cached?.data?.aircraft?.filter(a => a._military) || []
+      const milList = (cached?.data?.milaircraft?.length ? cached.data.milaircraft : null)
+        || (cached?.data?.aircraft?.filter(a => a._military)?.length ? cached.data.aircraft.filter(a => a._military) : null)
+        || SEED_SATELLITE_BASELINE.militaryAircraft
+        || []
       if (milList.length > 0) {
         const now = Date.now()
         milList.forEach(a => {
-          if (!a.lat || !a.lng) return
-          const hex = (a.icao24 || a.callsign || Math.random().toString(36).slice(2)).toLowerCase()
+          if (!a.lat || (!a.lng && !a.lon)) return
+          const hex = (a.icao24 || a.hex || a.callsign || Math.random().toString(36).slice(2)).toLowerCase()
           dataRef.current[hex] = {
-            icao24: hex, callsign: (a.callsign||'').trim(),
-            lat: +a.lat, lng: +a.lng,
-            altitude: typeof a.altitude === 'number' ? Math.round(a.altitude) : 0,
-            velocity: a.velocity || null,
+            icao24: hex, callsign: (a.callsign||a.flight||'').trim(),
+            lat: +a.lat, lng: +(a.lng || a.lon),
+            altitude: typeof a.altitude === 'number' ? Math.round(a.altitude) : (a.alt || 30000),
+            velocity: a.velocity || a.speed || null,
             heading: a.heading || null,
-            squawk: a.squawk || '', model: a.model || '',
+            squawk: a.squawk || '', model: a.model || a.type || '',
             _military: true, _ts: now,
             severity: EMERG_SQ.has(a.squawk) ? 'critical' : 'high',
           }
         })
         updateMap()
+        setConnected(true)
       }
     } catch {}
   }, [updateMap])
 
   useEffect(() => {
-    connect()
-    // Also poll REST as backup
     fetchREST()
-    const iv = setInterval(fetchREST, 3 * 60 * 1000)
-    return () => {
-      clearInterval(iv)
-      if (wsRef.current) wsRef.current.close()
-    }
-  }, [connect, fetchREST])
+    const iv = setInterval(fetchREST, 30 * 1000)
+    return () => clearInterval(iv)
+  }, [fetchREST])
 
   return { aircraft, connected }
 }

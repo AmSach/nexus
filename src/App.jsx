@@ -32,7 +32,28 @@ class ErrBound extends React.Component {
 }
 
 export default function App() {
-  const { tab, collapsed } = useStore()
+  const { tab, setTab, collapsed } = useStore()
+
+  // Hash-based deep linking (e.g. #map, #board, #health, #vox)
+  React.useEffect(() => {
+    const syncFromHash = () => {
+      const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
+      if (h && ['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox'].includes(h)) {
+        setTab(h)
+      }
+    }
+    syncFromHash()
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
+  }, [setTab])
+
+  // Sync hash when tab changes
+  React.useEffect(() => {
+    if (tab && window.location.hash.replace(/^#\/?/, '').toLowerCase() !== tab) {
+      window.location.hash = tab
+    }
+  }, [tab])
+
   const { articles = [], loading, synced, refetch, translating, translateCount } = useNewsFeed()
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:'var(--void)' }}>
