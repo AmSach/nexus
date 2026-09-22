@@ -388,6 +388,14 @@ export default async function handler(req, res) {
         } catch {}
       })
 
+      // Await OpenSky regional bounding boxes immediately (~2-3s fast public response)
+      try {
+        await Promise.allSettled(openSkyPromises)
+        // Store progressive results immediately so early timeout returns live data
+        results.aircraft = all.filter(a => a.lat && a.lng !== undefined).slice(0, 2500)
+        results.aircraftEmergency = all.filter(a => a.severity === 'critical' || a.severity === 'high')
+      } catch (e) {}
+
       // adsb.fi zones — Vercel IPs often blocked but try anyway
       // No stagger — all fire simultaneously, 10s timeout each
       await Promise.allSettled(zones.map(async zone => {
@@ -508,7 +516,7 @@ export default async function handler(req, res) {
         await Promise.allSettled(openSkyPromises)
       } catch (e) {}
 
-      results.aircraft = all.filter(a => a.lat && a.lng !== undefined)
+      results.aircraft = all.filter(a => a.lat && a.lng !== undefined).slice(0, 2500)
       results.aircraftEmergency = all.filter(a => a.severity === 'critical' || a.severity === 'high')
     })(),
 

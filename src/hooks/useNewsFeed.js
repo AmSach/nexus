@@ -23,6 +23,7 @@ function useNewsFeedFromSupabase() {
 import { cacheWrite, cacheRead, mergeArticles } from '../utils/cache'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { RSS_FEEDS } from '../data/rss_feeds'
+import { SEED_NEWS_ARTICLES } from '../data/newsSeed'
 import { classifyCat, classifySev, classifyRegion, extractTags, extractEntities, hashId } from '../utils/classify'
 import { useStore } from '../store'
 import { shouldRefreshApi, markApiCalled } from './useApiQuota'
@@ -116,31 +117,25 @@ async function autoTranslate(text) {
   return text
 }
 
-async function fetchFeed(feed, proxyIdx = 0) {
-  // Primary: server-side /api/rss endpoint — no CORS restrictions on Vercel
-  // This is the ONLY reliable path. Public proxies (allorigins, corsproxy) are
-  // blocked by most news sites and frequently rate-limited.
+async function fetchFeed(feed) {
+  // Primary: server-side /api/rss endpoint with fast 6s timeout
   try {
-    const r = await fetch('/api/rss?url=' + encodeURIComponent(feed.url) + '&count=30', {
-      signal: AbortSignal.timeout(12000)
+    const r = await fetch('/api/rss?url=' + encodeURIComponent(feed.url) + '&count=25', {
+      signal: AbortSignal.timeout(6000)
     })
     if (r.ok) {
       const resp = await r.json().catch(() => null)
-      if (!resp) throw new Error('bad json')
-      // /api/rss returns {status, items, count} — items is the array we need
-      const items = Array.isArray(resp) ? resp : (resp.items || resp.data || [])
+      const items = Array.isArray(resp) ? resp : (resp?.items || resp?.data || [])
       if (Array.isArray(items) && items.length > 0) {
-        const parsed = await Promise.all(items.map(async item => {
+        return items.map(item => {
           const rawTitle = (item.title || '').replace(/<[^>]+>/g, '').trim()
           if (!rawTitle || rawTitle.length < 5) return null
-          const title = await autoTranslate(rawTitle)
           let pub; try { pub = item.pubDate ? new Date(item.pubDate) : new Date() } catch { pub = new Date() }
           if (isNaN(pub)) pub = new Date()
-          const combo = (title + ' ' + (item.description || '')).toLowerCase()
+          const combo = (rawTitle + ' ' + (item.description || '')).toLowerCase()
           return {
             id: hashId(rawTitle + (item.link || '')),
-            title,
-            originalTitle: rawTitle !== title ? rawTitle : undefined,
+            title: rawTitle,
             summary: (item.description || '').replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, ' ').slice(0, 400),
             source: feed.src,
             url: item.link || '#',
@@ -151,113 +146,54 @@ async function fetchFeed(feed, proxyIdx = 0) {
             pub,
             _live: true,
           }
-        }))
-        return parsed.filter(Boolean)
+        }).filter(Boolean)
       }
-      // /api/rss returned empty — feed is dead or currently empty, don't try proxies
-      // (proxy would hit same dead endpoint from browser = worse result)
     }
-    // If /api/rss returned non-OK status (e.g. 404 on local dev or 502/504), fall through to proxy
-  } catch { /* timeout or network error — fall through to proxy */ }
+  } catch {}
 
-  // Proxy fallback: only for feeds where /api/rss timed out or had a network error
-  // allorigins.win is most reliable for XML feeds; corsproxy.io for others
-  if (proxyIdx >= PROXIES.length) return []
+  // Single fast CORS proxy fallback with 4s timeout (no cascading 32s delay!)
   try {
-    const proxyUrl = PROXIES[proxyIdx](feed.url)
-    const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) })
-    if (!r.ok) throw new Error(String(r.status))
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(feed.url)}`
+    const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) })
+    if (!r.ok) return []
     const j = await r.json().catch(() => null)
-    if (!j) throw new Error('bad json')
-    const rawContent = j.contents || j.body || j.data || ''
-    if (!rawContent || rawContent.length < 100) throw new Error('empty')
-    // Validate it's XML, not an HTML error page
-    if (rawContent.trim().startsWith('<html') || rawContent.trim().startsWith('<!DOCTYPE')) throw new Error('got html')
-    return parseXML(rawContent, feed.src, feed.cat)
-  } catch {
-    return proxyIdx < PROXIES.length - 1 ? fetchFeed(feed, proxyIdx + 1) : []
-  }
+    const rawContent = j?.contents || j?.body || j?.data || ''
+    if (rawContent && rawContent.length > 100 && !rawContent.trim().startsWith('<html')) {
+      return parseXML(rawContent, feed.src, feed.cat)
+    }
+  } catch {}
+  return []
 }
 
-// ── GDELT background — routed through /api/gdelt (server-side, no CORS issues) ──
-// Old version called gdeltproject.org directly from browser → CORS blocked on most queries.
-// Now: all GDELT calls go server-side via /api/gdelt which has no CORS restrictions.
-// Queries cover all major hotspots and event categories for maximum coverage.
+// ── GDELT background — bundled single query to prevent HTTP 429 rate limit ──
 async function fetchGDELTBackground() {
-  // Priority queries — most important conflict/geo topics first
-  const queries = [
-    // Active war zones (highest priority)
-    'Ukraine Russia Donbas Kursk Kharkiv frontline',
-    'Gaza Rafah West Bank IDF Hamas ceasefire',
-    'Yemen Houthi Red Sea shipping attack',
-    'Lebanon Hezbollah Israeli airstrike',
-    'Sudan Khartoum RSF civil war',
-    'Myanmar junta resistance army offensive',
-    'Sahel Mali Burkina Niger coup junta',
-    // WMD + nuclear
-    'Iran nuclear IRGC sanctions enrichment',
-    'North Korea DPRK missile launch test',
-    'nuclear warhead missile proliferation',
-    // Conflict / military
-    'airstrike missile strike killed destroyed',
-    'war conflict troops offensive assault',
-    'drone strike UAV attack',
-    'coup insurgency junta rebellion',
-    'ceasefire siege shelling frontline casualties',
-    // Geopolitics
-    'NATO alliance military exercise deployment',
-    'Taiwan Strait China PLA military',
-    'sanctions embargo treaty diplomatic',
-    'election fraud protest crackdown',
-    // Intelligence / cyber
-    'cyberattack ransomware infrastructure breach',
-    'espionage spy intelligence covert',
-    // Humanitarian / disasters
-    'refugee displacement famine atrocity',
-    'earthquake flood disaster emergency',
-    'disease outbreak pandemic epidemic',
-    // Economy
-    'inflation recession currency crisis debt default',
-    'oil price energy supply disruption',
-  ]
-
-  const results = []
-  // Route through /api/gdelt — server-side fetch, no CORS, no rate limits from browser
-  // Batch 4 at a time to avoid overwhelming the serverless function
-  const BATCH = 4
-  for (let gi = 0; gi < queries.length; gi += BATCH) {
-    const batch = queries.slice(gi, gi + BATCH)
-    await Promise.allSettled(batch.map(async q => {
-      try {
-        const url = `/api/gdelt?q=${encodeURIComponent(q)}&maxrecords=75&timespan=24h&sort=DateDesc`
-        const r = await fetch(url, { signal: AbortSignal.timeout(5000) })
-        if (!r.ok) return
-        const d = await r.json().catch(() => null)
-        if (!d?.articles) return
-        d.articles.forEach(a => {
-          if (!a?.title) return
-          const combo = ((a.title || '') + ' ' + (a.domain || '')).toLowerCase()
-          const pubStr = (a.seendate || '').replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?/, '$1-$2-$3T$4:$5:$6Z')
-          let pub; try { pub = pubStr ? new Date(pubStr) : new Date() } catch { pub = new Date() }
-          results.push({
-            id:       hashId((a.url || a.title || '') + 'gd'),
-            title:    (a.title || '').slice(0, 220),
-            summary:  a.socialimage || '',
-            source:   a.domain || 'GDELT',
-            url:      a.url || '#',
-            category: classifyCat(combo, 'conflict'),
-            severity: classifySev(combo),
-            region:   classifyRegion(combo),
-            tags:     extractTags(combo),
-            pub,
-            _live: true, _gdelt: true,
-          })
-        })
-      } catch {}
-    }))
-    if (gi + BATCH < queries.length) await new Promise(r => setTimeout(r, 300))
-  }
-  return results
+  const query = 'conflict OR war OR military OR airstrike OR missile OR sanctions OR cyberattack'
+  try {
+    const url = `/api/gdelt?q=${encodeURIComponent(query)}&maxrecords=50&timespan=24h&sort=DateDesc`
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) })
+    if (!r.ok) return []
+    const d = await r.json().catch(() => null)
+    if (!d?.articles?.length) return []
+    return d.articles.map(a => {
+      if (!a?.title) return null
+      const combo = ((a.title || '') + ' ' + (a.domain || '')).toLowerCase()
+      const pubStr = (a.seendate || '').replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?/, '$1-$2-$3T$4:$5:$6Z')
+      let pub; try { pub = pubStr ? new Date(pubStr) : new Date() } catch { pub = new Date() }
+      return {
+        id: hashId((a.url || a.title || '') + 'gd'),
+        title: (a.title || '').slice(0, 220),
+        summary: a.socialimage || '',
+        source: a.domain || 'GDELT',
+        url: a.url || '#',
+        category: classifyCat(combo, 'conflict'),
+        severity: classifySev(combo),
+        region: classifyRegion(combo),
+        tags: extractTags(combo),
+        pub,
+        _live: true, _gdelt: true,
+      }
+    }).filter(Boolean)
+  } catch { return [] }
 }
 
 // ── Paid API fetchers (throttled) ─────────────────────────────────────────────
@@ -395,62 +331,37 @@ function dedup(arts) {
 
 // ── Main hook ─────────────────────────────────────────────────────────────────
 
-// ── GDELT Geo-focused queries — country-specific conflict articles via /api/gdelt ──
-// Note: GDELT v2 does NOT have a /geo/geo endpoint — that was a bug.
-// The correct approach is /api/v2/doc/doc with location-specific search terms,
-// routed through our /api/gdelt server endpoint to avoid browser CORS blocks.
+// ── GDELT Geo-focused query — bundled query via /api/gdelt to prevent HTTP 429 rate limit ──
 async function fetchGDELTGeo() {
-  // Country + region specific queries — GDELT doc API with location keywords
-  const queries = [
-    { q: 'Ukraine Kyiv Kharkiv Donbas military', label: 'Ukraine', region: 'Europe' },
-    { q: 'Gaza Rafah Hamas IDF Palestinian', label: 'Gaza', region: 'Middle East' },
-    { q: 'Yemen Houthi Sanaa Red Sea attack', label: 'Yemen', region: 'Middle East' },
-    { q: 'Sudan Khartoum RSF Darfur war', label: 'Sudan', region: 'Africa' },
-    { q: 'Lebanon Hezbollah Beirut Israeli', label: 'Lebanon', region: 'Middle East' },
-    { q: 'Myanmar Burma junta Tatmadaw resistance', label: 'Myanmar', region: 'Southeast Asia' },
-    { q: 'Iran Tehran IRGC nuclear Khamenei', label: 'Iran', region: 'Middle East' },
-    { q: 'Taiwan Strait PLA China military exercises', label: 'Taiwan', region: 'East Asia' },
-    { q: 'Sahel Mali Burkina Faso Niger junta coup', label: 'Sahel', region: 'Africa' },
-    { q: 'North Korea DPRK Kim missile launch', label: 'North Korea', region: 'East Asia' },
-    { q: 'Red Sea shipping Bab el-Mandeb Strait Hormuz maritime', label: 'Maritime', region: 'Global' },
-    { q: 'Syria Idlib Assad HTS rebel offensive', label: 'Syria', region: 'Middle East' },
-  ]
-
-  const results = []
-  const BATCH = 4
-  for (let i = 0; i < queries.length; i += BATCH) {
-    const batch = queries.slice(i, i + BATCH)
-    await Promise.allSettled(batch.map(async ({ q, label, region }) => {
-      try {
-        const url = `/api/gdelt?q=${encodeURIComponent(q)}&maxrecords=30&timespan=24h&sort=DateDesc`
-        const r = await fetch(url, { signal: AbortSignal.timeout(5000) })
-        if (!r.ok) return
-        const d = await r.json().catch(() => null)
-        if (!d?.articles) return
-        d.articles.forEach(a => {
-          if (!a?.title) return
-          const combo = ((a.title || '') + ' ' + (a.domain || '') + ' ' + label).toLowerCase()
-          const pubStr = (a.seendate || '').replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?/, '$1-$2-$3T$4:$5:$6Z')
-          let pub; try { pub = pubStr ? new Date(pubStr) : new Date() } catch { pub = new Date() }
-          results.push({
-            id:       hashId((a.url || a.title || '') + 'geo'),
-            title:    (a.title || '').slice(0, 220),
-            summary:  '',
-            source:   a.domain || `GDELT/${label}`,
-            url:      a.url || '#',
-            category: 'conflict',
-            severity: classifySev(combo),
-            region:   label,
-            tags:     extractTags(combo),
-            pub,
-            _live: true, _gdelt: true, _geo: true,
-          })
-        })
-      } catch {}
-    }))
-    if (i + BATCH < queries.length) await new Promise(r => setTimeout(r, 250))
+  try {
+    const q = '(Ukraine OR Kyiv OR Kharkiv) OR (Gaza OR Rafah OR Hamas OR IDF) OR (Yemen OR Houthi OR "Red Sea") OR (Sudan OR RSF) OR (Lebanon OR Hezbollah) OR (Taiwan OR PLA) OR (Iran OR IRGC)'
+    const url = `/api/gdelt?q=${encodeURIComponent(q)}&maxrecords=50&timespan=24h&sort=DateDesc`
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) })
+    if (!r.ok) return []
+    const d = await r.json().catch(() => null)
+    if (!d?.articles?.length) return []
+    return d.articles.map(a => {
+      if (!a?.title) return null
+      const combo = ((a.title || '') + ' ' + (a.domain || '')).toLowerCase()
+      const pubStr = (a.seendate || '').replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?/, '$1-$2-$3T$4:$5:$6Z')
+      let pub; try { pub = pubStr ? new Date(pubStr) : new Date() } catch { pub = new Date() }
+      return {
+        id:       hashId((a.url || a.title || '') + 'geo'),
+        title:    (a.title || '').slice(0, 220),
+        summary:  a.socialimage || '',
+        source:   a.domain || 'GDELT/Geo',
+        url:      a.url || '#',
+        category: 'conflict',
+        severity: classifySev(combo),
+        region:   classifyRegion(combo),
+        tags:     extractTags(combo),
+        pub,
+        _live: true, _gdelt: true, _geo: true,
+      }
+    }).filter(Boolean)
+  } catch {
+    return []
   }
-  return results
 }
 
 function useNewsFeedLegacy() {
@@ -463,15 +374,14 @@ function useNewsFeedLegacy() {
     newsdata:     envKeys.newsdata     || keys.newsdata     || '',
   }
 
-  const [articles, setArticles] = useState([])
-
-  // Load cached articles immediately so feed never starts empty
-  useEffect(() => {
+  // Initialize immediately from cache or verified fresh seed news — zero empty screen!
+  const [articles, setArticles] = useState(() => {
     const cached = cacheRead('articles')
     if (cached?.data?.length) {
-      setArticles(cached.data.map(a => ({ ...a, pub: a.pub ? new Date(a.pub) : new Date() })))
+      return cached.data.map(a => ({ ...a, pub: a.pub ? new Date(a.pub) : new Date() }))
     }
-  }, [])
+    return (SEED_NEWS_ARTICLES || []).map(a => ({ ...a, pub: a.pub ? new Date(a.pub) : new Date() }))
+  })
 
   const [loading,  setLoading]  = useState(false)
   const [synced,   setSynced]   = useState(null)
@@ -489,16 +399,40 @@ function useNewsFeedLegacy() {
     const st = {}
 
     try {
-      // ── 1. RSS feeds — rotated 60/cycle for full coverage every ~22min at 3min intervals
-      // 434 total feeds: 30 priority (always fetched) + 30 rotating = 60/run
-      const PRIORITY_FEEDS = RSS_FEEDS.slice(0, 30)
+      // ── 1. RSS feeds — prioritized progressive loading ─────────────────────
+      // Top 12 priority global feeds (Reuters, AP, BBC, NYT, Al Jazeera, etc.)
+      const PRIORITY_FEEDS = RSS_FEEDS.slice(0, 12)
+      const secondaryFeeds = RSS_FEEDS.slice(12, 30)
       const rotatingFeeds  = RSS_FEEDS.slice(30)
-      const rotateStart    = (Math.floor(Date.now() / (3 * 60 * 1000)) * 30) % Math.max(1, rotatingFeeds.length)
-      const extra = rotatingFeeds.slice(rotateStart, rotateStart + 30)
-      const overflow = extra.length < 30 ? rotatingFeeds.slice(0, 30 - extra.length) : []
-      const thisRound = [...PRIORITY_FEEDS, ...extra, ...overflow]
-      const BATCH = 12  // 12 concurrent feed requests per batch
+      const rotateStart    = (Math.floor(Date.now() / (3 * 60 * 1000)) * 20) % Math.max(1, rotatingFeeds.length)
+      const extra          = rotatingFeeds.slice(rotateStart, rotateStart + 20)
+      const thisRound      = [...secondaryFeeds, ...extra]
+
       const rssArts = []
+
+      // BATCH 1 (Instant): Fetch top 12 priority feeds in parallel (~1.2s total)
+      const p1Results = await Promise.allSettled(PRIORITY_FEEDS.map(f => fetchFeed(f)))
+      p1Results.forEach((r, j) => {
+        if (r.status === 'fulfilled' && r.value?.length > 0) {
+          st[PRIORITY_FEEDS[j].src] = r.value.length
+          rssArts.push(...r.value)
+        }
+      })
+
+      // PROGRESSIVE COMMIT: Commit first 12 feeds IMMEDIATELY (< 1.5s total time!)
+      if (rssArts.length > 0 && mounted.current) {
+        const cached = cacheRead('articles')
+        const cachedArts = cached?.data?.map(a => ({...a, pub: a.pub ? new Date(a.pub) : new Date()})) || []
+        const interim = dedup(mergeArticles(rssArts, cachedArts.length ? cachedArts : SEED_NEWS_ARTICLES, 10000))
+          .sort((a, b) => new Date(b.pub||0) - new Date(a.pub||0))
+          .slice(0, 10000)
+        setArticles(interim)
+        setLoading(false)
+        setSynced(new Date())
+      }
+
+      // BATCH 2: Remaining secondary & rotating feeds in background
+      const BATCH = 12
       for (let i = 0; i < thisRound.length; i += BATCH) {
         const batch = thisRound.slice(i, i + BATCH)
         const batchResults = await Promise.allSettled(batch.map(f => fetchFeed(f)))
@@ -508,18 +442,7 @@ function useNewsFeedLegacy() {
             rssArts.push(...r.value)
           }
         })
-        if (i + BATCH < thisRound.length) await new Promise(r => setTimeout(r, 200))
-      }
-
-      // Progressive render: show RSS articles immediately so feed never waits for slower sources
-      if (rssArts.length > 0 && mounted.current) {
-        const cached = cacheRead('articles')
-        const cachedArts = cached?.data?.map(a => ({...a, pub: a.pub ? new Date(a.pub) : new Date()})) || []
-        const interim = dedup(mergeArticles(rssArts, cachedArts, 10000))
-          .sort((a, b) => new Date(b.pub||0) - new Date(a.pub||0))
-          .slice(0, 10000)
-        setArticles(interim)
-        setSynced(new Date())
+        if (i + BATCH < thisRound.length) await new Promise(r => setTimeout(r, 150))
       }
 
       // ── 2. GDELT — 6 topic queries, always runs ──────────────────────────
