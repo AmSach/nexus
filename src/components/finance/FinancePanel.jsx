@@ -226,7 +226,7 @@ const TABS = [
 ]
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function FinancePanel() {
+export default function FinancePanel({ articles = [] }) {
   const { quotes, crypto, fx, history, adultEcon, loading, lastUpdate, refresh, analytics, fetchHistoryForSymbol } = useFinanceIntel()
   // FRED data requires an API key — show macro data from quotes when available
   const fredData = null
@@ -318,7 +318,7 @@ export default function FinancePanel() {
 
         {/* ── ECONOMIC & MACRO TERMINAL TABS ── */}
         {['chokepoints', 'correlations', 'alpha', 'stress', 'export'].includes(tab) && (
-          <EconomicResearchTerminal activeSubTab={tab} />
+          <EconomicResearchTerminal activeSubTab={tab} articles={articles} />
         )}
 
         {/* ── OVERVIEW ── */}

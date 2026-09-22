@@ -97,7 +97,7 @@ export default function App() {
               <div style={{ display: tab==='map' ? 'contents' : 'none' }}><ErrBound><IntelMap articles={articles} active={tab==='map'} /></ErrBound></div>
             )}
             {visited.has('finnews') && (
-              <div style={{ display: tab==='finnews' ? 'contents' : 'none' }}><ErrBound><FinancePanel /></ErrBound></div>
+              <div style={{ display: tab==='finnews' ? 'contents' : 'none' }}><ErrBound><FinancePanel articles={articles} /></ErrBound></div>
             )}
             {visited.has('search') && (
               <div style={{ display: tab==='search' ? 'contents' : 'none' }}><ErrBound><GDELTSearch /></ErrBound></div>

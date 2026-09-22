@@ -803,10 +803,11 @@ export function satelliteToPoints(satData, layers) {
   if (layers.notams && satData.notams?.length) {
     satData.notams.forEach(n => {
       if (!n.lat||!n.lng||isNaN(n.lat)||isNaN(n.lng)) return
+      const title = n.title || n.id || n.location || 'Airspace Restriction'
       pts.push({ lat:n.lat, lng:n.lng, type:'notam', severity:n.isMilitary?'high':'low',
-        name:`✈ NOTAM: ${n.title?.slice(0,60)}`,
-        desc:n.description?.slice(0,300), url:n.url||'https://notams.faa.gov',
-        meta:{source:n.source, isMilitary:n.isMilitary}, })
+        name:`✈ NOTAM: ${title.slice(0,60)}`,
+        desc:n.description?.slice(0,300) || title, url:n.url||'https://notams.faa.gov',
+        meta:{source:n.source || 'FAA/EASA', isMilitary:n.isMilitary, id:n.id, location:n.location}, })
     })
   }
 
@@ -819,15 +820,17 @@ export function satelliteToPoints(satData, layers) {
       'hezbollah':[33.9,35.5],'hamas':[31.4,34.4],'islamic state':[33.5,43.7],
     }
     satData.wikiEdits.forEach(w => {
-      const t = (w.page||w.title||'').toLowerCase()
-      let lat=0, lng=0
-      for (const [k,co] of Object.entries(WIKI_LOCS)) { if (t.includes(k)) { [lat,lng]=co; break } }
-      if (!lat) return
-      const j = () => (Math.random()-0.5)*3
-      pts.push({ lat:lat+j(), lng:lng+j(), type:'wikiEdit', severity:'low',
-        name:`📝 Wiki: ${w.page||'Unknown'}`,
-        desc:`Edited by ${w.user}: ${w.comment?.slice(0,200)||'no comment'}`,
-        url:w.url, meta:{source:'Wikipedia Edits', user:w.user} })
+      let lat = w.lat, lng = w.lng
+      if (!lat || !lng) {
+        const t = (w.page||w.title||'').toLowerCase()
+        for (const [k,co] of Object.entries(WIKI_LOCS)) { if (t.includes(k)) { [lat,lng]=co; break } }
+      }
+      if (!lat || !lng) return
+      const j = () => (Math.random()-0.5)*1.5
+      pts.push({ lat:lat+j(), lng:lng+j(), type:'wikiEdit', severity:w.severity||'medium',
+        name:`📝 Wiki: ${w.page||w.title||'Unknown'}`,
+        desc:`Edited by ${w.user||'OSINT Editor'}: ${w.summary||w.comment||'Article updated'} (${w.diff||''})`,
+        url:w.url, meta:{source:'Wikipedia Edits', user:w.user, diff:w.diff} })
     })
   }
 
@@ -903,11 +906,12 @@ export function satelliteToPoints(satData, layers) {
   if (layers.viirs && satData.viirsNightlights?.length) {
     satData.viirsNightlights.forEach(v => {
       if (!v.lat||!v.lng) return
+      const rad = typeof v.brightness === 'number' ? `${v.brightness.toFixed(0)}K` : (v.radiance || 'High Radiance')
       pts.push({ lat:v.lat, lng:v.lng, type:'viirs', severity:v.severity||'high',
-        name:`🛰 VIIRS Anomaly (${v.brightness?.toFixed(0)}K) — ${v.zone}`,
-        desc:`NASA VIIRS nightlight anomaly. Brightness: ${v.brightness?.toFixed(0)}K. Zone: ${v.zone}. Confidence: ${v.confidence}`,
-        url:'https://firms.modaps.eosdis.nasa.gov',
-        meta:{source:'NASA VIIRS', brightness:v.brightness, zone:v.zone} })
+        name:`🛰 VIIRS Anomaly (${rad}) — ${v.title || v.zone || 'Zone'}`,
+        desc:`NASA VIIRS nightlight anomaly. Radiance: ${rad}. Zone: ${v.zone || v.title || 'Target Sector'}. ${v.desc || ''}`,
+        url:v.url || 'https://firms.modaps.eosdis.nasa.gov',
+        meta:{source:'NASA VIIRS', brightness:v.brightness, zone:v.zone, radiance:v.radiance} })
     })
   }
 
@@ -915,21 +919,16 @@ export function satelliteToPoints(satData, layers) {
   if ((layers.preaction || true) && satData.preActionIndicators?.length) {
     satData.preActionIndicators.forEach(p => {
       if (!p.lat||!p.lng) return
-      const typeMap = {
-        loitering_aircraft:  'milaircraft',
-        chokepoint_activity: 'warship',
-        seismic_anomaly:     'nuclear',
-        satellite_pass:      'viirs',
-      }
+      const title = p.title || p.name || 'Strategic Pre-Action Indicator'
       pts.push({
         lat:p.lat, lng:p.lng,
-        type: typeMap[p.type] || 'hotspot',
-        severity: p.severity || 'medium',
-        name: `⚡ ${p.name}`,
-        desc: `${p.significance||''} · category: ${p.category||''}`,
+        type: 'preaction',
+        severity: p.severity || 'high',
+        name: `⚡ ${title}`,
+        desc: `${p.desc || p.significance || 'Unusual strategic posture change detected.'} · Confidence: ${p.confidence || 'High'}${p.indicators ? ' · Indicators: ' + (Array.isArray(p.indicators) ? p.indicators.join(', ') : p.indicators) : ''}`,
         url: p.url||'',
-        pub: p.ts,
-        meta: { category:p.category, significance:p.significance },
+        pub: p.ts || new Date().toISOString(),
+        meta: { source: 'Pre-Action Strategic Indicators', category: p.category, confidence: p.confidence, indicators: p.indicators, significance: p.significance },
         _glow: true, _preAction: true,
       })
     })
@@ -1048,15 +1047,21 @@ export function satelliteToPoints(satData, layers) {
       'colombia':[4.7,-74.1],'honduras':[15.2,-86.2],'guatemala':[15.8,-90.2],
       'rohingya':[21.2,92.0],'indonesia':[-0.8,113.9],'philippines':[12.9,121.8],
     }
-    ;(satData.reliefweb||[]).forEach(rw => {
-      const t=((rw.name||'')+(rw.country||'')).toLowerCase(); let lat=0,lng=0
-      for(const [k,co] of Object.entries(HLOCS)){if(t.includes(k)){[lat,lng]=co;break}}
+    const list = [...(satData.reliefweb||[]), ...(satData.humanitarian||[])]
+    list.forEach(rw => {
+      let lat = rw.lat, lng = rw.lng
+      if (!lat || !lng) {
+        const t=((rw.name||rw.title||'')+(rw.country||'')).toLowerCase()
+        for(const [k,co] of Object.entries(HLOCS)){if(t.includes(k)){[lat,lng]=co;break}}
+      }
       if(!lat){lat=0;lng=20} // Africa center as fallback for unmatched
-      const j=()=>(Math.random()-0.5)*5
-      pts.push({ lat:lat+j(), lng:lng+j(), type:'humanitarian', severity:'high',
-        name:`🆘 ${rw.name?.slice(0,70)}`,
-        desc:`UN ReliefWeb · ${rw.country||''} · ${rw.type||''} · ${rw.date||''}`, url:rw.url,
-        meta:{source:'ReliefWeb',country:rw.country} })
+      const j=()=>(Math.random()-0.5)*2
+      const title = rw.title || rw.name || 'Humanitarian Crisis'
+      pts.push({ lat:lat+j(), lng:lng+j(), type:'humanitarian', severity:rw.severity||'high',
+        name:`🆘 ${title.slice(0,70)}`,
+        desc:`UN ReliefWeb · ${rw.country||''} · ${rw.description||rw.desc||rw.type||''} · Affected: ${rw.affected||'N/A'}`, url:rw.url||'https://reliefweb.int',
+        source: 'ReliefWeb',
+        meta:{source:'ReliefWeb', country:rw.country, affected:rw.affected} })
     })
   }
 
@@ -1436,19 +1441,124 @@ export function satelliteToPoints(satData, layers) {
       if (!c.lat || !c.lng) return
       pts.push({
         lat: c.lat, lng: c.lng,
-        type: c.type || 'crowd',
+        type: 'crowd',
         severity: c.severity || 'medium',
-        name: (c.title || 'Event').slice(0, 80),
-        desc: [c.actors, c.detail, c.fatalities > 0 ? c.fatalities + ' fatalities' : ''].filter(Boolean).join(' · ').slice(0, 250),
-        source: c.source || 'ACLED',
+        name: `👥 Crowd: ${(c.title || c.city || 'Demonstration').slice(0, 80)}`,
+        desc: [c.desc, c.actors, c.detail, c.size ? 'Est: ' + c.size : '', c.fatalities > 0 ? c.fatalities + ' fatalities' : ''].filter(Boolean).join(' · ').slice(0, 250),
+        source: c.source || 'ACLED / Civil OSINT',
         url: c.url || 'https://acleddata.com',
-        icon: c.icon || (c.type === 'crowd' ? '👥' : '⚔️'),
+        icon: '👥',
+        meta: { source: c.source || 'Crowd Signals', size: c.size, city: c.city, actors: c.actors },
         fatalities: c.fatalities || 0,
         date: c.date,
       })
     })
   }
 
+  // ── UCDP Georeferenced Conflict Events ────────────────────────────────────
+  if ((layers.ucdp || layers.acled || true) && (satData.ucdpFull?.length || satData.ucdp?.length)) {
+    const ucdpItems = [...(satData.ucdpFull || []), ...(satData.ucdp || [])]
+    ucdpItems.forEach(u => {
+      if (!u.lat || !u.lng) return
+      pts.push({
+        lat: u.lat, lng: u.lng,
+        type: 'conflict',
+        source: 'UCDP',
+        severity: u.severity || 'critical',
+        name: `☠ UCDP: ${u.dyad_name || u.conflict || u.title || 'Armed Conflict'}`,
+        desc: `${u.side_a || 'State'} vs ${u.side_b || 'Combatants'} · Fatalities: ${u.deaths_best || u.fatalities || 0} · ${u.country || ''}`,
+        url: 'https://ucdp.uu.se',
+        pub: u.date || null,
+        meta: { source: 'UCDP', dyad: u.dyad_name, side_a: u.side_a, side_b: u.side_b, fatalities: u.deaths_best || u.fatalities, country: u.country }
+      })
+    })
+  }
+
+  // ── OpenSanctions designated entities, vessels, and facilitators ──────────
+  if ((layers.sanctions || true) && satData.openSanctions?.length) {
+    satData.openSanctions.forEach(s => {
+      if (!s.lat || !s.lng) return
+      pts.push({
+        lat: s.lat, lng: s.lng,
+        type: 'sanctions',
+        source: 'OpenSanctions',
+        severity: s.severity || 'critical',
+        name: `🚫 Sanctions: ${s.name}`,
+        desc: `${s.desc || 'Sanctioned entity / vessel / illicit transshipment node'} · Type: ${s.schema || 'Designation'} · Flag: ${s.flag || 'N/A'}`,
+        url: s.url || 'https://www.opensanctions.org',
+        meta: { source: 'OpenSanctions', schema: s.schema, flag: s.flag, name: s.name }
+      })
+    })
+  }
+
+  // ── OSM Strategic Military Bases & Naval Installations ────────────────────
+  if ((layers.osmMilitary || true) && satData.osmMilitary?.length) {
+    satData.osmMilitary.forEach(b => {
+      if (!b.lat || !b.lng) return
+      pts.push({
+        lat: b.lat, lng: b.lng,
+        type: 'military',
+        source: 'OpenStreetMap',
+        severity: 'medium',
+        name: `🏛 Base: ${b.name}`,
+        desc: `${b.operator || 'Armed Forces'} · Installation: ${b.type || 'Military facility'} · ${b.country || ''}`,
+        url: 'https://www.openstreetmap.org',
+        meta: { source: 'OSM Military', _isBase: true, operator: b.operator, type: b.type, country: b.country }
+      })
+    })
+  }
+
+  // ── WikiData Active Armed Conflicts ───────────────────────────────────────
+  if ((layers.wikiConflicts || true) && satData.wikidataConflicts?.length) {
+    satData.wikidataConflicts.forEach(w => {
+      if (!w.lat || !w.lng) return
+      pts.push({
+        lat: w.lat, lng: w.lng,
+        type: 'wikidata',
+        source: 'WikiData',
+        severity: 'high',
+        name: `📖 WikiData: ${w.name}`,
+        desc: `Active conflict cataloged in WikiData (${w.id}) · Began: ${w.start || 'Ongoing'} · Region: ${w.country || ''}`,
+        url: `https://www.wikidata.org/wiki/${w.id}`,
+        meta: { source: 'WikiData', qid: w.id, country: w.country, start: w.start }
+      })
+    })
+  }
+
+  // ── Arms Transfer & Defense Logistics Pipeline (SIPRI / GDELT) ────────────
+  if ((layers.arms || true) && satData.armsTransferSignals?.length) {
+    satData.armsTransferSignals.forEach(a => {
+      if (!a.lat || !a.lng) return
+      pts.push({
+        lat: a.lat, lng: a.lng,
+        type: 'arms',
+        source: 'SIPRI/GDELT',
+        severity: a.severity || 'high',
+        name: `🔫 Arms Transfer: ${a.title || a.name}`,
+        desc: `Strategic military materiel transfer · Destination: ${a.country || ''} · Date: ${a.date || 'Recent'}`,
+        url: 'https://www.sipri.org',
+        pub: a.date || null,
+        meta: { source: 'SIPRI/GDELT', country: a.country, date: a.date }
+      })
+    })
+  }
+
+  // ── IRIS Geopolitical Tension & Deterrence Indexes ────────────────────────
+  if ((layers.iris || true) && satData.iris?.length) {
+    satData.iris.forEach(ir => {
+      if (!ir.lat || !ir.lng) return
+      pts.push({
+        lat: ir.lat, lng: ir.lng,
+        type: 'iris',
+        source: 'IRIS Geopolitical',
+        severity: ir.severity || 'high',
+        name: `🌐 IRIS: ${ir.title || ir.name}`,
+        desc: `${ir.desc || 'Geopolitical strain vector'} · Basin: ${ir.region || 'Strategic Basin'}`,
+        url: ir.url || 'https://iris-france.org',
+        meta: { source: 'IRIS Geopolitical', region: ir.region }
+      })
+    })
+  }
 
   return pts
 }
@@ -1458,6 +1568,12 @@ export const SAT_COLORS = {
   eonet_wildfire:      0xff3300,
   eonet_severe_storms: 0x8888ff,
   eonet_volcanoes:     0xff2200,
+  sanctions:           0x7c3aed,
+  military:            0x6b7280,
+  wikidata:            0xea580c,
+  arms:                0xd97706,
+  iris:                0x818cf8,
+  crowd:               0xf472b6,
   eonet_sea_and_lake_ice: 0x88ccff,
   eonet_other:         0xaaaaff,
   gdacs:               0xffaa00,
@@ -1502,6 +1618,7 @@ export const SAT_ICONS = {
   disease:'🦠', cyber:'💻', nuclear:'☢️', maritime:'⚓', humanitarian:'🆘', social:'📡',
   vuln:'🔓', cve:'⚠️',
   milaircraft:'✈', warship:'⚔', acled:'⚔️', hotspot:'🎯',
+  sanctions:'🚫', military:'🏛', wikidata:'📖', arms:'🔫', iris:'🌐', crowd:'👥',
   gpsjam:'📡', news:'📰', notam:'✈', telegram:'📡', wikiEdit:'📝', bgp:'🌐', viirs:'🛰',
   preaction:'⚡',
 }

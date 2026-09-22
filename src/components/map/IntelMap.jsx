@@ -590,9 +590,18 @@ export default function IntelMap({ articles, active = true }) {
 
   // ── All points regardless of layer state — for CategoriesSidebar + Export ──
   // Categories should show ALL data even if the layer toggle is off
-  const ALL_LAYERS_ON = React.useMemo(() => 
-    Object.fromEntries(Object.keys(layers).map(k => [k, true]))
-  , []) // stable reference — all keys, all true
+  const ALL_LAYERS_ON = React.useMemo(() => ({
+    aircraft:true, ships:true, gdacs:true, firms:true, eonet:true,
+    iss:true, launches:true, copernicus:true, sigmets:true, disease:true,
+    earthquakes:true, volcanoes:true, hurricanes:true, globalFires:true,
+    hotspots:true, acled:true, milaircraft:true, warships:true, news:true,
+    cyber:true, gpsjam:true, nuclear:true, humanitarian:true,
+    vuln:true, cve:true, crowds:true, maritime:true,
+    iris:true, redditSignals:true, floods:true, weatherAlerts:true,
+    notams:true, wikiEdits:true, bgp:true, viirs:true,
+    telegram:true, preaction:true, darkfleet:true, sar:true,
+    ucdp:true, sanctions:true, osmMilitary:true, wikiConflicts:true, arms:true,
+  }), []) // stable reference — all keys, all true
 
   const allPointsUnfiltered = React.useMemo(() => {
     const alertPoints = (liveAlerts || [])
@@ -1379,10 +1388,16 @@ export default function IntelMap({ articles, active = true }) {
         {selected && (
           <DeepOSINTDossier
             selected={selected}
+            allPoints={allPointsUnfiltered}
             articles={articles}
             onClose={() => setSelected(null)}
             onSaveToBoard={addNode}
-            flyTo={globeTo}
+            flyTo={(pt) => {
+              if (pt?.lat && pt?.lng) {
+                globeTo(pt)
+                setSelected(pt)
+              }
+            }}
           />
         )}
 
@@ -1448,20 +1463,20 @@ const INTEL_CATS = [
   { id:'vuln',         icon:'🔓', label:'Exposed Infrastructure',color:'#ff6600', match: p=>p.type==='vuln' },
   { id:'cve',          icon:'⚠️', label:'CVEs & KEV',            color:'#ffaa00', match: p=>p.type==='cve' },
   { id:'news',         icon:'📰', label:'BNO News Wire',         color:'#2dd4bf', match: p=>p.type==='news' },
-  { id:'notams',       icon:'✈',  label:'NOTAMs / Airspace',      color:'#ff8844', match: p=>p.type==='notam' },
-  { id:'wikiEdits',    icon:'📝', label:'Wikipedia Edits',        color:'#aaaaff', match: p=>p.type==='wikiEdit' },
-  { id:'bgp',          icon:'🌐', label:'BGP Anomalies',          color:'#ff6600', match: p=>p.type==='bgp' },
-  { id:'viirs',        icon:'🛰️', label:'VIIRS Nightlights',      color:'#ffffff', match: p=>p.type==='viirs' },
+  { id:'notams',       icon:'✈',  label:'NOTAMs / Airspace',      color:'#ff8844', match: p=>p.type==='notam'||p.source==='FAA/EASA'||p.meta?.source?.includes('NOTAM') },
+  { id:'wikiEdits',    icon:'📝', label:'Wikipedia Edits',        color:'#aaaaff', match: p=>p.type==='wikiEdit'||p.source==='Wikipedia Edits'||p.meta?.source==='Wikipedia Edits' },
+  { id:'bgp',          icon:'🌐', label:'BGP Anomalies',          color:'#ff6600', match: p=>p.type==='bgp'||p.source==='BGP'||p.meta?.source?.includes('IODA')||p.meta?.source?.includes('Cloudflare') },
+  { id:'viirs',        icon:'🛰️', label:'VIIRS Nightlights',      color:'#ffffff', match: p=>p.type==='viirs'||p.source==='NASA VIIRS'||p.meta?.source==='NASA VIIRS' },
   { id:'telegram',     icon:'📡', label:'Telegram Intel',         color:'#2dd4bf', match: p=>p.type==='telegram'||p._telegram },
-  { id:'preaction',    icon:'⚡', label:'Pre-Action Indicators',  color:'#f59e0b', match: p=>p._preAction||p.type==='preaction' },
-  { id:'crowds',       icon:'👥', label:'Crowd Signals',          color:'#f472b6', match: p=>p.type==='crowd' },
-  { id:'humanitarian', icon:'🆘', label:'Humanitarian Crises',    color:'#fb923c', match: p=>p.type==='humanitarian' },
-  { id:'iris',         icon:'🌐', label:'IRIS Geopolitical',      color:'#818cf8', match: p=>p.type==='iris' },
-  { id:'ucdp',         icon:'☠',  label:'UCDP Conflict Events',  color:'#dc2626', match: p=>p.source==='UCDP' },
-  { id:'sanctions',    icon:'🚫', label:'Sanctioned Entities',   color:'#7c3aed', match: p=>p.source==='OpenSanctions' },
-  { id:'osmMilitary',  icon:'🏛',  label:'Military Bases (OSM)',  color:'#6b7280', match: p=>p.meta?._isBase },
-  { id:'wikiConflicts',icon:'📖', label:'WikiData Conflicts',    color:'#ea580c', match: p=>p.type==='wikidata' },
-  { id:'arms',         icon:'🔫', label:'Arms Transfer Signals', color:'#d97706', match: p=>p.source==='SIPRI/GDELT' },
+  { id:'preaction',    icon:'⚡', label:'Pre-Action Indicators',  color:'#f59e0b', match: p=>p._preAction||p.type==='preaction'||p.meta?.source==='Pre-Action Strategic Indicators' },
+  { id:'crowds',       icon:'👥', label:'Crowd Signals',          color:'#f472b6', match: p=>p.type==='crowd'||p.source==='Crowd Signals'||p.meta?.source==='Crowd Signals' },
+  { id:'humanitarian', icon:'🆘', label:'Humanitarian Crises',    color:'#fb923c', match: p=>p.type==='humanitarian'||p.source==='ReliefWeb'||p.meta?.source==='ReliefWeb' },
+  { id:'iris',         icon:'🌐', label:'IRIS Geopolitical',      color:'#818cf8', match: p=>p.type==='iris'||p.source==='IRIS Geopolitical'||p.meta?.source==='IRIS Geopolitical' },
+  { id:'ucdp',         icon:'☠',  label:'UCDP Conflict Events',  color:'#dc2626', match: p=>p.source==='UCDP'||p.meta?.source==='UCDP'||p.type==='ucdp' },
+  { id:'sanctions',    icon:'🚫', label:'Sanctioned Entities',   color:'#7c3aed', match: p=>p.source==='OpenSanctions'||p.meta?.source==='OpenSanctions'||p.type==='sanctions' },
+  { id:'osmMilitary',  icon:'🏛',  label:'Military Bases (OSM)',  color:'#6b7280', match: p=>p.meta?._isBase||p.source==='OSM Military'||p.type==='military' },
+  { id:'wikiConflicts',icon:'📖', label:'WikiData Conflicts',    color:'#ea580c', match: p=>p.type==='wikidata'||p.source==='WikiData'||p.meta?.source==='WikiData' },
+  { id:'arms',         icon:'🔫', label:'Arms Transfer Signals', color:'#d97706', match: p=>p.source==='SIPRI/GDELT'||p.meta?.source==='SIPRI/GDELT'||p.type==='arms' },
 ]
 
 function getItemLabel(pt) {
