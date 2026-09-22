@@ -847,6 +847,19 @@ export default function IntelMap({ articles }) {
     mountRef.current.style.cursor = isDragging.current ? 'grabbing' : 'grab'
   }, [])
 
+  const globeTo = useCallback((lat, lng) => {
+    if (lat == null || lng == null || !threeRef.current?.globe) return
+    const theta = (lng + 180) * (Math.PI / 180)
+    threeRef.current.globe.rotation.y = Math.PI / 2 - theta
+    const phi = (90 - lat) * (Math.PI / 180)
+    threeRef.current.globe.rotation.x = Math.max(-0.65, Math.min(0.65, -(phi - Math.PI / 2)))
+    autoRotateRef.current = false
+    setAutoRotate(false)
+    threeRef.current._navigatedTo = { lat, lng }
+    setTimeout(() => { if (threeRef.current) threeRef.current._navigatedTo = null }, 4000)
+    if (threeRef.current.camera) setCameraZ(threeRef.current.camera.position.z)
+  }, [])
+
   const onMouseUp = useCallback(e => {
     if (!isDragging.current) return
     const dx = e.clientX - prevMouse.current.x
@@ -872,19 +885,6 @@ export default function IntelMap({ articles }) {
       }
     }
   }, [globeTo])
-
-  const globeTo = useCallback((lat, lng) => {
-    if (lat == null || lng == null || !threeRef.current?.globe) return
-    const theta = (lng + 180) * (Math.PI / 180)
-    threeRef.current.globe.rotation.y = Math.PI / 2 - theta
-    const phi = (90 - lat) * (Math.PI / 180)
-    threeRef.current.globe.rotation.x = Math.max(-0.65, Math.min(0.65, -(phi - Math.PI / 2)))
-    autoRotateRef.current = false
-    setAutoRotate(false)
-    threeRef.current._navigatedTo = { lat, lng }
-    setTimeout(() => { if (threeRef.current) threeRef.current._navigatedTo = null }, 4000)
-    if (threeRef.current.camera) setCameraZ(threeRef.current.camera.position.z)
-  }, [])
 
   const onWheel = useCallback(e => {
     e.preventDefault()
