@@ -3,7 +3,7 @@
  * Shows BOTH Kalshi + Polymarket geo markets, merged and deduped.
  * Uses seed data from Kalshi when live unavailable.
  */
-import React, { useRef, useEffect, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useKalshi } from '../../hooks/useKalshi'
 import { usePolymarket } from '../../hooks/usePolymarket'
 
@@ -21,9 +21,6 @@ function ProbBadge({ prob }) {
 export function KalshiTicker() {
   const { markets: kal = [] } = useKalshi()
   const { markets: poly = [] } = usePolymarket()
-  const ref = useRef(null)
-  const pos = useRef(0)
-  const raf = useRef(null)
 
   const items = useMemo(() => {
     const seen = new Set()
@@ -40,21 +37,6 @@ export function KalshiTicker() {
     }).slice(0, 30)
   }, [kal, poly])
 
-  useEffect(() => {
-    if (!items.length) return
-    const animate = () => {
-      pos.current += 0.4
-      if (ref.current) {
-        const half = ref.current.scrollWidth / 2
-        if (pos.current >= half) pos.current = 0
-        ref.current.style.transform = `translateX(-${pos.current}px)`
-      }
-      raf.current = requestAnimationFrame(animate)
-    }
-    raf.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(raf.current)
-  }, [items.length])
-
   if (!items.length) return null
   const doubled = [...items, ...items]
 
@@ -64,7 +46,7 @@ export function KalshiTicker() {
         <span style={{ fontSize:'8px', fontWeight:800, color:'var(--accent)', letterSpacing:'0.1em' }}>🎯 MARKETS</span>
       </div>
       <div style={{ flex:1, overflow:'hidden', height:'100%', display:'flex', alignItems:'center' }}>
-        <div ref={ref} style={{ display:'inline-flex', gap:'20px', whiteSpace:'nowrap', willChange:'transform' }}>
+        <div className="ticker-track">
           {doubled.map((m, i) => (
             <a key={`${m.id || m.src}-${i}`} href={m.url || 'https://kalshi.com'} target="_blank" rel="noopener noreferrer"
               style={{ display:'inline-flex', alignItems:'center', gap:'5px', textDecoration:'none' }}>

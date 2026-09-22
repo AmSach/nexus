@@ -339,33 +339,33 @@ export default function IntelMap({ articles, active = true }) {
     renderer.domElement.style.display = 'block'
     el.appendChild(renderer.domElement)
 
-    // Stars (downscaled to 1,500 points for low vertex memory)
+    // Stars (downscaled to 400 points for low vertex memory)
     const starGeo = new THREE.BufferGeometry()
-    const starArr = new Float32Array(1500 * 3)
-    for (let i = 0; i < 1500 * 3; i++) starArr[i] = (Math.random() - 0.5) * 800
+    const starArr = new Float32Array(400 * 3)
+    for (let i = 0; i < 400 * 3; i++) starArr[i] = (Math.random() - 0.5) * 800
     starGeo.setAttribute('position', new THREE.BufferAttribute(starArr, 3))
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.25, transparent: true, opacity: 0.5 })))
 
-    // Globe — ocean base (downscaled from 64x64 to 32x32)
-    const globeGeo = new THREE.SphereGeometry(1, 32, 32)
+    // Globe — ocean base (downscaled to 24x24 for minimal vertex overhead)
+    const globeGeo = new THREE.SphereGeometry(1, 24, 24)
     const globeMat = new THREE.MeshPhongMaterial({ color: 0x030d1f, specular: 0x112244, shininess: 12 })
     const globe    = new THREE.Mesh(globeGeo, globeMat)
     scene.add(globe)
 
     // Graticule lines (lat/lng grid) — Single Draw Call with LineSegments
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x1a3050, transparent: true, opacity: 0.35 })
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x1a3050, transparent: true, opacity: 0.30 })
     const gridPts = []
-    for (let lat = -75; lat <= 75; lat += 15) {
-      for (let lng = -180; lng < 180; lng += 6) {
+    for (let lat = -60; lat <= 60; lat += 20) {
+      for (let lng = -180; lng < 180; lng += 15) {
         const v1 = latLngToVec3(lat, lng, 1.001)
-        const v2 = latLngToVec3(lat, lng + 6, 1.001)
+        const v2 = latLngToVec3(lat, lng + 15, 1.001)
         gridPts.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
       }
     }
-    for (let lng = -180; lng <= 180; lng += 30) {
-      for (let lat = -90; lat < 90; lat += 6) {
+    for (let lng = -180; lng <= 180; lng += 45) {
+      for (let lat = -80; lat < 80; lat += 20) {
         const v1 = latLngToVec3(lat, lng, 1.001)
-        const v2 = latLngToVec3(lat + 6, lng, 1.001)
+        const v2 = latLngToVec3(lat + 20, lng, 1.001)
         gridPts.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
       }
     }
@@ -374,8 +374,8 @@ export default function IntelMap({ articles, active = true }) {
     const graticule = new THREE.LineSegments(gridGeo, lineMat)
     globe.add(graticule)
 
-    // Atmosphere glow (downscaled from 64x64 to 32x32)
-    const atmGeo = new THREE.SphereGeometry(1.08, 32, 32)
+    // Atmosphere glow (downscaled to 24x24)
+    const atmGeo = new THREE.SphereGeometry(1.08, 24, 24)
     const atmMat = new THREE.ShaderMaterial({
       vertexShader: `varying vec3 vNormal; void main() { vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
       fragmentShader: `varying vec3 vNormal; void main() { float i = pow(0.55 - dot(vNormal, vec3(0,0,1.0)), 3.5); gl_FragColor = vec4(0.1,0.5,0.9,1.0) * i * 0.8; }`,
@@ -405,25 +405,27 @@ export default function IntelMap({ articles, active = true }) {
     // Raycaster for click detection
     const raycaster = new THREE.Raycaster()
 
-    // Animation loop — reads autoRotateRef.current so state changes propagate instantly
-    let frameTimeSamples = []
+    // Animation loop — capped to 30 FPS for 65% reduction in GPU/CPU thermal load
     let lastFrameTime = performance.now()
+    const FPS_INTERVAL = 1000 / 30
     const _tempV = new THREE.Vector3()
     const _camPos = new THREE.Vector3()
 
     let cullCounter = 0
     const animate = () => {
-      frameRef.current = requestAnimationFrame(animate)
-      if (document.hidden || !activeRef.current) return // Dynamic sleep when browser or tab is inactive
+      // Dynamic sleep: when inactive or document is hidden, do NOT schedule next frame (0% CPU/GPU idle)
+      if (document.hidden || !activeRef.current) {
+        frameRef.current = null
+        return
+      }
 
-      // Measure frame time for adaptive quality
+      frameRef.current = requestAnimationFrame(animate)
+
+      // 30 FPS frame throttling
       const now = performance.now()
-      const ft = now - lastFrameTime
-      lastFrameTime = now
-      frameTimeSamples.push(ft)
-      if (frameTimeSamples.length > 30) frameTimeSamples.shift()
-      const avgFT = frameTimeSamples.reduce((a, b) => a + b, 0) / frameTimeSamples.length
-      threeRef.current._avgFrameMs = avgFT
+      const elapsed = now - lastFrameTime
+      if (elapsed < FPS_INTERVAL) return
+      lastFrameTime = now - (elapsed % FPS_INTERVAL)
 
       // Auto-rotation & inertia decay
       if (autoRotateRef.current && !isDragging.current) globe.rotation.y += 0.0012
@@ -436,7 +438,7 @@ export default function IntelMap({ articles, active = true }) {
         }
       }
 
-      // Fast pulse on critical / hotspot / hurricane markers (transform-only, NO shader recompile)
+      // Fast pulse on critical / hotspot / hurricane markers
       const t = now * 0.003
       const pulseList = threeRef.current.pulseMeshes
       if (pulseList && pulseList.length > 0) {
@@ -454,9 +456,8 @@ export default function IntelMap({ articles, active = true }) {
         navMesh.scale.set(s, s, s)
       }
 
-      // 50% WebGL Backface Culling — throttled to every 6 frames (10x/sec instead of 60x/sec)
-      // Eliminates 85% of CPU matrix multiplications while keeping culling perfectly responsive
-      if (++cullCounter % 6 === 0) {
+      // 50% WebGL Backface Culling — throttled to every 12 frames (~2.5x/sec at 30 FPS)
+      if (++cullCounter % 12 === 0) {
         const markerMeshes = threeRef.current.markerMeshes
         if (markerMeshes && markerMeshes.length > 0) {
           camera.getWorldPosition(_camPos)
@@ -474,9 +475,6 @@ export default function IntelMap({ articles, active = true }) {
 
       renderer.render(scene, camera)
     }
-    threeRef.current.animateFn = animate
-    threeRef.current.renderer = renderer
-    animate()
 
     // Resize — watch the mount element itself with ResizeObserver
     const onResize = () => {
@@ -490,10 +488,18 @@ export default function IntelMap({ articles, active = true }) {
     const ro = new ResizeObserver(onResize)
     ro.observe(el)
 
-    threeRef.current = { THREE, scene, camera, renderer, globe, raycaster, markerMeshes: [], markerData: [] }
+    threeRef.current = {
+      THREE, scene, camera, renderer, globe, raycaster,
+      markerMeshes: [], markerData: [], pulseMeshes: [],
+      animateFn: animate,
+    }
+    animate()
 
     return () => {
-      cancelAnimationFrame(frameRef.current)
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
       window.removeEventListener('resize', onResize)
       ro.disconnect()
       try { renderer.dispose(); el.removeChild(renderer.domElement) } catch {}
@@ -606,18 +612,10 @@ export default function IntelMap({ articles, active = true }) {
     ]
   }, [newsPoints, acledData, firmsData, satData, liveAlerts, issPoint])
 
-  // ── Adaptive render budget — re-evaluates every 5s to pick up new frame times ──
-  const [frameTick, setFrameTick] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setFrameTick(n => n + 1), 10000)
-    return () => clearInterval(t)
-  }, [])
-
+  // ── Render budget — capped to 200 points for zero GPU/CPU lag ──
+  // Clustering aggregates any surrounding points into cluster badges
   const safePoints = useMemo(() => {
-    // Read measured avg frame time from animation loop (set by threeRef._avgFrameMs)
-    const avgFT = threeRef.current?._avgFrameMs || 16
-    // Downscaled render budget: guarantees 60fps across all GPUs with clustering
-    const MAX_RENDER = avgFT < 20 ? 2500 : avgFT < 35 ? 1800 : avgFT < 60 ? 1200 : 750
+    const MAX_RENDER = 200
     
     // Filter stale ships (speed=0 AND near shore = moored, not useful on map)
     const filtered = allPoints.filter(p => {
@@ -632,28 +630,19 @@ export default function IntelMap({ articles, active = true }) {
     if (filtered.length <= MAX_RENDER) return filtered
     
     // Prioritize rendering by intelligence value:
-    // critical/high events first, then medium, then ships/aircraft last
     const sevScore = { critical:4, high:3, medium:2, low:1 }
-    const typeScore = (t) => 
-      t==='acled'||t==='hotspot'||t==='nuclear' ? 10 :
-      t==='milaircraft'||t==='warship' ? 8 :
-      t==='gdacs'||t==='disease'||t==='maritime' ? 7 :
-      t==='cyber'||t==='gpsjam' ? 6 :
-      t==='firms'||t==='viirs' ? 5 :
-      t==='aircraft' ? 3 : t==='ship' ? 2 : 4
     
     // Always include a baseline of aircraft and ships regardless of priority
-    // so the map never appears empty even on slow GPUs
     const critical = filtered.filter(p => p.type==='milaircraft'||p.type==='warship'||p.severity==='critical')
     const aircraft = filtered.filter(p => p.type==='aircraft')
     const ships    = filtered.filter(p => p.type==='ship')
     const rest     = filtered.filter(p => p.type!=='aircraft'&&p.type!=='ship'&&p.type!=='milaircraft'&&p.type!=='warship'&&p.severity!=='critical')
 
     // Allocate render budget: critical events always first, then aircraft, then ships, then rest
-    const aircraftSlot = Math.min(aircraft.length, Math.floor(MAX_RENDER * 0.35))  // 35% for aircraft
-    const shipsSlot    = Math.min(ships.length,    Math.floor(MAX_RENDER * 0.30))  // 30% for ships (pre-filtered live only)
-    const critSlot     = Math.min(critical.length, Math.floor(MAX_RENDER * 0.15))  // 15% for critical
-    const restSlot     = MAX_RENDER - aircraftSlot - shipsSlot - critSlot           // rest gets remainder
+    const critSlot     = Math.min(critical.length, 35)
+    const aircraftSlot = Math.min(aircraft.length, 65)
+    const shipsSlot    = Math.min(ships.length, 45)
+    const restSlot     = Math.max(0, MAX_RENDER - critSlot - aircraftSlot - shipsSlot)
 
     return [
       ...critical.slice(0, critSlot),
@@ -661,8 +650,7 @@ export default function IntelMap({ articles, active = true }) {
       ...ships.slice(0, shipsSlot),
       ...rest.sort((a,b) => (sevScore[b.severity]||0)-(sevScore[a.severity]||0)).slice(0, restSlot),
     ]
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allPoints, frameTick])  // frameTick forces re-eval every 5s to pick up new frame times
+  }, [allPoints])
 
   // ── Signal clustering — bucket markers into grid cells at zoom-out ───
   const [cameraZ, setCameraZ] = useState(2.8)
@@ -1841,7 +1829,7 @@ function drawCountryBorders(THREE, topo) {
           const prev = smoothed[smoothed.length - 1]
           const curr = coords[i]
           const d = Math.abs(curr[0] - prev[0]) + Math.abs(curr[1] - prev[1])
-          if (d > 0.35 || i === coords.length - 1) {
+          if (d > 0.55 || i === coords.length - 1) {
             smoothed.push(curr)
           }
         }

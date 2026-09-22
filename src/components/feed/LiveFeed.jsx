@@ -318,6 +318,12 @@ export default function LiveFeed({ articles, loading }) {
 
   const displayList = mode === 'search' ? gdeltResults : filtered
 
+  // Progressive DOM rendering: cap visible cards to 40 items to prevent DOM bloat
+  const [visibleLimit, setVisibleLimit] = useState(40)
+  useEffect(() => {
+    setVisibleLimit(40)
+  }, [mode, filters, localSearch, gdeltQuery])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
@@ -539,9 +545,21 @@ export default function LiveFeed({ articles, loading }) {
         )}
 
         {/* Results */}
-        {!gdeltLoading && displayList.map(a => mode === 'search'
+        {!gdeltLoading && displayList.slice(0, visibleLimit).map(a => mode === 'search'
           ? <GDELTResultRow key={a.id} article={a} onAddNode={addNode} onSave={save} onUnsave={unsave} saved={isSaved(a.id)} />
           : <ArticleCard key={a.id} article={a} isNew={newIds.has(a.id)} />
+        )}
+
+        {/* Load More Button */}
+        {!gdeltLoading && displayList.length > visibleLimit && (
+          <div style={{ padding: '16px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+            <button
+              className="btn btn-accent"
+              onClick={() => setVisibleLimit(l => l + 40)}
+              style={{ fontSize: '11px', padding: '6px 18px', margin: '0 auto' }}>
+              Load More Articles ({displayList.length - visibleLimit} remaining)
+            </button>
+          </div>
         )}
 
         {/* Live empty */}

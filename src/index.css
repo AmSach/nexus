@@ -44,6 +44,23 @@ html, body, #root {
 /* Selection */
 ::selection { background: rgba(45,212,191,0.2); color: var(--accent); }
 
+/* Hardware-accelerated compositor ticker */
+@keyframes tickerLoop {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.ticker-track {
+  display: inline-flex;
+  gap: 20px;
+  white-space: nowrap;
+  animation: tickerLoop 40s linear infinite;
+  will-change: transform;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
 /* Mono helper */
 .mono { font-family: 'JetBrains Mono', monospace; }
 

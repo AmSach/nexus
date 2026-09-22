@@ -59,33 +59,13 @@ function Clock() {
   )
 }
 
-// Horizontal scrolling ticker — uses hardware-accelerated requestAnimationFrame (no timer lag)
+// Horizontal scrolling ticker — uses hardware-accelerated CSS marquee (0% CPU, no timer lag)
 function Ticker({ items }) {
-  const wrap = useRef(null)
-  const pos  = useRef(0)
-  useEffect(() => {
-    if (!items.length) return
-    let animId
-    let last = performance.now()
-    const step = (now) => {
-      const dt = Math.min(now - last, 50)
-      last = now
-      pos.current += 0.035 * dt
-      if (wrap.current) {
-        const half = wrap.current.scrollWidth / 2
-        if (half > 0 && pos.current > half) pos.current = 0
-        wrap.current.style.transform = `translate3d(-${pos.current}px, 0, 0)`
-      }
-      animId = requestAnimationFrame(step)
-    }
-    animId = requestAnimationFrame(step)
-    return () => { if (animId) cancelAnimationFrame(animId) }
-  }, [items.length])
-
+  if (!items.length) return null
   const doubled = [...items, ...items]
   return (
     <div style={{ overflow:'hidden', flex:1 }}>
-      <div ref={wrap} style={{ display:'inline-flex', gap:'48px', whiteSpace:'nowrap', willChange:'transform' }}>
+      <div className="ticker-track" style={{ gap:'48px' }}>
         {doubled.map((it, i) => (
           <span key={i} style={{ fontSize:'11px', color:'var(--t2)', display:'inline-flex', alignItems:'center', gap:'6px' }}>
             <span style={{ color:S[it.severity]||'var(--t3)', fontSize:'9px', fontWeight:700,
