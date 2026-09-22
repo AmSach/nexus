@@ -303,47 +303,65 @@ export function inferCountryFromCoords(lat, lng) {
   return { code: 'INTL', name: 'International / Maritime', flag: '🌊' }
 }
 
+const pointCountryCache = new WeakMap()
+
 /**
- * Main entry point: accurately extracts country from any signal object
+ * Main entry point: accurately extracts country from any signal object (memoized O(1))
  */
 export function getPointCountry(pt) {
-  if (!pt) return { code: 'GLOBAL', name: 'Global', flag: '🌐' }
+  if (!pt || typeof pt !== 'object') return { code: 'GLOBAL', name: 'Global', flag: '🌐' }
+  if (pt._country) return pt._country
+  const cached = pointCountryCache.get(pt)
+  if (cached) return cached
+
+  let res = null
 
   // 1. Orbital Space
   if (pt.type === 'iss' || pt.type === 'launch') {
-    return { code: 'SPACE', name: 'Orbital Space', flag: '🛰️' }
+    res = { code: 'SPACE', name: 'Orbital Space', flag: '🛰️' }
   }
 
   // 2. Direct property matches
-  const directProp = pt.country || pt.meta?.country || pt.meta?.countryname || pt.meta?.origin_country || pt.meta?.country_code
-  if (directProp) {
-    const match = normalizeCountry(String(directProp))
-    if (match) return match
+  if (!res) {
+    const directProp = pt.country || pt.meta?.country || pt.meta?.countryname || pt.meta?.origin_country || pt.meta?.country_code
+    if (directProp) {
+      res = normalizeCountry(String(directProp))
+    }
   }
 
   // 3. Vessel flag / registration
-  const flagProp = pt.meta?.flag || pt.flag || pt.meta?.registration || pt.registration
-  if (flagProp) {
-    const match = normalizeCountry(String(flagProp))
-    if (match) return match
+  if (!res) {
+    const flagProp = pt.meta?.flag || pt.flag || pt.meta?.registration || pt.registration
+    if (flagProp) {
+      res = normalizeCountry(String(flagProp))
+    }
   }
 
   // 4. Strategic Zone
-  const zoneProp = pt.meta?.zone || pt.zone
-  if (zoneProp) {
-    const match = parseZoneCountry(String(zoneProp))
-    if (match) return match
+  if (!res) {
+    const zoneProp = pt.meta?.zone || pt.zone
+    if (zoneProp) {
+      res = parseZoneCountry(String(zoneProp))
+    }
   }
 
   // 5. Text extraction (name, title, place, description)
-  const fullText = `${pt.name || ''} ${pt.title || ''} ${pt.place || pt.meta?.place || ''} ${pt.desc || pt.summary || ''}`
-  const textMatch = extractCountryFromText(fullText)
-  if (textMatch) return textMatch
-
-  // 6. Coordinates geographic inference
-  if (typeof pt.lat === 'number' && typeof pt.lng === 'number') {
-    return inferCountryFromCoords(pt.lat, pt.lng)
+  if (!res) {
+    const fullText = `${pt.name || ''} ${pt.title || ''} ${pt.place || pt.meta?.place || ''} ${pt.desc || pt.summary || ''}`
+    res = extractCountryFromText(fullText)
   }
 
-  return { code: 'GLOBAL', name: 'Global Signal', flag: '🌐' }
+  // 6. Coordinates geographic inference
+  if (!res && typeof pt.lat === 'number' && typeof pt.lng === 'number') {
+    res = inferCountryFromCoords(pt.lat, pt.lng)
+  }
+
+  if (!res) {
+    res = { code: 'GLOBAL', name: 'Global Signal', flag: '🌐' }
+  }
+
+  try { pt._country = res } catch {}
+  pointCountryCache.set(pt, res)
+  return res
 }
+

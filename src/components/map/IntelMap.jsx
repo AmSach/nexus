@@ -1414,76 +1414,425 @@ export default function IntelMap({ articles, active = true }) {
   )
 }
 
+// ── Category Definitions (Module-Level Constants) ───────────────────────────
+const ENV_CATS = [
+  { id:'aircraft',     icon:'✈️', label:'Air Patterns',          color:'#00ffcc', match: p=>p.type==='aircraft' },
+  { id:'ships',        icon:'🚢', label:'Maritime Intel',        color:'#0088ff', match: p=>p.type==='ship' },
+  { id:'gdacs',        icon:'⚠️', label:'GDACS Disasters',       color:'#ff7700', match: p=>p.type==='gdacs' },
+  { id:'firms',        icon:'🔥', label:'FIRMS Thermal',         color:'#ffdd00', match: p=>p.type==='firms' },
+  { id:'eonet',        icon:'🛰', label:'NASA EONET',            color:'#ff3300', match: p=>p.type?.startsWith('eonet') },
+  { id:'earthquakes',  icon:'⚡', label:'Earthquakes',           color:'#ff9900', match: p=>p.type==='earthquake' },
+  { id:'volcanoes',    icon:'🌋', label:'Volcanoes',             color:'#ff4400', match: p=>p.type==='volcano' },
+  { id:'hurricanes',   icon:'🌀', label:'Tropical Storms',       color:'#aaddff', match: p=>p.type==='hurricane'||p.type==='storm' },
+  { id:'floods',       icon:'🌊', label:'Active Floods',         color:'#0088cc', match: p=>p.type==='flood' },
+  { id:'globalFires',  icon:'🔥', label:'Global Fires (VIIRS)', color:'#ff6600', match: p=>p.type==='viirs'||p._nasaFire },
+  { id:'weatherAlerts',icon:'⛈', label:'Weather Alerts',        color:'#ffee44', match: p=>p.type==='weather' },
+  { id:'disease',      icon:'🦠', label:'Disease Outbreaks',     color:'#22cc88', match: p=>p.type==='disease' },
+  { id:'iss',          icon:'🛸', label:'ISS Position',          color:'#aaddff', match: p=>p.type==='iss' },
+  { id:'launches',     icon:'🚀', label:'Rocket Launches',       color:'#ff8800', match: p=>p.type==='launch' },
+  { id:'copernicus',   icon:'🛰️', label:'Copernicus EMS',        color:'#00ddff', match: p=>p.type==='copernicus' },
+  { id:'sigmets',      icon:'⚡', label:'Aviation SIGMETs',      color:'#ffee00', match: p=>p.type==='sigmet' },
+]
+
+const INTEL_CATS = [
+  { id:'hotspots',     icon:'🎯', label:'Conflict Hotspots',     color:'#ff3333', match: p=>p.type==='hotspot' },
+  { id:'acled',        icon:'⚔️', label:'GDELT Conflict Events', color:'#ff1111', match: p=>p.type==='conflict' },
+  { id:'milaircraft',  icon:'✈',  label:'Military Aircraft',     color:'#ff4444', match: p=>p.type==='milaircraft', note: 'Updates 2-5min after load via ADSB WebSocket + REST. Stays cached between refreshes.' },
+  { id:'warships',     icon:'⚔',  label:'Warships / Naval',      color:'#8888ff', match: p=>p.type==='warship' },
+  { id:'firms',        icon:'🔥', label:'FIRMS Thermal',         color:'#ffdd00', match: p=>p.type==='firms' },
+  { id:'gpsjam',       icon:'📡', label:'GPS Jamming',           color:'#f59e0b', match: p=>p.type==='gpsjam' },
+  { id:'nuclear',      icon:'☢️', label:'Nuclear Events',        color:'#ffff00', match: p=>p.type==='nuclear' },
+  { id:'disease',      icon:'🦠', label:'Disease Outbreaks',     color:'#22cc88', match: p=>p.type==='disease' },
+  { id:'maritime',     icon:'⚓', label:'Maritime Incidents',    color:'#0055cc', match: p=>p.type==='maritime' },
+  { id:'cyber',        icon:'💻', label:'Cyber Threats',         color:'#ff00ff', match: p=>p.type==='cyber' },
+  { id:'vuln',         icon:'🔓', label:'Exposed Infrastructure',color:'#ff6600', match: p=>p.type==='vuln' },
+  { id:'cve',          icon:'⚠️', label:'CVEs & KEV',            color:'#ffaa00', match: p=>p.type==='cve' },
+  { id:'news',         icon:'📰', label:'BNO News Wire',         color:'#2dd4bf', match: p=>p.type==='news' },
+  { id:'notams',       icon:'✈',  label:'NOTAMs / Airspace',      color:'#ff8844', match: p=>p.type==='notam' },
+  { id:'wikiEdits',    icon:'📝', label:'Wikipedia Edits',        color:'#aaaaff', match: p=>p.type==='wikiEdit' },
+  { id:'bgp',          icon:'🌐', label:'BGP Anomalies',          color:'#ff6600', match: p=>p.type==='bgp' },
+  { id:'viirs',        icon:'🛰️', label:'VIIRS Nightlights',      color:'#ffffff', match: p=>p.type==='viirs' },
+  { id:'telegram',     icon:'📡', label:'Telegram Intel',         color:'#2dd4bf', match: p=>p.type==='telegram'||p._telegram },
+  { id:'preaction',    icon:'⚡', label:'Pre-Action Indicators',  color:'#f59e0b', match: p=>p._preAction||p.type==='preaction' },
+  { id:'crowds',       icon:'👥', label:'Crowd Signals',          color:'#f472b6', match: p=>p.type==='crowd' },
+  { id:'humanitarian', icon:'🆘', label:'Humanitarian Crises',    color:'#fb923c', match: p=>p.type==='humanitarian' },
+  { id:'iris',         icon:'🌐', label:'IRIS Geopolitical',      color:'#818cf8', match: p=>p.type==='iris' },
+  { id:'ucdp',         icon:'☠',  label:'UCDP Conflict Events',  color:'#dc2626', match: p=>p.source==='UCDP' },
+  { id:'sanctions',    icon:'🚫', label:'Sanctioned Entities',   color:'#7c3aed', match: p=>p.source==='OpenSanctions' },
+  { id:'osmMilitary',  icon:'🏛',  label:'Military Bases (OSM)',  color:'#6b7280', match: p=>p.meta?._isBase },
+  { id:'wikiConflicts',icon:'📖', label:'WikiData Conflicts',    color:'#ea580c', match: p=>p.type==='wikidata' },
+  { id:'arms',         icon:'🔫', label:'Arms Transfer Signals', color:'#d97706', match: p=>p.source==='SIPRI/GDELT' },
+]
+
+function getItemLabel(pt) {
+  if (pt._label) return pt._label
+  let label = ''
+  if (pt.type === 'aircraft') label = pt.meta?.callsign || pt.icao24 || pt.name || 'Unknown Aircraft'
+  else if (pt.type === 'ship') label = pt.meta?.name || (pt.name||'').replace('🚢 ','').split(' (')[0] || 'Unknown Vessel'
+  else if (pt.type === 'earthquake') {
+    const mag = pt.meta?.mag?.toFixed(1)
+    const place = (pt.name||'').replace(`M${mag} — `,'').slice(0,40)
+    label = `M${mag} ${place}`
+  } else {
+    label = (pt.title || pt.name || '').replace(/^[🎯⚔️✈️🚢💎🔥🌋🌀🌊⚠️🛰⛈️🛸🚀📰]\s*/,'').slice(0, 50)
+  }
+  try { pt._label = label } catch {}
+  return label
+}
+
+function getItemMeta(pt) {
+  if (pt._meta !== undefined) return pt._meta
+  let meta = ''
+  if (pt.type === 'aircraft' || pt.type === 'milaircraft') {
+    const alt = pt.meta?.alt ? Math.round(pt.meta.alt / 304.8) + 'kft' : ''
+    const spd = pt.meta?.spd ? Math.round(pt.meta.spd * 1.944) + 'kt' : (pt.meta?.speed ? Math.round(pt.meta.speed * 1.944) + 'kt' : '')
+    const hdg = pt.meta?.heading != null ? pt.meta.heading + '°' : ''
+    meta = [alt, spd, hdg].filter(Boolean).join(' ')
+  } else if (pt.type === 'ship' || pt.type === 'warship') {
+    meta = `${pt.meta?.speed != null ? pt.meta.speed+'kn' : ''} ${pt.meta?.shipType||''} ${pt.meta?.flag||''}`.trim()
+  } else if (pt.type === 'earthquake') {
+    meta = `${pt.meta?.depth?.toFixed(0)||'?'}km deep${pt.meta?.tsunami?' ⚠TSUNAMI':''}`
+  } else if (pt.type === 'hurricane') {
+    meta = `${pt.meta?.intensity||'?'}kt wind`
+  } else if (pt.lat && pt.lng) {
+    meta = `${pt.lat.toFixed(1)}° ${pt.lng.toFixed(1)}°`
+  }
+  try { pt._meta = meta } catch {}
+  return meta
+}
+
+// ── CategoryRow — Isolated React.memo accordion row (renders 30 items snappy, zero waste) ──
+const CategoryRow = React.memo(function CategoryRow({
+  cat,
+  items,
+  rawCount,
+  isExpanded,
+  isActive,
+  onToggle,
+  countryFilter,
+  layers,
+  onSelectPoint,
+  lookupShodan,
+  shodanData,
+  shodanLoading,
+}) {
+  const [searchQ, setSearchQ] = React.useState('')
+  const [sortMode, setSortMode] = React.useState('country')
+  const [limit, setLimit] = React.useState(35)
+
+  // Reset limit when collapsing
+  React.useEffect(() => {
+    if (!isExpanded) setLimit(35)
+  }, [isExpanded])
+
+  // Compute search & sort ONLY when expanded!
+  const filteredItems = React.useMemo(() => {
+    if (!isExpanded || !items || items.length === 0) return []
+    let res = items
+    const q = searchQ.trim().toLowerCase()
+    if (q) {
+      res = res.filter(p => {
+        const c = getPointCountry(p)
+        const corpus = (getItemLabel(p) + ' ' + getItemMeta(p) + ' ' + c.name + ' ' + c.code).toLowerCase()
+        return corpus.includes(q)
+      })
+    }
+    if (!res.length) return []
+
+    const sevOrder = { critical: 4, high: 3, medium: 2, low: 1 }
+    const copy = [...res]
+
+    if (sortMode === 'country') {
+      return copy.sort((a, b) => {
+        const ca = getPointCountry(a).name
+        const cb = getPointCountry(b).name
+        if (ca !== cb) return ca.localeCompare(cb)
+        return (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0)
+      })
+    }
+    if (sortMode === 'severity') {
+      return copy.sort((a, b) => (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0))
+    }
+    if (sortMode === 'recent') {
+      return copy.sort((a, b) => {
+        const ta = a._time ?? (a._time = (a.pub || a.time || a.meta?.time ? new Date(a.pub || a.time || a.meta?.time).getTime() : 0))
+        const tb = b._time ?? (b._time = (b.pub || b.time || b.meta?.time ? new Date(b.pub || b.time || b.meta?.time).getTime() : 0))
+        return tb - ta
+      })
+    }
+    if (sortMode === 'name') {
+      return copy.sort((a, b) => getItemLabel(a).localeCompare(getItemLabel(b)))
+    }
+    return copy
+  }, [isExpanded, items, searchQ, sortMode])
+
+  const visibleItems = React.useMemo(() => {
+    return filteredItems.slice(0, limit)
+  }, [filteredItems, limit])
+
+  const sevColor = (pt) => pt.severity==='critical'?'#ef4444':pt.severity==='high'?'#f97316':pt.severity==='medium'?'#eab308':cat.color
+
+  return (
+    <div style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+      {/* ── Category header ── */}
+      <div
+        onClick={onToggle}
+        style={{
+          padding:'6px 8px 6px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px',
+          background: isActive ? `${cat.color}18` : 'transparent',
+          borderLeft: isActive ? `3px solid ${cat.color}` : '3px solid transparent',
+          transition:'background 0.1s'
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = `${cat.color}10`}
+        onMouseLeave={e => e.currentTarget.style.background = isActive ? `${cat.color}18` : 'transparent'}
+      >
+        <span style={{ fontSize:'12px', lineHeight:1, flexShrink:0 }}>{cat.icon}</span>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:'9px', fontWeight:600, color:'var(--t2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cat.label}</div>
+          <div className="mono" style={{ fontSize:'7px', color: items.length > 0 ? cat.color : 'var(--t4)' }}>
+            {items.length} signals {countryFilter !== 'ALL' ? `(${rawCount} tot)` : ''}
+          </div>
+        </div>
+        <span style={{ fontSize:'7px', color:'var(--t4)', flexShrink:0, display:'inline-block',
+          transition:'transform 0.15s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
+      </div>
+
+      {/* ── Expanded item list ── */}
+      {isExpanded && (
+        <div style={{ background:'rgba(0,0,0,0.4)' }}>
+          {items.length === 0 ? (
+            <div style={{ padding:'7px 12px', fontSize:'8px', color:'var(--t4)' }}>
+              {countryFilter !== 'ALL'
+                ? `No signals in ${countryFilter} for this category`
+                : (() => {
+                  const LAYER_KEY_MAP = {
+                    'ships':'ships','milaircraft':'milaircraft','warships':'warships',
+                    'launches':'launches','copernicus':'copernicus','sigmets':'sigmets',
+                    'hotspots':'hotspots','wikiEdits':'wikiEdits','preaction':'preaction',
+                    'viirs':'viirs','bgp':'bgp','redditSignals':'redditSignals',
+                  }
+                  const layerKey = LAYER_KEY_MAP[cat.id] || cat.id
+                  const isLayerOff = layerKey && layers[layerKey] === false
+                  return isLayerOff
+                    ? `Layer off — toggle "${cat.label}" in toolbar to enable`
+                    : cat.note || `No data yet — source loading or no events in window`
+                })()}
+            </div>
+          ) : (
+            <>
+              {/* Search input & Sort mode toggles */}
+              <div style={{ padding:'4px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', flexDirection:'column', gap:'4px' }}>
+                {rawCount > 3 && (
+                  <input
+                    value={searchQ}
+                    onChange={e => setSearchQ(e.target.value)}
+                    placeholder={`Search ${items.length} items (name or country)…`}
+                    onClick={e => e.stopPropagation()}
+                    className="inp"
+                    style={{ fontSize:'8px', padding:'3px 7px', width:'100%' }}
+                  />
+                )}
+                <div style={{ display:'flex', alignItems:'center', gap:'2px' }}>
+                  <span className="mono" style={{ fontSize:'7px', color:'var(--t4)', marginRight:'3px' }}>SORT:</span>
+                  {[
+                    { id:'country',  label:'🏳 Country' },
+                    { id:'severity', label:'⚠ Severity' },
+                    { id:'recent',   label:'⏱ Time' },
+                    { id:'name',     label:'🔤 Name' },
+                  ].map(sm => (
+                    <button
+                      key={sm.id}
+                      onClick={e => { e.stopPropagation(); setSortMode(sm.id) }}
+                      style={{
+                        fontSize:'7px', padding:'1px 4px', borderRadius:'2px', cursor:'pointer',
+                        background: sortMode === sm.id ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                        color: sortMode === sm.id ? '#020810' : 'var(--t3)',
+                        fontWeight: sortMode === sm.id ? 700 : 400,
+                        border: 'none',
+                        fontFamily: 'JetBrains Mono',
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {sm.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Item rows */}
+              <div style={{ maxHeight:'240px', overflowY:'auto' }}>
+                {filteredItems.length === 0 && searchQ && (
+                  <div style={{ padding:'6px 12px', fontSize:'8px', color:'var(--t4)' }}>No matches for "{searchQ}"</div>
+                )}
+                {visibleItems.map((pt, i) => {
+                  const label = getItemLabel(pt)
+                  const meta  = getItemMeta(pt)
+                  const sc    = sevColor(pt)
+                  const ptCountry = getPointCountry(pt)
+                  const shipKey = pt.meta?.mmsi ? String(pt.meta.mmsi) : pt.meta?.name ? pt.meta.name : null
+                  const sd    = shipKey ? shodanData[shipKey] : null
+                  const sload = shipKey ? shodanLoading[shipKey] : false
+
+                  return (
+                    <div key={i}
+                      style={{ padding:'4px 8px 4px 14px', borderBottom:'1px solid rgba(255,255,255,0.025)',
+                        transition:'background 0.08s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Main row — click to fly to + open detail */}
+                      <div style={{ display:'flex', alignItems:'center', gap:'5px', cursor:'pointer' }}
+                        onClick={e => { e.stopPropagation(); onSelectPoint(pt) }}>
+                        <span style={{ width:'5px', height:'5px', borderRadius:'50%', background:sc,
+                          flexShrink:0, boxShadow:`0 0 4px ${sc}88` }}/>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'4px', overflow:'hidden' }}>
+                            <span
+                              title={`${ptCountry.name} (${ptCountry.code})`}
+                              style={{
+                                fontSize:'7.5px', padding:'0px 3px', borderRadius:'2px',
+                                background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)',
+                                color:'var(--t2)', flexShrink:0, display:'inline-flex', alignItems:'center', gap:'2px'
+                              }}
+                            >
+                              <span>{ptCountry.flag}</span>
+                              <span className="mono" style={{ fontSize:'6.5px', opacity:0.85 }}>{ptCountry.code}</span>
+                            </span>
+                            <span style={{ fontSize:'8px', fontWeight:600, color:'var(--t1)',
+                              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
+                          </div>
+                          {meta && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>{meta}</div>}
+                        </div>
+                        <span style={{ fontSize:'8px', color:'var(--accent)', flexShrink:0, opacity:0.7 }}>→</span>
+                      </div>
+
+                      {/* Shodan panel for ships */}
+                      {pt.type === 'ship' && shipKey && (
+                        <div style={{ paddingTop:'3px', paddingLeft:'10px' }}>
+                          {!sd && !sload && (
+                            <button
+                              onClick={e => { e.stopPropagation(); lookupShodan(shipKey, shipKey) }}
+                              style={{ fontSize:'7px', color:'#06b6d4', background:'none',
+                                border:'1px solid rgba(6,182,212,0.3)', borderRadius:'2px',
+                                padding:'1px 5px', cursor:'pointer', fontFamily:'JetBrains Mono' }}>
+                              🔍 Shodan lookup
+                            </button>
+                          )}
+                          {sload && <span className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>querying…</span>}
+                          {sd && (
+                            <div style={{ padding:'3px 6px', background:'rgba(6,182,212,0.07)',
+                              border:'1px solid rgba(6,182,212,0.25)', borderRadius:'2px', marginTop:'2px' }}>
+                              <div className="mono" style={{ fontSize:'7px', color:'#06b6d4', marginBottom:'2px', letterSpacing:'0.08em' }}>
+                                SHODAN INTERNETDB
+                              </div>
+                              {sd._note ? (
+                                <>
+                                  <div style={{ fontSize:'7px', color:'var(--t3)', marginBottom:'2px' }}>{sd._note}</div>
+                                  <a href={sd._searchUrl} target="_blank" rel="noopener noreferrer"
+                                    onClick={e=>e.stopPropagation()}
+                                    style={{ fontSize:'7px', color:'#06b6d4', textDecoration:'underline' }}>
+                                    ↗ Search Shodan: {shipKey}
+                                  </a>
+                                </>
+                              ) : (
+                                <>
+                                  {sd.ports?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t2)' }}>Ports: {sd.ports.slice(0,8).join(', ')}</div>}
+                                  {sd.vulns?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'#ef4444' }}>⚠ CVEs: {sd.vulns.slice(0,4).join(', ')}</div>}
+                                  {sd.tags?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>Tags: {sd.tags.slice(0,5).join(', ')}</div>}
+                                  {sd.hostnames?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t3)' }}>Host: {sd.hostnames[0]}</div>}
+                                  {sd.cpes?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>CPE: {sd.cpes[0]}</div>}
+                                  {(!sd.ports?.length && !sd.vulns?.length) && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>No exposed services found</div>}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {filteredItems.length > visibleItems.length && (
+                  <div style={{ padding:'5px 10px', textAlign:'center' }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); setLimit(l => l + 35) }}
+                      style={{
+                        width:'100%', fontSize:'7px', padding:'3px 6px',
+                        background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)',
+                        borderRadius:'2px', color:'var(--accent)', cursor:'pointer', fontFamily:'JetBrains Mono'
+                      }}
+                    >
+                      Show +35 more ({filteredItems.length - visibleItems.length} left)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+})
+
 // ── CategoriesSidebar — expandable dropdowns with item list, search, locate ──
-function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCategoryFilter, threeRef, setSelected, autoRotateRef, setAutoRotate, setExpandedCluster, setCameraZ }) {
+const CategoriesSidebar = React.memo(function CategoriesSidebar({
+  allPoints,
+  layers,
+  mapMode,
+  categoryFilter,
+  setCategoryFilter,
+  threeRef,
+  setSelected,
+  autoRotateRef,
+  setAutoRotate,
+  setExpandedCluster,
+  setCameraZ
+}) {
   const [expanded, setExpanded] = React.useState({})
-  const [searches, setSearches] = React.useState({})
   const [shodanData, setShodanData] = React.useState({})
   const [shodanLoading, setShodanLoading] = React.useState({})
-  const [sortMode, setSortMode] = React.useState('country')
   const [countryFilter, setCountryFilter] = React.useState('ALL')
 
-  // Calculate country distribution for global country filtering
+  const CATS = mapMode === 'environment' ? ENV_CATS : INTEL_CATS
+
+  // Calculate country distribution for global country filtering (memoized, O(N))
   const countryCounts = React.useMemo(() => {
     const counts = {}
-    allPoints.forEach(p => {
-      const c = getPointCountry(p)
+    for (let i = 0; i < allPoints.length; i++) {
+      const c = getPointCountry(allPoints[i])
       if (!counts[c.code]) counts[c.code] = { code: c.code, name: c.name, flag: c.flag, count: 0 }
       counts[c.code].count++
-    })
+    }
     return Object.values(counts).sort((a, b) => b.count - a.count)
   }, [allPoints])
 
-  const ENV_CATS = [
-    { id:'aircraft',     icon:'✈️', label:'Air Patterns',          color:'#00ffcc', match: p=>p.type==='aircraft' },
-    { id:'ships',        icon:'🚢', label:'Maritime Intel',        color:'#0088ff', match: p=>p.type==='ship' },
-    { id:'gdacs',        icon:'⚠️', label:'GDACS Disasters',       color:'#ff7700', match: p=>p.type==='gdacs' },
-    { id:'firms',        icon:'🔥', label:'FIRMS Thermal',         color:'#ffdd00', match: p=>p.type==='firms' },
-    { id:'eonet',        icon:'🛰', label:'NASA EONET',            color:'#ff3300', match: p=>p.type?.startsWith('eonet') },
-    { id:'earthquakes',  icon:'⚡', label:'Earthquakes',           color:'#ff9900', match: p=>p.type==='earthquake' },
-    { id:'volcanoes',    icon:'🌋', label:'Volcanoes',             color:'#ff4400', match: p=>p.type==='volcano' },
-    { id:'hurricanes',   icon:'🌀', label:'Tropical Storms',       color:'#aaddff', match: p=>p.type==='hurricane'||p.type==='storm' },
-    { id:'floods',       icon:'🌊', label:'Active Floods',         color:'#0088cc', match: p=>p.type==='flood' },
-    { id:'globalFires',  icon:'🔥', label:'Global Fires (VIIRS)', color:'#ff6600', match: p=>p.type==='viirs'||p._nasaFire },
-    { id:'weatherAlerts',icon:'⛈', label:'Weather Alerts',        color:'#ffee44', match: p=>p.type==='weather' },
-    { id:'disease',      icon:'🦠', label:'Disease Outbreaks',     color:'#22cc88', match: p=>p.type==='disease' },
-    { id:'iss',          icon:'🛸', label:'ISS Position',          color:'#aaddff', match: p=>p.type==='iss' },
-    { id:'launches',     icon:'🚀', label:'Rocket Launches',       color:'#ff8800', match: p=>p.type==='launch' },
-    { id:'copernicus',   icon:'🛰️', label:'Copernicus EMS',        color:'#00ddff', match: p=>p.type==='copernicus' },
-    { id:'sigmets',      icon:'⚡', label:'Aviation SIGMETs',      color:'#ffee00', match: p=>p.type==='sigmet' },
-  ]
-  const INTEL_CATS = [
-    { id:'hotspots',     icon:'🎯', label:'Conflict Hotspots',     color:'#ff3333', match: p=>p.type==='hotspot' },
-    { id:'acled',        icon:'⚔️', label:'GDELT Conflict Events', color:'#ff1111', match: p=>p.type==='conflict' },
-    { id:'milaircraft',  icon:'✈',  label:'Military Aircraft',     color:'#ff4444', match: p=>p.type==='milaircraft', note: 'Updates 2-5min after load via ADSB WebSocket + REST. Stays cached between refreshes.' },
-    { id:'warships',     icon:'⚔',  label:'Warships / Naval',      color:'#8888ff', match: p=>p.type==='warship' },
-    { id:'firms',        icon:'🔥', label:'FIRMS Thermal',         color:'#ffdd00', match: p=>p.type==='firms' },
-    { id:'gpsjam',       icon:'📡', label:'GPS Jamming',           color:'#f59e0b', match: p=>p.type==='gpsjam' },
-    { id:'nuclear',      icon:'☢️', label:'Nuclear Events',        color:'#ffff00', match: p=>p.type==='nuclear' },
-    { id:'disease',      icon:'🦠', label:'Disease Outbreaks',     color:'#22cc88', match: p=>p.type==='disease' },
-    { id:'maritime',     icon:'⚓', label:'Maritime Incidents',    color:'#0055cc', match: p=>p.type==='maritime' },
-    { id:'cyber',        icon:'💻', label:'Cyber Threats',         color:'#ff00ff', match: p=>p.type==='cyber' },
-    { id:'vuln',         icon:'🔓', label:'Exposed Infrastructure',color:'#ff6600', match: p=>p.type==='vuln' },
-    { id:'cve',          icon:'⚠️', label:'CVEs & KEV',            color:'#ffaa00', match: p=>p.type==='cve' },
-    { id:'news',         icon:'📰', label:'BNO News Wire',         color:'#2dd4bf', match: p=>p.type==='news' },
-    { id:'notams',       icon:'✈',  label:'NOTAMs / Airspace',      color:'#ff8844', match: p=>p.type==='notam' },
-    { id:'wikiEdits',    icon:'📝', label:'Wikipedia Edits',        color:'#aaaaff', match: p=>p.type==='wikiEdit' },
-    { id:'bgp',          icon:'🌐', label:'BGP Anomalies',          color:'#ff6600', match: p=>p.type==='bgp' },
-    { id:'viirs',        icon:'🛰️', label:'VIIRS Nightlights',      color:'#ffffff', match: p=>p.type==='viirs' },
-    { id:'telegram',     icon:'📡', label:'Telegram Intel',         color:'#2dd4bf', match: p=>p.type==='telegram'||p._telegram },
-    { id:'preaction',    icon:'⚡', label:'Pre-Action Indicators',  color:'#f59e0b', match: p=>p._preAction||p.type==='preaction' },
-    { id:'crowds',       icon:'👥', label:'Crowd Signals',          color:'#f472b6', match: p=>p.type==='crowd' },
-    { id:'humanitarian', icon:'🆘', label:'Humanitarian Crises',    color:'#fb923c', match: p=>p.type==='humanitarian' },
-    { id:'iris',         icon:'🌐', label:'IRIS Geopolitical',      color:'#818cf8', match: p=>p.type==='iris' },
-    { id:'ucdp',         icon:'☠',  label:'UCDP Conflict Events',  color:'#dc2626', match: p=>p.source==='UCDP' },
-    { id:'sanctions',    icon:'🚫', label:'Sanctioned Entities',   color:'#7c3aed', match: p=>p.source==='OpenSanctions' },
-    { id:'osmMilitary',  icon:'🏛',  label:'Military Bases (OSM)',  color:'#6b7280', match: p=>p.meta?._isBase },
-    { id:'wikiConflicts',icon:'📖', label:'WikiData Conflicts',    color:'#ea580c', match: p=>p.type==='wikidata' },
-    { id:'arms',         icon:'🔫', label:'Arms Transfer Signals', color:'#d97706', match: p=>p.source==='SIPRI/GDELT' },
-  ]
-  const CATS = mapMode === 'environment' ? ENV_CATS : INTEL_CATS
+  // Single-pass category indexing: group points and counts for all categories simultaneously
+  const { categoryItems, rawCounts } = React.useMemo(() => {
+    const items = {}
+    const raw = {}
+    for (let i = 0; i < CATS.length; i++) {
+      const id = CATS[i].id
+      items[id] = []
+      raw[id] = 0
+    }
+    for (let i = 0; i < allPoints.length; i++) {
+      const p = allPoints[i]
+      const c = getPointCountry(p)
+      const matchesCountry = countryFilter === 'ALL' || c.code === countryFilter
+      for (let j = 0; j < CATS.length; j++) {
+        const cat = CATS[j]
+        if (cat.match(p)) {
+          raw[cat.id]++
+          if (matchesCountry) {
+            items[cat.id].push(p)
+          }
+        }
+      }
+    }
+    return { categoryItems: items, rawCounts: raw }
+  }, [allPoints, CATS, countryFilter])
 
-  const globeTo = (pt) => {
+  const globeTo = React.useCallback((pt) => {
     if (!pt || !threeRef.current?.globe) return
     const theta = (pt.lng + 180) * (Math.PI / 180)
     threeRef.current.globe.rotation.y = Math.PI / 2 - theta
@@ -1497,10 +1846,26 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
     if (threeRef.current.camera) {
       setCameraZ(threeRef.current.camera.position.z)
     }
-  }
+  }, [threeRef, autoRotateRef, setAutoRotate, setCameraZ])
+
+  const handleSelectPoint = React.useCallback((pt) => {
+    globeTo(pt)
+    setSelected(pt)
+    setExpandedCluster(null)
+  }, [globeTo, setSelected, setExpandedCluster])
+
+  const handleToggle = React.useCallback((catId) => {
+    setExpanded(e => {
+      const next = !e[catId]
+      return { ...e, [catId]: next }
+    })
+    if (typeof setCategoryFilter === 'function') {
+      setCategoryFilter(prev => prev === catId ? null : catId)
+    }
+  }, [setCategoryFilter])
 
   // Shodan InternetDB — free, no key, no auth
-  const lookupShodan = async (vessel, key) => {
+  const lookupShodan = React.useCallback(async (vessel, key) => {
     if (shodanData[key] !== undefined || shodanLoading[key]) return
     setShodanLoading(l => ({ ...l, [key]: true }))
     try {
@@ -1515,38 +1880,18 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
       }))
     } catch {}
     setShodanLoading(l => ({ ...l, [key]: false }))
-  }
-
-  const getItemLabel = (pt) => {
-    if (pt.type === 'aircraft') return pt.meta?.callsign || pt.icao24 || pt.name || 'Unknown Aircraft'
-    if (pt.type === 'ship') return pt.meta?.name || (pt.name||'').replace('🚢 ','').split(' (')[0] || 'Unknown Vessel'
-    if (pt.type === 'earthquake') {
-      const mag = pt.meta?.mag?.toFixed(1)
-      const place = (pt.name||'').replace(`M${mag} — `,'').slice(0,40)
-      return `M${mag} ${place}`
-    }
-    return (pt.title || pt.name || '').replace(/^[🎯⚔️✈️🚢💎🔥🌋🌀🌊⚠️🛰⛈️🛸🚀📰]\s*/,'').slice(0, 50)
-  }
-
-  const getItemMeta = (pt) => {
-    if (pt.type === 'aircraft' || pt.type === 'milaircraft') {
-      const alt = pt.meta?.alt ? Math.round(pt.meta.alt / 304.8) + 'kft' : ''
-      const spd = pt.meta?.spd ? Math.round(pt.meta.spd * 1.944) + 'kt' : (pt.meta?.speed ? Math.round(pt.meta.speed * 1.944) + 'kt' : '')
-      const hdg = pt.meta?.heading != null ? pt.meta.heading + '°' : ''
-      return [alt, spd, hdg].filter(Boolean).join(' ')
-    }
-    if (pt.type === 'ship' || pt.type === 'warship') return `${pt.meta?.speed != null ? pt.meta.speed+'kn' : ''} ${pt.meta?.shipType||''} ${pt.meta?.flag||''}`.trim()
-    if (pt.type === 'earthquake') return `${pt.meta?.depth?.toFixed(0)||'?'}km deep${pt.meta?.tsunami?' ⚠TSUNAMI':''}`
-    if (pt.type === 'hurricane') return `${pt.meta?.intensity||'?'}kt wind`
-    if (pt.lat && pt.lng) return `${pt.lat.toFixed(1)}° ${pt.lng.toFixed(1)}°`
-    return ''
-  }
+  }, [shodanData, shodanLoading])
 
   return (
-    <div style={{ position:'absolute', top:0, left:0, bottom:0, width:'224px', zIndex:20,
-      borderRight:'1px solid var(--border)', background:'var(--void)',
-      display:'flex', flexDirection:'column', overflow:'hidden', backdropFilter:'blur(4px)' }}>
-
+    <div
+      style={{
+        position:'absolute', top:0, left:0, bottom:0, width:'224px', zIndex:20,
+        borderRight:'1px solid var(--border)', background:'#040b17',
+        display:'flex', flexDirection:'column', overflow:'hidden',
+        contain:'content', overscrollBehavior:'contain'
+      }}
+      onWheel={e => e.stopPropagation()}
+    >
       {/* Header */}
       <div style={{ padding:'6px 10px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <span className="mono" style={{ fontSize:'8px', color:'var(--accent)', letterSpacing:'0.1em' }}>SIGNAL CATEGORIES</span>
@@ -1585,249 +1930,28 @@ function CategoriesSidebar({ allPoints, layers, mapMode, categoryFilter, setCate
       </div>
 
       {/* Category list */}
-      <div style={{ flex:1, overflowY:'auto' }}>
-        {CATS.map(cat => {
-          const rawItems = allPoints.filter(cat.match)
-          const items = countryFilter === 'ALL'
-            ? rawItems
-            : rawItems.filter(p => getPointCountry(p).code === countryFilter)
-
-          const isExpanded = !!expanded[cat.id]
-          const searchQ = (searches[cat.id] || '').toLowerCase()
-          const searchedItems = searchQ
-            ? items.filter(p => {
-                const c = getPointCountry(p)
-                const corpus = (getItemLabel(p) + ' ' + getItemMeta(p) + ' ' + c.name + ' ' + c.code).toLowerCase()
-                return corpus.includes(searchQ)
-              })
-            : items
-
-          // Multi-mode sorting: Country, Severity, Recency, Name
-          const filteredItems = [...searchedItems].sort((a, b) => {
-            if (sortMode === 'country') {
-              const ca = getPointCountry(a).name
-              const cb = getPointCountry(b).name
-              if (ca !== cb) return ca.localeCompare(cb)
-              const sevOrder = { critical: 4, high: 3, medium: 2, low: 1 }
-              return (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0)
-            }
-            if (sortMode === 'severity') {
-              const sevOrder = { critical: 4, high: 3, medium: 2, low: 1 }
-              return (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0)
-            }
-            if (sortMode === 'recent') {
-              const ta = a.pub || a.time || a.meta?.time ? new Date(a.pub || a.time || a.meta?.time).getTime() : 0
-              const tb = b.pub || b.time || b.meta?.time ? new Date(b.pub || b.time || b.meta?.time).getTime() : 0
-              return tb - ta
-            }
-            if (sortMode === 'name') {
-              return getItemLabel(a).localeCompare(getItemLabel(b))
-            }
-            return 0
-          })
-
-          const isActive = cat.id === categoryFilter
-          const sevColor = (pt) => pt.severity==='critical'?'#ef4444':pt.severity==='high'?'#f97316':pt.severity==='medium'?'#eab308':cat.color
-
-          return (
-            <div key={cat.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-
-              {/* ── Category header ── */}
-              <div
-                onClick={() => {
-                  const next = !isExpanded
-                  setExpanded(e => ({ ...e, [cat.id]: next }))
-                  setCategoryFilter(next ? cat.id : null)
-                }}
-                style={{ padding:'6px 8px 6px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px',
-                  background: isActive ? `${cat.color}18` : 'transparent',
-                  borderLeft: isActive ? `3px solid ${cat.color}` : '3px solid transparent',
-                  transition:'background 0.1s' }}
-                onMouseEnter={e => e.currentTarget.style.background = `${cat.color}10`}
-                onMouseLeave={e => e.currentTarget.style.background = isActive ? `${cat.color}18` : 'transparent'}
-              >
-                <span style={{ fontSize:'12px', lineHeight:1, flexShrink:0 }}>{cat.icon}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:'9px', fontWeight:600, color:'var(--t2)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cat.label}</div>
-                  <div className="mono" style={{ fontSize:'7px', color: items.length > 0 ? cat.color : 'var(--t4)' }}>
-                    {items.length} signals {countryFilter !== 'ALL' ? `(${rawItems.length} tot)` : ''}
-                  </div>
-                </div>
-                <span style={{ fontSize:'7px', color:'var(--t4)', flexShrink:0, display:'inline-block',
-                  transition:'transform 0.15s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
-              </div>
-
-              {/* ── Expanded item list ── */}
-              {isExpanded && (
-                <div className="fade-in" style={{ background:'rgba(0,0,0,0.4)' }}>
-                  {items.length === 0 ? (
-                    <div style={{ padding:'7px 12px', fontSize:'8px', color:'var(--t4)' }}>
-                      {countryFilter !== 'ALL'
-                        ? `No signals in ${countryFilter} for this category`
-                        : (() => {
-                          const LAYER_KEY_MAP = {
-                            'ships':'ships','milaircraft':'milaircraft','warships':'warships',
-                            'launches':'launches','copernicus':'copernicus','sigmets':'sigmets',
-                            'hotspots':'hotspots','wikiEdits':'wikiEdits','preaction':'preaction',
-                            'viirs':'viirs','bgp':'bgp','redditSignals':'redditSignals',
-                          }
-                          const layerKey = LAYER_KEY_MAP[cat.id] || cat.id
-                          const isLayerOff = layerKey && layers[layerKey] === false
-                          return isLayerOff
-                            ? `Layer off — toggle "${cat.label}" in toolbar to enable`
-                            : cat.note || `No data yet — source loading or no events in window`
-                        })()}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Search input & Sort mode toggles */}
-                      <div style={{ padding:'4px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', flexDirection:'column', gap:'4px' }}>
-                        {rawItems.length > 3 && (
-                          <input
-                            value={searches[cat.id] || ''}
-                            onChange={e => setSearches(s => ({ ...s, [cat.id]: e.target.value }))}
-                            placeholder={`Search ${items.length} items (name or country)…`}
-                            onClick={e => e.stopPropagation()}
-                            className="inp"
-                            style={{ fontSize:'8px', padding:'3px 7px', width:'100%' }}
-                          />
-                        )}
-                        <div style={{ display:'flex', alignItems:'center', gap:'2px' }}>
-                          <span className="mono" style={{ fontSize:'7px', color:'var(--t4)', marginRight:'3px' }}>SORT:</span>
-                          {[
-                            { id:'country',  label:'🏳 Country' },
-                            { id:'severity', label:'⚠ Severity' },
-                            { id:'recent',   label:'⏱ Time' },
-                            { id:'name',     label:'🔤 Name' },
-                          ].map(sm => (
-                            <button
-                              key={sm.id}
-                              onClick={e => { e.stopPropagation(); setSortMode(sm.id) }}
-                              style={{
-                                fontSize:'7px', padding:'1px 4px', borderRadius:'2px', cursor:'pointer',
-                                background: sortMode === sm.id ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-                                color: sortMode === sm.id ? '#020810' : 'var(--t3)',
-                                fontWeight: sortMode === sm.id ? 700 : 400,
-                                border: 'none',
-                                fontFamily: 'JetBrains Mono',
-                                lineHeight: 1.3,
-                              }}
-                            >
-                              {sm.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Item rows */}
-                      <div style={{ maxHeight:'240px', overflowY:'auto' }}>
-                        {filteredItems.length === 0 && searchQ && (
-                          <div style={{ padding:'6px 12px', fontSize:'8px', color:'var(--t4)' }}>No matches for "{searches[cat.id]}"</div>
-                        )}
-                        {filteredItems.slice(0, 150).map((pt, i) => {
-                          const label = getItemLabel(pt)
-                          const meta  = getItemMeta(pt)
-                          const sc    = sevColor(pt)
-                          const ptCountry = getPointCountry(pt)
-                          const shipKey = pt.meta?.mmsi ? String(pt.meta.mmsi) : pt.meta?.name ? pt.meta.name : null
-                          const sd    = shipKey ? shodanData[shipKey] : null
-                          const sload = shipKey ? shodanLoading[shipKey] : false
-
-                          return (
-                            <div key={i}
-                              style={{ padding:'4px 8px 4px 14px', borderBottom:'1px solid rgba(255,255,255,0.025)',
-                                transition:'background 0.08s' }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              {/* Main row — click to fly to + open detail */}
-                              <div style={{ display:'flex', alignItems:'center', gap:'5px', cursor:'pointer' }}
-                                onClick={e => { e.stopPropagation(); globeTo(pt); setSelected(pt); setExpandedCluster(null) }}>
-                                <span style={{ width:'5px', height:'5px', borderRadius:'50%', background:sc,
-                                  flexShrink:0, boxShadow:`0 0 4px ${sc}88` }}/>
-                                <div style={{ flex:1, minWidth:0 }}>
-                                  <div style={{ display:'flex', alignItems:'center', gap:'4px', overflow:'hidden' }}>
-                                    <span
-                                      title={`${ptCountry.name} (${ptCountry.code})`}
-                                      style={{
-                                        fontSize:'7.5px', padding:'0px 3px', borderRadius:'2px',
-                                        background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)',
-                                        color:'var(--t2)', flexShrink:0, display:'inline-flex', alignItems:'center', gap:'2px'
-                                      }}
-                                    >
-                                      <span>{ptCountry.flag}</span>
-                                      <span className="mono" style={{ fontSize:'6.5px', opacity:0.85 }}>{ptCountry.code}</span>
-                                    </span>
-                                    <span style={{ fontSize:'8px', fontWeight:600, color:'var(--t1)',
-                                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
-                                  </div>
-                                  {meta && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>{meta}</div>}
-                                </div>
-                                <span style={{ fontSize:'8px', color:'var(--accent)', flexShrink:0, opacity:0.7 }}>→</span>
-                              </div>
-
-                              {/* Shodan panel for ships */}
-                              {pt.type === 'ship' && shipKey && (
-                                <div style={{ paddingTop:'3px', paddingLeft:'10px' }}>
-                                  {!sd && !sload && (
-                                    <button
-                                      onClick={e => { e.stopPropagation(); lookupShodan(shipKey, shipKey) }}
-                                      style={{ fontSize:'7px', color:'#06b6d4', background:'none',
-                                        border:'1px solid rgba(6,182,212,0.3)', borderRadius:'2px',
-                                        padding:'1px 5px', cursor:'pointer', fontFamily:'JetBrains Mono' }}>
-                                      🔍 Shodan lookup
-                                    </button>
-                                  )}
-                                  {sload && <span className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>querying…</span>}
-                                  {sd && (
-                                    <div style={{ padding:'3px 6px', background:'rgba(6,182,212,0.07)',
-                                      border:'1px solid rgba(6,182,212,0.25)', borderRadius:'2px', marginTop:'2px' }}>
-                                      <div className="mono" style={{ fontSize:'7px', color:'#06b6d4', marginBottom:'2px', letterSpacing:'0.08em' }}>
-                                        SHODAN INTERNETDB
-                                      </div>
-                                      {sd._note ? (
-                                        <>
-                                          <div style={{ fontSize:'7px', color:'var(--t3)', marginBottom:'2px' }}>{sd._note}</div>
-                                          <a href={sd._searchUrl} target="_blank" rel="noopener noreferrer"
-                                            onClick={e=>e.stopPropagation()}
-                                            style={{ fontSize:'7px', color:'#06b6d4', textDecoration:'underline' }}>
-                                            ↗ Search Shodan: {shipKey}
-                                          </a>
-                                        </>
-                                      ) : (
-                                        <>
-                                          {sd.ports?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t2)' }}>Ports: {sd.ports.slice(0,8).join(', ')}</div>}
-                                          {sd.vulns?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'#ef4444' }}>⚠ CVEs: {sd.vulns.slice(0,4).join(', ')}</div>}
-                                          {sd.tags?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>Tags: {sd.tags.slice(0,5).join(', ')}</div>}
-                                          {sd.hostnames?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t3)' }}>Host: {sd.hostnames[0]}</div>}
-                                          {sd.cpes?.length > 0 && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>CPE: {sd.cpes[0]}</div>}
-                                          {(!sd.ports?.length && !sd.vulns?.length) && <div className="mono" style={{ fontSize:'7px', color:'var(--t4)' }}>No exposed services found</div>}
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                        {filteredItems.length > 150 && (
-                          <div style={{ padding:'4px 12px', fontSize:'7px', color:'var(--t4)', fontFamily:'JetBrains Mono' }}>
-                            +{filteredItems.length - 150} more · use search to filter
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
+      <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain' }}>
+        {CATS.map(cat => (
+          <CategoryRow
+            key={cat.id}
+            cat={cat}
+            items={categoryItems[cat.id] || []}
+            rawCount={rawCounts[cat.id] || 0}
+            isExpanded={!!expanded[cat.id]}
+            isActive={cat.id === categoryFilter}
+            onToggle={() => handleToggle(cat.id)}
+            countryFilter={countryFilter}
+            layers={layers}
+            onSelectPoint={handleSelectPoint}
+            lookupShodan={lookupShodan}
+            shodanData={shodanData}
+            shodanLoading={shodanLoading}
+          />
+        ))}
       </div>
     </div>
   )
-}
+})
 
 // ── Draw country borders from TopoJSON ──────────────────────────────────────
 function drawCountryBorders(THREE, topo) {
