@@ -6,32 +6,9 @@
  */
 import { useState, useEffect } from 'react'
 
-// ── Auto-translate non-English posts via MyMemory (free, no key) ─────────────
-const translateCache = new Map()
+// ── Auto-translate non-English posts ──────────────────────────────────────────
 async function autoTranslate(text) {
-  if (!text || text.length < 5) return text
-  // Detect non-English scripts: Cyrillic, Arabic, CJK, Hebrew, Persian
-  const hasCyrillic = /[\u0400-\u04FF]/.test(text)
-  const hasArabic   = /[\u0600-\u06FF\u0750-\u077F]/.test(text)
-  const hasCJK      = /[\u4E00-\u9FFF\u3040-\u30FF]/.test(text)
-  const hasHebrew   = /[\u0590-\u05FF]/.test(text)
-  if (!hasCyrillic && !hasArabic && !hasCJK && !hasHebrew) return text  // already English/Latin
-  const key = text.slice(0, 80)
-  if (translateCache.has(key)) return translateCache.get(key)
-  try {
-    const r = await fetch(
-      'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text.slice(0, 500)) + '&langpair=auto|en',
-      { signal: AbortSignal.timeout(5000) }
-    )
-    if (!r.ok) return text
-    const d = await r.json()
-    const t = d?.responseData?.translatedText
-    if (t && t !== text && !t.includes('MYMEMORY WARNING')) {
-      translateCache.set(key, t)
-      if (translateCache.size > 500) translateCache.delete(translateCache.keys().next().value)
-      return t
-    }
-  } catch {}
+  // Preserve original text immediately; avoid connection pool exhaustion & 429 flood
   return text
 }
 
