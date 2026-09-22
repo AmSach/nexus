@@ -95,7 +95,7 @@ function parseXML(xmlStr, src, defaultCat) {
 // Budget: ~5% of RSS titles are non-Latin = ~300/day, well under limit.
 const translationCache = new Map()
 let translateCallsThisSession = 0
-const MAX_TRANSLATE_PER_SESSION = 200  // hard cap per page load
+const MAX_TRANSLATE_PER_SESSION = 8  // strict cap per page load to avoid connection pool exhaustion
 
 function detectLang(text) {
   // Detect script from char ranges — more reliable than MyMemory autodetect
@@ -122,7 +122,12 @@ async function autoTranslate(text) {
   const srcLang = detectLang(text) || 'ru'  // default Cyrillic if undetected
   translateCallsThisSession++
   try {
-    const r = await fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text.slice(0, 200)) + '&langpair=' + srcLang + '|en', { signal: AbortSignal.timeout(2000) })
+    const r = await fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text.slice(0, 200)) + '&langpair=' + srcLang + '|en', { signal: AbortSignal.timeout(1500) })
+    if (r.status === 429) {
+      // Immediately freeze further translation attempts if API signals rate limiting
+      translateCallsThisSession = MAX_TRANSLATE_PER_SESSION
+      return text
+    }
     if (!r.ok) return text
     const d = await r.json()
     const t = d?.responseData?.translatedText
@@ -130,7 +135,10 @@ async function autoTranslate(text) {
       translationCache.set(cacheKey, t + ' [tr]')
       return t + ' [tr]'
     }
-  } catch {}
+  } catch {
+    // On timeout or failure, skip subsequent requests
+    translateCallsThisSession += 2
+  }
   return text
 }
 

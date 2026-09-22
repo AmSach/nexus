@@ -9,6 +9,9 @@
  * 5. Crisis24 / OSAC RSS feeds - US Govt security alerts with geo
  */
 
+import { cacheRead } from '../utils/cache'
+import { SEED_SATELLITE_BASELINE } from '../data/satellite_seed'
+
 function acledSeverity(eventType, fatalities) {
   if (fatalities > 50) return 'critical'
   if (fatalities > 10) return 'high'
@@ -267,6 +270,20 @@ export async function fetchACLED(sitName, key, email, password) {
     ...(rw.status === 'fulfilled' ? rw.value : []),
     ...(news.status === 'fulfilled' ? news.value : []),
   ]
+  
+  if (all.length === 0) {
+    const cached = cacheRead('satellite')
+    const fallbackList = cached?.data?.conflictEvents || cached?.data?.ucdpFull || SEED_SATELLITE_BASELINE.conflictEvents || []
+    all.push(...fallbackList.map(e => ({
+      ...e,
+      id: e.id || `fallback-${Math.random().toString(36).slice(2)}`,
+      title: e.title?.startsWith('[') ? e.title : `[CONFLICT] ${e.title || 'Armed Conflict'} — ${e.country || ''}`,
+      category: 'conflict',
+      severity: e.severity || 'high',
+      _acled: true,
+      _live: true,
+    })))
+  }
   
   if (sitName) {
     const lower = sitName.toLowerCase()

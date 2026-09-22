@@ -13,53 +13,54 @@ import { useTelegram } from './useTelegram'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useADSBLive } from './useADSBLive'
 import { useSupabaseSatellite } from './useSupabase'
+import { SEED_SATELLITE_BASELINE } from '../data/satellite_seed'
 
-// ── useSatellite: auto-selects Supabase or legacy at IMPORT time (not hook time)
-// This avoids the React conditional hook rule violation.
-// Components always call useSatellite() — routing is transparent.
+// ── useSatellite: auto-selects Supabase or legacy based on actual data presence
 const _USE_SUPABASE = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
 export function useSatellite() {
-  // useSupabaseSatellite and useSatelliteLegacy are both called here to follow
-  // React's rules of hooks (no conditional calls). Only one will do real work.
   const sbResult = useSupabaseSatellite()
   const lgResult = useSatelliteLegacy()
-  return _USE_SUPABASE ? sbResult : lgResult
+  // Only route to Supabase if it actually contains live signals
+  const hasDbSignals = Boolean(
+    sbResult?.data && (
+      (sbResult.data.summary?.total > 0) ||
+      (sbResult.data.earthquakes?.length > 0) ||
+      (sbResult.data.aircraft?.length > 0) ||
+      (sbResult.data.ships?.length > 0)
+    )
+  )
+  return (_USE_SUPABASE && hasDbSignals) ? sbResult : lgResult
 }
 
 async function fetchWithRetry(url, maxRetries = 2) {
   let lastErr
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // 60s first attempt (Vercel limit), 30s on retry
-      const timeout = attempt === 0 ? 60000 : 30000
+      const timeout = attempt === 0 ? 15000 : 10000
       const r = await fetch(url, { signal: AbortSignal.timeout(timeout) })
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       return r
     } catch (e) {
       lastErr = e
-      if (attempt < maxRetries - 1) await new Promise(res => setTimeout(res, 2000))
+      if (attempt < maxRetries - 1) await new Promise(res => setTimeout(res, 1000))
     }
   }
   throw lastErr
 }
 
 function useSatelliteLegacy() {
-  // No-op when Supabase is active — all data comes from DB instead
-  const _isSupabase = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
-  const [data,      setData]      = useState(null)
+  const [data,      setData]      = useState(() => {
+    const cached = cacheRead('satellite', 10 * 60 * 1000)
+    return cached?.data || SEED_SATELLITE_BASELINE
+  })
   const [loading,   setLoading]   = useState(false)
   const [lastFetch, setLastFetch] = useState(null)
   const [error,     setError]     = useState(null)
   const mounted = useRef(true)
   useEffect(() => () => { mounted.current = false }, [])
 
-  // Bail immediately if Supabase is handling data
-  useEffect(() => { if (_isSupabase) setLoading(false) }, [_isSupabase])
-
   const fetch_ = useCallback(async (forceRefresh = false) => {
-    // No-op when Supabase provides data
-    if (_isSupabase) return
     // ── Cache-first: serve stale data instantly, refresh in background ─────
     const CACHE_KEY = 'satellite'
     const CACHE_TTL = 5 * 60 * 1000  // 5 min — serve cached if fresher than this
@@ -83,9 +84,9 @@ function useSatelliteLegacy() {
     setLoading(true); setError(null)
     try {
       const [satR, sigR, thrR] = await Promise.allSettled([
-        fetchWithRetry('/api/satellite', 3),
-        fetch('/api/signals',  { signal: AbortSignal.timeout(55000) }).catch(() => null),
-        fetch('/api/threats',  { signal: AbortSignal.timeout(55000) }).catch(() => null),
+        fetchWithRetry('/api/satellite', 2),
+        fetch('/api/signals',  { signal: AbortSignal.timeout(10000) }).catch(() => null),
+        fetch('/api/threats',  { signal: AbortSignal.timeout(10000) }).catch(() => null),
       ])
       if (satR.status === 'rejected') throw new Error(satR.reason?.message || 'Satellite fetch failed')
       const sat = await satR.value.json()
@@ -713,17 +714,71 @@ export function satelliteToPoints(satData, layers) {
     })
   }
 
-  // ── BGP anomalies — routing hijacks (cyber/infrastructure) ─────────────
-  if (layers.bgp && satData.bgpAnomalies?.length) {
+  // ── GPS Jamming & Spoofing Corridors ──────────────────────────────────────
+  if ((layers.gpsjam || layers.hotspots) && satData.gpsjam?.length) {
+    satData.gpsjam.forEach(g => {
+      if (!g.lat || !g.lng) return
+      pts.push({
+        lat: g.lat, lng: g.lng,
+        type: 'gpsjam',
+        severity: g.severity || 'high',
+        name: `📡 GPS Jam/Spoof: ${g.title || 'GNSS Interference'}`,
+        desc: `${g.desc || 'Severe GPS/GNSS navigation integrity degradation.'} · Intensity: ${g.intensity || '85'}% · Source: ${g.source || 'GPSJam/ADS-B'}`,
+        url: 'https://gpsjam.org',
+        meta: { intensity: g.intensity, source: g.source, _gpsjam: true },
+        _glow: true,
+      })
+    })
+  }
+
+  // ── Dark Fleet & Shadow Tanker Transshipment ──────────────────────────────
+  if ((layers.ships || layers.maritime || layers.warships) && satData.darkfleet?.length) {
+    satData.darkfleet.forEach(d => {
+      if (!d.lat || !d.lng) return
+      pts.push({
+        lat: d.lat, lng: d.lng,
+        type: 'ship',
+        severity: d.severity || 'high',
+        name: `🏴‍☠️ Dark Fleet STS: ${d.name}`,
+        desc: `${d.desc || 'Ship-to-ship transshipment with AIS spoofing.'} · Flag: ${d.flag || 'Unknown'} · Speed: ${d.speed || '0'}kn`,
+        url: `https://www.marinetraffic.com/en/ais/home/centerx:${d.lng}/centery:${d.lat}/zoom:10`,
+        meta: { mmsi: d.mmsi, flag: d.flag, speed: d.speed, _darkfleet: true },
+        _glow: true,
+      })
+    })
+  }
+
+  // ── Synthetic Aperture Radar (SAR) Ground Anomaly Zones ───────────────────
+  if ((layers.copernicus || layers.viirs) && satData.sarRadar?.length) {
+    satData.sarRadar.forEach(s => {
+      if (!s.lat || !s.lng) return
+      pts.push({
+        lat: s.lat, lng: s.lng,
+        type: 'copernicus',
+        severity: s.severity || 'high',
+        name: `🛰 Sentinel-1 SAR: ${s.target || s.title}`,
+        desc: `${s.title} · ${s.desc} · Platform: ${s.platform || 'Sentinel-1 C-SAR'}`,
+        url: 'https://browser.dataspace.copernicus.eu/',
+        meta: { target: s.target, platform: s.platform, _sar: true },
+        _glow: true,
+      })
+    })
+  }
+
+  // ── BGP anomalies — routing hijacks & telecom outages (Cloudflare Radar / IODA) ───
+  if ((layers.bgp || layers.cyber) && satData.bgpAnomalies?.length) {
     satData.bgpAnomalies.forEach((b, i) => {
-      // No lat/lng on BGP events — distribute across known cyber hotspots
       const CYBER_LOCS = [[55.7,37.6],[39.9,116.4],[37.5,127.0],[38.9,-77.0],[51.5,-0.1],[48.9,2.3]]
-      const [lat,lng] = CYBER_LOCS[i % CYBER_LOCS.length]
-      const j = () => (Math.random()-0.5)*5
-      pts.push({ lat:lat+j(), lng:lng+j(), type:'bgp', severity:b.severity||'medium',
-        name:`🌐 BGP: ${b.title?.slice(0,60)}`,
-        desc:b.description?.slice(0,300), url:b.url,
-        meta:{source:'BGP Stream'} })
+      const lat = b.lat || CYBER_LOCS[i % CYBER_LOCS.length][0]
+      const lng = b.lng || CYBER_LOCS[i % CYBER_LOCS.length][1]
+      pts.push({
+        lat, lng, type: 'bgp', severity: b.severity || 'high',
+        name: `🌐 Internet Outage / BGP: ${b.title || 'Network Disruption'}`,
+        desc: `${b.desc || b.description || 'Major connectivity collapse detected.'} · Drop: ${b.dropPercent ? b.dropPercent + '%' : 'Severe'} · Source: ${b.source || 'Cloudflare Radar / IODA'}`,
+        url: b.url || 'https://radar.cloudflare.com',
+        meta: { source: b.source, dropPercent: b.dropPercent, country: b.country },
+        _glow: true,
+      })
     })
   }
 

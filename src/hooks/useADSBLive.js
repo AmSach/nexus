@@ -5,6 +5,7 @@
  * Falls back to airplanes.live REST if WebSocket unavailable
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { cacheRead } from '../utils/cache'
 
 const MIL_CALLSIGN = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|FORTE|SPAR|EXEC|REACH|ATLAS|JAKE|KNIFE|DUKE|VALOR|GHOST|NINJA|IRON|STEEL|MIGHT|VMF|VMFA|VFA|VP|VQ|HC|HM|HSC|HSM)/i
 const MIL_HEX = /^ae[0-9a-f]{4}|^43[0-9a-f]{4}|^3c[0-9a-f]{4}/i
@@ -34,83 +35,79 @@ export function useADSBLive() {
   }, [])
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
+    // Only connect if browser supports WebSocket
+    if (typeof WebSocket === 'undefined') return
+    // Guard against repeated rapid connection attempts
+    if (retryRef.current >= 2) return
 
-    // adsb.fi public WebSocket — no key needed, works from browser
-    const ws = new WebSocket('wss://data.adsbexchange.com/api/aircraft/json/mil/')
-    wsRef.current = ws
+    try {
+      const ws = new WebSocket('wss://data.adsbexchange.com/api/aircraft/json/mil/')
+      wsRef.current = ws
 
-    ws.onopen = () => {
-      setConnected(true)
-      retryRef.current = 0
-      console.log('[ADSB-WS] Connected to adsbexchange military feed')
-    }
+      ws.onopen = () => {
+        setConnected(true)
+        retryRef.current = 0
+      }
 
-    ws.onmessage = (evt) => {
-      try {
-        const d = JSON.parse(evt.data)
-        ;(d.ac || d.aircraft || []).forEach(a => {
-          if (!a.lat || !a.lon) return
-          const cs = (a.flight || '').trim()
-          const hex = (a.hex || '').toLowerCase()
-          const isMil = MIL_CALLSIGN.test(cs) || MIL_HEX.test(hex) || a.military
-          const isEmerg = EMERG_SQ.has(a.squawk)
-          if (!isMil && !isEmerg) return
-          dataRef.current[hex || cs] = {
-            icao24: hex, callsign: cs,
-            lat: +a.lat, lng: +(a.lon || a.lng),
-            altitude: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro) : (a.alt_geom || 0),
-            velocity: a.gs ? Math.round(a.gs) : null,
-            heading: a.track ? Math.round(a.track) : null,
-            squawk: a.squawk || '', model: a.t || '',
-            country: a.r?.slice(0,2) || '',
-            _military: isMil, _emergency: isEmerg,
-            _ts: Date.now(),
-            severity: severity(a),
+      ws.onmessage = ev => {
+        try {
+          const d = JSON.parse(ev.data)
+          const now = Date.now()
+          ;(d.ac || []).forEach(a => {
+            if (!a.lat || !a.lon) return
+            const hex = (a.hex || '').toLowerCase()
+            dataRef.current[hex || a.flight] = {
+              icao24: hex, callsign: (a.flight||'').trim(),
+              lat: +a.lat, lng: +(a.lon || a.lng),
+              altitude: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro) : 0,
+              velocity: a.gs ? Math.round(a.gs) : null,
+              heading: a.track ? Math.round(a.track) : null,
+              squawk: a.squawk || '', model: a.t || '',
+              _military: true, _ts: now,
+              severity: severity(a),
+            }
+          })
+          updateMap()
+        } catch {}
+      }
+
+      ws.onclose = () => {
+        setConnected(false)
+        // Cap WebSocket retries to 2 attempts; rely on REST fallback thereafter
+        if (retryRef.current < 2) {
+          const delay = Math.min(5000 * Math.pow(2, retryRef.current), 60000)
+          retryRef.current++
+          setTimeout(connect, delay)
+        }
+      }
+
+      ws.onerror = () => { try { ws.close() } catch {} }
+    } catch {}
+  }, [updateMap])
+
+  // REST fallback — syncs from cached satellite intel to avoid browser CORS errors
+  const fetchREST = useCallback(async () => {
+    try {
+      const cached = cacheRead('satellite', 10 * 60 * 1000)
+      const milList = cached?.data?.milaircraft || cached?.data?.aircraft?.filter(a => a._military) || []
+      if (milList.length > 0) {
+        const now = Date.now()
+        milList.forEach(a => {
+          if (!a.lat || !a.lng) return
+          const hex = (a.icao24 || a.callsign || Math.random().toString(36).slice(2)).toLowerCase()
+          dataRef.current[hex] = {
+            icao24: hex, callsign: (a.callsign||'').trim(),
+            lat: +a.lat, lng: +a.lng,
+            altitude: typeof a.altitude === 'number' ? Math.round(a.altitude) : 0,
+            velocity: a.velocity || null,
+            heading: a.heading || null,
+            squawk: a.squawk || '', model: a.model || '',
+            _military: true, _ts: now,
+            severity: EMERG_SQ.has(a.squawk) ? 'critical' : 'high',
           }
         })
         updateMap()
-      } catch {}
-    }
-
-    ws.onclose = () => {
-      setConnected(false)
-      // Cap WebSocket retries to 2 attempts; rely on REST fallback thereafter
-      if (retryRef.current < 2) {
-        const delay = Math.min(5000 * Math.pow(2, retryRef.current), 60000)
-        retryRef.current++
-        setTimeout(connect, delay)
       }
-    }
-
-    ws.onerror = () => { try { ws.close() } catch {} }
-  }, [updateMap])
-
-  // REST fallback — polls airplanes.live /v2/mil every 30s when WS unavailable
-  const fetchREST = useCallback(async () => {
-    try {
-      const r = await fetch('https://api.airplanes.live/v2/mil', {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(10000)
-      })
-      if (!r.ok) return
-      const d = await r.json()
-      const now = Date.now()
-      ;(d?.ac || []).forEach(a => {
-        if (!a.lat || !a.lon) return
-        const hex = (a.hex || '').toLowerCase()
-        dataRef.current[hex || a.flight] = {
-          icao24: hex, callsign: (a.flight||'').trim(),
-          lat: +a.lat, lng: +(a.lon || a.lng),
-          altitude: typeof a.alt_baro === 'number' ? Math.round(a.alt_baro) : 0,
-          velocity: a.gs ? Math.round(a.gs) : null,
-          heading: a.track ? Math.round(a.track) : null,
-          squawk: a.squawk || '', model: a.t || '',
-          _military: true, _ts: now,
-          severity: EMERG_SQ.has(a.squawk) ? 'critical' : 'high',
-        }
-      })
-      updateMap()
     } catch {}
   }, [updateMap])
 

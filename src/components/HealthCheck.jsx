@@ -56,12 +56,12 @@ async function runCheck(id, keys) {
 
     if (id === 'firms') {
       const firmKey = keys?.firms || ''
-      if (!firmKey) return { status:'info', detail:'No FIRMS key in Settings → Satellite', ms:ms() }
-      const r = await fetch('/api/firms?key='+encodeURIComponent(firmKey)+'&days=1', { signal: AbortSignal.timeout(25000) })
+      const url = firmKey ? '/api/firms?key=' + encodeURIComponent(firmKey) + '&days=1' : '/api/firms?days=1'
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status, ms:ms() }
       const d = await r.json()
       const n = Array.isArray(d) ? d.length : 0
-      return { status: n>0?'ok':'warn', detail: n+' thermal zones', count:n, ms:ms() }
+      return { status: n>0?'ok':'warn', detail: n+' thermal detection zones active', count:n, ms:ms() }
     }
 
     if (id === 'usgs') {

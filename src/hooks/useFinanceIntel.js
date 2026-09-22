@@ -637,24 +637,24 @@ export function useFinanceIntel() {
       }
       const stillMissing = [...PRIORITY_SYMS,...EXTENDED_SYMS].filter(s=>!allQuotes[s])
       if(stillMissing.length > 0){
-        // Batch request: Stooq supports comma-separated (up to 20)
-        const chunks = []
-        for(let i=0;i<stillMissing.length;i+=15) chunks.push(stillMissing.slice(i,i+15))
-        await Promise.allSettled(chunks.map(async chunk => {
-          try{
-            const batch = chunk.map(stooqSym).join(',')
-            const r = await fetch(`https://stooq.com/q/l/?s=${batch}&f=sd2t2ohlcv&h&e=json`,{signal:AbortSignal.timeout(8000)})
-            if(!r.ok) return
-            const d = await r.json()
-            ;(d?.symbols||[]).forEach((q,i) => {
-              if(!q?.Close || q.Close==='N/D') return
-              const orig = chunk[i]
-              if(!orig || allQuotes[orig]) return
-              const close=+q.Close, open=+q.Open||close
-              allQuotes[orig]={price:close,prev:open,open,high:+q.High||close,low:+q.Low||close,volume:+q.Volume||0,changePercent:open?((close-open)/open*100):0,name:orig}
-            })
-          }catch{}
-        }))
+        // Batch request: limit to single priority chunk to avoid connection blocking
+        const priorityMissing = stillMissing.slice(0, 10)
+        if (priorityMissing.length > 0) {
+          try {
+            const batch = priorityMissing.map(stooqSym).join(',')
+            const r = await fetch(`https://stooq.com/q/l/?s=${batch}&f=sd2t2ohlcv&h&e=json`,{signal:AbortSignal.timeout(3000)})
+            if (r.ok) {
+              const d = await r.json()
+              ;(d?.symbols||[]).forEach((q,i) => {
+                if(!q?.Close || q.Close==='N/D') return
+                const orig = priorityMissing[i]
+                if(!orig || allQuotes[orig]) return
+                const close=+q.Close, open=+q.Open||close
+                allQuotes[orig]={price:close,prev:open,open,high:+q.High||close,low:+q.Low||close,volume:+q.Volume||0,changePercent:open?((close-open)/open*100):0,name:orig}
+              })
+            }
+          } catch {}
+        }
       }
 
       // ── 5. Build FX quotes from FX rates (fill =X symbols from rates object) ─
