@@ -410,19 +410,17 @@ export default function IntelMap({ articles, active = true }) {
     // Raycaster for click detection
     const raycaster = new THREE.Raycaster()
 
-    // Animation loop — 24 FPS when auto-rotating, dynamic idle sleep when stationary (0% CPU idle)
+    // Animation loop — solid 30 FPS for fluid interactive mouse drag, zoom, and hover
     let lastFrameTime = performance.now()
-    const TARGET_FPS = 24
+    const TARGET_FPS = 30
     const FPS_INTERVAL = 1000 / TARGET_FPS
     const _tempV = new THREE.Vector3()
     const _camPos = new THREE.Vector3()
 
     let cullCounter = 0
-    let needsRender = true
-    threeRef.current.requestRender = () => { needsRender = true }
 
     const animate = () => {
-      // Dynamic sleep: when inactive or document is hidden, do NOT schedule next frame (0% CPU/GPU idle)
+      // Dynamic sleep: when tab is inactive or hidden, pause loop to save 100% CPU/GPU
       if (document.hidden || !activeRef.current) {
         frameRef.current = null
         return
@@ -430,7 +428,7 @@ export default function IntelMap({ articles, active = true }) {
 
       frameRef.current = requestAnimationFrame(animate)
 
-      // 24 FPS frame throttling
+      // 30 FPS smooth frame pacing
       const now = performance.now()
       const elapsed = now - lastFrameTime
       if (elapsed < FPS_INTERVAL) return
@@ -438,50 +436,38 @@ export default function IntelMap({ articles, active = true }) {
 
       const isRotating = autoRotateRef.current && !isDragging.current
       const hasInertia = !isDragging.current && (Math.abs(rotVel.current.x) > 0.0001 || Math.abs(rotVel.current.y) > 0.0001)
-      const hasPulse = (threeRef.current.pulseMeshes && threeRef.current.pulseMeshes.length > 0) || !!threeRef.current._navMesh
 
       // Auto-rotation & inertia decay
       if (isRotating) {
-        globe.rotation.y += 0.0008
-        needsRender = true
+        globe.rotation.y += 0.0010
       }
       if (hasInertia) {
         globe.rotation.x += rotVel.current.x
         globe.rotation.y += rotVel.current.y
         rotVel.current.x *= 0.92
         rotVel.current.y *= 0.92
-        needsRender = true
       }
-      if (isDragging.current) {
-        needsRender = true
-      }
-
-      // If stationary and no active pulse, skip render loop completely! (0% CPU/GPU load)
-      if (!needsRender && !hasPulse) return
-      needsRender = false
 
       // Fast pulse on critical / hotspot / hurricane markers
-      if (hasPulse) {
-        const t = now * 0.003
-        const pulseList = threeRef.current.pulseMeshes
-        if (pulseList && pulseList.length > 0) {
-          for (let i = 0; i < pulseList.length; i++) {
-            const mesh = pulseList[i]
-            const s = 1 + 0.18 * Math.sin(t * 2.0 + i * 0.7)
-            mesh.scale.set(s, s, s)
-          }
-        }
-
-        // Navigated marker focus pulse
-        const navMesh = threeRef.current._navMesh
-        if (navMesh) {
-          const s = 1 + 0.35 * Math.abs(Math.sin(t * 3.0))
-          navMesh.scale.set(s, s, s)
+      const t = now * 0.003
+      const pulseList = threeRef.current.pulseMeshes
+      if (pulseList && pulseList.length > 0) {
+        for (let i = 0; i < pulseList.length; i++) {
+          const mesh = pulseList[i]
+          const s = 1 + 0.18 * Math.sin(t * 2.0 + i * 0.7)
+          mesh.scale.set(s, s, s)
         }
       }
 
-      // 50% WebGL Backface Culling — throttled to every 10 frames (~2.4x/sec at 24 FPS)
-      if (++cullCounter % 10 === 0) {
+      // Navigated marker focus pulse
+      const navMesh = threeRef.current._navMesh
+      if (navMesh) {
+        const s = 1 + 0.35 * Math.abs(Math.sin(t * 3.0))
+        navMesh.scale.set(s, s, s)
+      }
+
+      // 50% WebGL Backface Culling — throttled to every 8 frames (~3.7x/sec at 30 FPS)
+      if (++cullCounter % 8 === 0) {
         const markerMeshes = threeRef.current.markerMeshes
         if (markerMeshes && markerMeshes.length > 0) {
           camera.getWorldPosition(_camPos)
@@ -947,7 +933,33 @@ export default function IntelMap({ articles, active = true }) {
     camera.position.z = newZ
     // Throttle state update to avoid re-clustering on every scroll tick
     clearTimeout(onWheel._t)
-    onWheel._t = setTimeout(() => setCameraZ(newZ), 600)
+    onWheel._t = setTimeout(() => setCameraZ(newZ), 200)
+  }, [])
+
+  // ── Touch interaction handlers for seamless mobile/trackpad gestures ──
+  const onTouchStart = useCallback(e => {
+    if (e.touches.length === 1) {
+      isDragging.current = true
+      prevMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      rotVel.current = { x: 0, y: 0 }
+      autoRotateRef.current = false
+      setAutoRotate(false)
+    }
+  }, [])
+
+  const onTouchMove = useCallback(e => {
+    if (e.touches.length === 1 && isDragging.current && threeRef.current.globe) {
+      const dx = (e.touches[0].clientX - prevMouse.current.x) * 0.005
+      const dy = (e.touches[0].clientY - prevMouse.current.y) * 0.005
+      threeRef.current.globe.rotation.y += dx
+      threeRef.current.globe.rotation.x += dy
+      rotVel.current = { x: dy, y: dx }
+      prevMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }
+  }, [])
+
+  const onTouchEnd = useCallback(() => {
+    isDragging.current = false
   }, [])
 
   useEffect(() => {
@@ -1169,11 +1181,14 @@ export default function IntelMap({ articles, active = true }) {
 
         {/* Globe canvas — always full size */}
         <div ref={mountRef}
-          style={{ position: 'absolute', inset: 0, cursor: isDragging.current ? 'grabbing' : 'grab' }}
+          style={{ position: 'absolute', inset: 0, cursor: isDragging.current ? 'grabbing' : 'grab', touchAction: 'none' }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
           onMouseLeave={onMouseUp}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         >
           {!threeReady && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '10px' }}>
@@ -1844,32 +1859,10 @@ function drawCountryBorders(THREE, topo) {
         const coords = ring.flatMap(getArc)
         if (coords.length < 2) return
 
-        // Smoothen boundaries: sub-sample vertices with adaptive distance filter to eliminate micro-jaggies
-        const smoothed = [coords[0]]
-        for (let i = 1; i < coords.length; i++) {
-          const prev = smoothed[smoothed.length - 1]
-          const curr = coords[i]
-          const d = Math.abs(curr[0] - prev[0]) + Math.abs(curr[1] - prev[1])
-          if (d > 1.6 || i === coords.length - 1) {
-            smoothed.push(curr)
-          }
-        }
-        if (smoothed.length < 2) return
-
-        // 3-point moving average curve smoothing for sleek, modern borders
-        const finalCoords = [smoothed[0]]
-        for (let i = 1; i < smoothed.length - 1; i++) {
-          finalCoords.push([
-            0.25 * smoothed[i - 1][0] + 0.5 * smoothed[i][0] + 0.25 * smoothed[i + 1][0],
-            0.25 * smoothed[i - 1][1] + 0.5 * smoothed[i][1] + 0.25 * smoothed[i + 1][1]
-          ])
-        }
-        finalCoords.push(smoothed[smoothed.length - 1])
-
-        // Append line segments for single batch draw call
-        for (let i = 0; i < finalCoords.length - 1; i++) {
-          const v1 = latLngToVec3(finalCoords[i][1], finalCoords[i][0], 1.003)
-          const v2 = latLngToVec3(finalCoords[i + 1][1], finalCoords[i + 1][0], 1.003)
+        // Straight lines directly connecting world atlas vertices — 100% geographically recognizable & sharp
+        for (let i = 0; i < coords.length - 1; i++) {
+          const v1 = latLngToVec3(coords[i][1], coords[i][0], 1.002)
+          const v2 = latLngToVec3(coords[i + 1][1], coords[i + 1][0], 1.002)
           segmentCoords.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z)
         }
       })
