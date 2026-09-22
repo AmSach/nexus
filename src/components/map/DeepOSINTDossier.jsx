@@ -370,19 +370,39 @@ export default function DeepOSINTDossier({ selected, articles = [], onClose, onS
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: '8px', color: 'var(--t4)' }}>Vulnerability Severity</span>
-                <div className="mono" style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700 }}>
-                  {(selected.meta?.vulns?.length || selected.vulns?.length) ? `${selected.meta?.vulns?.length || selected.vulns?.length} Active CVEs` : 'High Exposure'}
+                <span style={{ fontSize: '8px', color: 'var(--t4)' }}>Sector / Protocol</span>
+                <div className="mono" style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600 }}>
+                  {selected.meta?.sector || selected.sector || 'Industrial Control System'} [{selected.meta?.protocol || selected.protocol || 'SCADA'}]
                 </div>
               </div>
             </div>
+            {(selected.meta?.hostnames?.length > 0 || selected.hostnames?.length > 0) && (
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontSize: '8px', color: 'var(--t4)' }}>Hostnames / Domains:</span>
+                <div className="mono" style={{ fontSize: '9px', color: 'var(--t2)', marginTop: '2px' }}>
+                  {(selected.meta?.hostnames || selected.hostnames || []).join(', ')}
+                </div>
+              </div>
+            )}
             {(selected.meta?.vulns?.length > 0 || selected.vulns?.length > 0) && (
               <div style={{ marginBottom: '6px' }}>
                 <span style={{ fontSize: '8px', color: 'var(--t4)' }}>Identified CVE Vectors:</span>
                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '3px' }}>
-                  {(selected.meta?.vulns || selected.vulns || []).slice(0, 6).map((c, i) => (
+                  {(selected.meta?.vulns || selected.vulns || []).slice(0, 8).map((c, i) => (
                     <span key={i} className="mono" style={{ fontSize: '8px', padding: '1px 5px', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '2px', color: '#ef4444' }}>
                       {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(selected.meta?.mitreTechniques?.length > 0 || selected.mitreTechniques?.length > 0) && (
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontSize: '8px', color: 'var(--t4)' }}>MITRE ATT&CK Mapping:</span>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '3px' }}>
+                  {(selected.meta?.mitreTechniques || selected.mitreTechniques || []).map((t, i) => (
+                    <span key={i} className="mono" style={{ fontSize: '7px', padding: '1px 4px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '2px', color: '#f59e0b' }}>
+                      {t}
                     </span>
                   ))}
                 </div>
@@ -429,14 +449,25 @@ export default function DeepOSINTDossier({ selected, articles = [], onClose, onS
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: '9px', color: 'var(--t3)', lineHeight: 1.5 }}>
-              Remediation Mandate: CISA BOD 22-01 mandates immediate patching or isolation of affected network-facing appliances.
+            {selected.meta?.mitreAttack && (
+              <div className="mono" style={{ fontSize: '8px', color: '#f59e0b', marginBottom: '4px' }}>
+                MITRE ATT&CK: {selected.meta.mitreAttack}
+              </div>
+            )}
+            <div style={{ fontSize: '9px', color: 'var(--t3)', lineHeight: 1.5, marginBottom: '6px' }}>
+              Remediation Mandate: {selected.meta?.bod22_01 || 'CISA BOD 22-01 mandates immediate patching or isolation of affected appliances.'}
+              {selected.meta?.dueDate ? ` [Action Due: ${selected.meta.dueDate}]` : ''}
             </div>
+            {selected.meta?.ransomware && (
+              <div className="mono" style={{ fontSize: '8px', color: '#ef4444', padding: '2px 6px', background: 'rgba(239,68,68,0.15)', borderRadius: '2px', display: 'inline-block' }}>
+                🚨 Ransomware Campaign Association: Known Active Vector
+              </div>
+            )}
           </div>
         )}
 
         {/* ── SPECIALIZED DOSSIER: BOTNET C2 & MALWARE INFRASTRUCTURE ── */}
-        {(selected.type === 'cyber' || selected.meta?.source?.includes('Feodo') || selected.meta?.source?.includes('URLhaus')) && (
+        {(selected.type === 'cyber' || selected.meta?.source?.includes('Feodo') || selected.meta?.source?.includes('ThreatFox') || selected.meta?.source?.includes('URLhaus')) && (
           <div style={{ padding: '10px', background: 'rgba(255, 0, 255, 0.08)', border: '1px solid rgba(255, 0, 255, 0.3)', borderRadius: '4px' }}>
             <div className="mono" style={{ fontSize: '8px', color: '#ff00ff', fontWeight: 800, marginBottom: '6px', letterSpacing: '0.1em' }}>
               🤖 ACTIVE BOTNET C2 & CYBER WARFARE TELEMETRY
@@ -463,10 +494,15 @@ export default function DeepOSINTDossier({ selected, articles = [], onClose, onS
               <div>
                 <span style={{ fontSize: '8px', color: 'var(--t4)' }}>Intelligence Feed</span>
                 <div className="mono" style={{ fontSize: '10px', color: 'var(--t2)' }}>
-                  {selected.meta?.source || selected.source || 'Abuse.ch Feodo Tracker'}
+                  {selected.meta?.source || selected.source || 'Abuse.ch Feodo / ThreatFox'}
                 </div>
               </div>
             </div>
+            {selected.meta?.confidence && (
+              <div className="mono" style={{ fontSize: '8px', color: '#22c55e' }}>
+                Confidence Level: {selected.meta.confidence}% · Verified Active C2 Infrastructure
+              </div>
+            )}
           </div>
         )}
 

@@ -315,9 +315,9 @@ export default function IntelMap({ articles }) {
     const camera   = new THREE.PerspectiveCamera(45, W / H, 0.1, 1000)
     camera.position.z = 2.8
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
     renderer.setSize(W, H)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5))
     renderer.setClearColor(0x020810, 1)
     renderer.domElement.style.width = '100%'
     renderer.domElement.style.height = '100%'
@@ -797,12 +797,6 @@ export default function IntelMap({ articles }) {
   }, [])
 
   const onMouseMove = useCallback(e => {
-    // Always update hover position for tooltip
-    if (mountRef.current) {
-      const rect = mountRef.current.getBoundingClientRect()
-      setHovPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-    }
-
     if (isDragging.current && threeRef.current.globe) {
       const dx = (e.clientX - prevMouse.current.x) * 0.005
       const dy = (e.clientY - prevMouse.current.y) * 0.005
@@ -810,7 +804,10 @@ export default function IntelMap({ articles }) {
       threeRef.current.globe.rotation.x += dy
       rotVel.current = { x: dy, y: dx }
       prevMouse.current = { x: e.clientX, y: e.clientY }
-      setHovered(null) // clear hover while dragging
+      if (threeRef.current._hovered) {
+        setHovered(null)
+        threeRef.current._hovered = null
+      }
       return
     }
 
@@ -835,6 +832,7 @@ export default function IntelMap({ articles }) {
         const idx = markerMeshes.indexOf(hit.object)
         const data = markerData?.[idx]
         if (data && !data._trail) {
+          setHovPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
           setHovered(data)
           threeRef.current._hovered = data
           mountRef.current.style.cursor = 'pointer'
@@ -842,8 +840,10 @@ export default function IntelMap({ articles }) {
         }
       }
     }
-    setHovered(null)
-    threeRef.current._hovered = null
+    if (threeRef.current._hovered) {
+      setHovered(null)
+      threeRef.current._hovered = null
+    }
     mountRef.current.style.cursor = isDragging.current ? 'grabbing' : 'grab'
   }, [])
 

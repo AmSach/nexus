@@ -107,6 +107,8 @@ function useSatelliteLegacy() {
         if (thr.recentCVEs?.length)      merged.recentCVEs      = thr.recentCVEs
         if (thr.censysAnomalous?.length) merged.censysAnomalous = thr.censysAnomalous
         if (thr.maliciousURLs?.length)   merged.maliciousURLs   = thr.maliciousURLs
+        if (thr.threatFox?.length)       merged.threatFox       = thr.threatFox
+        if (thr.urlhausPayloads?.length) merged.urlhausPayloads = thr.urlhausPayloads
       }
       if (!mounted.current) return
       merged.summary = { ...(merged.summary||{}), fetchedAt: new Date().toISOString() }
@@ -159,6 +161,8 @@ function useSatelliteLegacy() {
         shodanLatest:      merged.shodanLatest         || prev.data?.shodanLatest || [],
         kev:               merged.kev                  || prev.data?.kev || [],
         botnetC2:          merged.botnetC2             || prev.data?.botnetC2 || [],
+        threatFox:         merged.threatFox            || prev.data?.threatFox || [],
+        urlhausPayloads:   merged.urlhausPayloads      || prev.data?.urlhausPayloads || [],
       }
       cacheWrite(CACHE_KEY, toCache)
 
@@ -1125,15 +1129,32 @@ export function satelliteToPoints(satData, layers) {
       return null
     }
 
-    // 1. Feodo botnet C2 — active C2 servers by country (Abuse.ch feed)
+    // 1. Feodo & ThreatFox botnet C2 — active C2 servers by country (Abuse.ch feed)
     ;(satData.botnetC2||[]).forEach(b => {
-      const co = getCo(b.country) || getCoByName(b.country)
-      if (!co) return
+      const co = (b.lat && b.lng) ? [b.lat, b.lng] : (getCo(b.country) || getCoByName(b.country) || CLOCS['US'])
       pts.push({
         lat:co[0]+j(), lng:co[1]+j(), type:'cyber', severity:'high',
-        name:`💻 Botnet C2: ${b.ip||b.title?.split(':')[1]?.trim()||'Server'}`,
-        desc:`${b.malware||'Malware'} C2 · Port ${b.port||'?'} · First: ${b.date||b.firstSeen||'?'}`,
-        url:b.url, meta:{ source:'Feodo Tracker', ip:b.ip, country:b.country },
+        name:`💻 Botnet C2: ${b.malware || 'Malware'} (${b.ip || 'Server'})`,
+        desc:`${b.malware||'Malware'} C2 · Port ${b.port||'?'} · ${b.asname||''} · First: ${b.date||b.firstSeen||'?'}`,
+        url:b.url || (b.ip ? `https://www.shodan.io/host/${b.ip}` : '#'),
+        meta:{
+          source: b.source || 'Abuse.ch Feodo / ThreatFox',
+          ip: b.ip,
+          port: b.port,
+          malware: b.malware,
+          asname: b.asname,
+          country: b.country,
+          firstSeen: b.firstSeen,
+          confidence: b.confidence || 100,
+          threatType: b.threatType || 'botnet_cc',
+          tags: b.tags
+        },
+        ip: b.ip,
+        port: b.port,
+        malware: b.malware,
+        asname: b.asname,
+        confidence: b.confidence || 100,
+        threatType: b.threatType || 'botnet_cc',
         _fetchedAt:b._fetchedAt,
       })
     })
@@ -1148,9 +1169,35 @@ export function satelliteToPoints(satData, layers) {
       const co = KEV_LOCS[i % KEV_LOCS.length]
       pts.push({
         lat:co[0]+j(), lng:co[1]+j(), type:'cve', severity:'critical',
-        name:`⚠️ KEV: ${v.vulnerabilityName||v.title||v.cveID}`,
+        name:`⚠️ KEV: ${v.cveID || v.vulnerabilityName || 'Vulnerability'}`,
         desc:`${v.vendorProject||''} ${v.product||''} · ${v.shortDescription||v.description||''}`.slice(0,300),
-        url:v.url, meta:{ source:'CISA KEV', cveID:v.cveID||v.id },
+        url: v.url || `https://nvd.nist.gov/vuln/detail/${v.cveID}`,
+        meta:{
+          source:'CISA KEV',
+          cveID:v.cveID||v.id,
+          vendor:v.vendorProject,
+          product:v.product,
+          vulnerabilityName:v.vulnerabilityName,
+          cvss:v.cvss,
+          cvssVector:v.cvssVector,
+          mitreAttack:v.mitreAttack,
+          bod22_01:v.bod22_01,
+          dueDate:v.dueDate,
+          ransomware:v.ransomware,
+          epss:v.epss,
+          exploitStatus:v.exploitStatus,
+          requiredAction:v.requiredAction
+        },
+        cveID: v.cveID,
+        cvss: v.cvss,
+        cvssVector: v.cvssVector,
+        mitreAttack: v.mitreAttack,
+        bod22_01: v.bod22_01,
+        dueDate: v.dueDate,
+        ransomware: v.ransomware,
+        epss: v.epss,
+        vendorProject: v.vendorProject,
+        product: v.product,
         _fetchedAt:v._fetchedAt,
       })
     })
@@ -1170,7 +1217,22 @@ export function satelliteToPoints(satData, layers) {
         severity: cvss >= 9 ? 'critical' : 'high',
         name:`⚠️ CVE-${cve.id?.replace('CVE-','')||i} (CVSS ${cve.cvss||'?'})`,
         desc:(cve.description||'').slice(0,280),
-        url:cve.url, meta:{ source:'NVD CVE', cveID:cve.id, cvss:cve.cvss },
+        url:cve.url,
+        meta:{
+          source:'NVD CVE',
+          cveID:cve.id,
+          cvss:cve.cvss,
+          cvssVector:cve.cvssVector,
+          mitreAttack:cve.mitreAttack,
+          bod22_01:cve.bod22_01,
+          ransomware:cve.ransomware
+        },
+        cveID: cve.id,
+        cvss: cve.cvss,
+        cvssVector: cve.cvssVector,
+        mitreAttack: cve.mitreAttack,
+        bod22_01: cve.bod22_01,
+        ransomware: cve.ransomware
       })
     })
 
@@ -1213,10 +1275,25 @@ export function satelliteToPoints(satData, layers) {
       const co = MALWARE_HOSTING[i % MALWARE_HOSTING.length]
       pts.push({
         lat:co[0]+j(), lng:co[1]+j(), type:'cyber', severity:'high',
-        name:`🦠 Malware: ${u.host||u.url?.slice(8,45)||'server'}`,
+        name:`🦠 Malware: ${u.threat || u.host || 'Payload Dropper'}`,
         desc:`${u.threat||'Malware'} distribution · ${u.url?.slice(0,180)}`,
         url:u.urlhausLink||u.url,
-        meta:{ source:'URLhaus', host:u.host },
+        meta:{
+          source:'Abuse.ch URLhaus',
+          host:u.host,
+          url:u.url,
+          threat:u.threat,
+          status:u.status,
+          dateAdded:u.dateAdded,
+          tags:u.tags,
+          reporter:u.reporter,
+          urlhausLink:u.urlhausLink
+        },
+        host: u.host,
+        threat: u.threat,
+        status: u.status,
+        tags: u.tags,
+        reporter: u.reporter
       })
     })
   }
@@ -1255,10 +1332,38 @@ export function satelliteToPoints(satData, layers) {
       pts.push({
         lat:co[0]+jv(), lng:co[1]+jv(), type:'vuln',
         severity: hasVulns ? 'critical' : 'high',
-        name:`🔓 ${host._source||'Shodan'}: ${label}`,
-        desc:`${hasVulns?'CVEs: '+host.vulns.slice(0,5).join(', ')+' · ':''}${host.product||host.org||''} · ${host.country||''}`,
+        name:`🔓 ${host._source||'Shodan'}: ${label} (${host.sector || host.product || 'Infra'})`,
+        desc:`${hasVulns?'CVEs: '+host.vulns.slice(0,5).join(', ')+' · ':''}${host.product||host.org||''} · ${host.country||''} [${host.protocol||'SCADA'}]`,
         url: host.ip ? `https://www.shodan.io/host/${host.ip}` : 'https://www.shodan.io',
-        meta:{ source:host._source||'Shodan', ip:host.ip, country:host.country, vulns:host.vulns },
+        meta:{
+          source:host._source||'Shodan InternetDB',
+          ip:host.ip,
+          country:host.country,
+          vulns:host.vulns,
+          ports:host.ports,
+          cpes:host.cpes,
+          hostnames:host.hostnames,
+          tags:host.tags,
+          product:host.product,
+          org:host.org,
+          sector:host.sector,
+          protocol:host.protocol,
+          cvssMax:host.cvssMax,
+          mitreTechniques:host.mitreTechniques
+        },
+        ip:host.ip,
+        country:host.country,
+        vulns:host.vulns,
+        ports:host.ports,
+        cpes:host.cpes,
+        hostnames:host.hostnames,
+        tags:host.tags,
+        product:host.product,
+        org:host.org,
+        sector:host.sector,
+        protocol:host.protocol,
+        cvssMax:host.cvssMax,
+        mitreTechniques:host.mitreTechniques
       })
     })
     ;(satData.censysAnomalous||[]).forEach(host => {

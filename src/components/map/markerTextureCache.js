@@ -36,7 +36,7 @@ function clr(cx, bg, alpha = 1) {
   }
 }
 
-export function getMarkerMaterial(THREE, pt) {
+export function getMarkerMaterialKey(pt) {
   const type = pt.type || 'default'
   const sev = pt.severity || 'medium'
   const isMil = /^(RCH|JAKE|KNIFE|REACH|NATO|RRR|USAF|THUD|BART|TOPOL|SPAR|SAM|VENUS|VIPER|ATLAS)/i.test(pt.meta?.callsign || pt.callsign || '')
@@ -48,6 +48,11 @@ export function getMarkerMaterial(THREE, pt) {
   if (type === 'aircraft') cacheKey += isMil ? '_mil' : '_civ'
   if (type === 'ship') cacheKey += isWarship ? '_war' : '_com'
   if (type === 'earthquake') cacheKey += `_m${Math.min(8, Math.max(3, Math.round(pt.meta?.mag || pt.mag || 4)))}`
+  return cacheKey
+}
+
+export function getMarkerMaterial(THREE, pt) {
+  const cacheKey = getMarkerMaterialKey(pt)
 
   if (MATERIAL_CACHE.has(cacheKey)) {
     return MATERIAL_CACHE.get(cacheKey)
