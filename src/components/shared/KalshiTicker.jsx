@@ -19,17 +19,19 @@ function ProbBadge({ prob }) {
 }
 
 export function KalshiTicker() {
-  const { markets: kal } = useKalshi()
-  const { markets: poly } = usePolymarket()
+  const { markets: kal = [] } = useKalshi()
+  const { markets: poly = [] } = usePolymarket()
   const ref = useRef(null)
   const pos = useRef(0)
   const raf = useRef(null)
 
   const items = useMemo(() => {
     const seen = new Set()
+    const kalList = Array.isArray(kal) ? kal : []
+    const polyList = Array.isArray(poly) ? poly : []
     const all = [
-      ...kal.filter(m => m.isGeo && (m.title||'').length > 5).slice(0, 20).map(m => ({ ...m, label: m.title, src: 'K' })),
-      ...poly.filter(m => m.isGeo && (m.question||'').length > 5).slice(0, 20).map(m => ({ ...m, label: m.question, src: 'P' })),
+      ...kalList.filter(m => m && m.isGeo && (m.title||m.question||'').length > 5).slice(0, 20).map(m => ({ ...m, label: m.title || m.question, src: 'K' })),
+      ...polyList.filter(m => m && m.isGeo && (m.question||m.title||'').length > 5).slice(0, 20).map(m => ({ ...m, label: m.question || m.title, src: 'P' })),
     ]
     return all.filter(m => {
       const k = (m.label||'').slice(0, 30).toLowerCase()

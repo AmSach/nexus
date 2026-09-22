@@ -160,7 +160,7 @@ function AlertsPane({ alerts, loading }) {
         {!loading && !shown.length && (
           <div style={{ padding:'20px', textAlign:'center' }}>
             <div style={{ fontSize:'20px', marginBottom:'6px' }}>✅</div>
-            <div style={{ fontSize:'11px', color:'var(--t3)' }}>No {filter==='all'?'active':filter} alerts</div>
+            <div style={{ fontSize:'11px', color:'var(--t3)' }}>No active alerts</div>
             <div style={{ fontSize:'9px', color:'var(--t4)', marginTop:'4px' }}>Oref · USNI · NWS · GDACS · GPSJam · BNO · Telegram · Wiki · NOTAM · BGP</div>
           </div>
         )}
@@ -207,8 +207,8 @@ function MarketsPane({ polyGeo, kalGeo, polyErr, kalLive, polyLoading, kalLoadin
   const combined = useMemo(() => {
     const seen = new Set()
     const all = [
-      ...(src !== 'kalshi' ? polyGeo.map(m => ({ ...m, srcLabel: 'PM', srcClr: '#38bdf8' })) : []),
-      ...(src !== 'poly' ? kalGeo.map(m => ({ ...m, srcLabel: 'KAL', srcClr: '#a78bfa', question: m.title })) : []),
+      ...(src !== 'kalshi' ? (polyGeo || []).map(m => ({ ...m, srcLabel: 'PM', srcClr: '#38bdf8' })) : []),
+      ...(src !== 'poly' ? (kalGeo || []).map(m => ({ ...m, srcLabel: 'KAL', srcClr: '#a78bfa', question: m.title || m.question })) : []),
     ]
     const full = all.filter(m => {
       const k = (m.question || '').slice(0, 35).toLowerCase()

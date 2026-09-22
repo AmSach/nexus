@@ -82,6 +82,7 @@ export function usePatternOfLife({ satData, liveAlerts = [], tgRecent = [], arti
     const cached = cacheRead(CACHE_KEY, 8 * 24 * 60 * 60 * 1000)
     return cached?.data || {}
   })
+  const baselineRef = useRef(baseline)
   const tick = useRef(0)
 
   const computeSignals = useCallback(() => {
@@ -103,7 +104,7 @@ export function usePatternOfLife({ satData, liveAlerts = [], tgRecent = [], arti
         if (!p.lat || !p.lng) {
           // Keyword match fallback
           const text = (p.text||'').toLowerCase()
-          const zMatch = z.name.toLowerCase().split('/').some(n => text.includes(n.trim().split(' ')[0]))
+          const zMatch = z.name.toLowerCase().split(/[\s\/]+/).some(k => k.length > 3 && text.includes(k))
           if (zMatch) currentSignals[z.id] += isBreaking ? SIGNAL_WEIGHTS.telegram_breaking : SIGNAL_WEIGHTS.telegram_conflict
         } else if (inZone(p.lat, p.lng, z)) {
           currentSignals[z.id] += isBreaking ? SIGNAL_WEIGHTS.telegram_breaking : SIGNAL_WEIGHTS.telegram_conflict
@@ -164,7 +165,7 @@ export function usePatternOfLife({ satData, liveAlerts = [], tgRecent = [], arti
     })
 
     // ── Update baseline + detect anomalies ────────────────────────────────────
-    const newBaseline = { ...baseline }
+    const newBaseline = { ...baselineRef.current }
     const newAnomalies = []
 
     POL_ZONES.forEach(z => {
@@ -213,8 +214,8 @@ export function usePatternOfLife({ satData, liveAlerts = [], tgRecent = [], arti
 
     // Sort by z-score descending
     newAnomalies.sort((a, b) => b.z_score - a.z_score)
+    baselineRef.current = newBaseline
     setAnomalies(newAnomalies)
-    setBaseline(newBaseline)
 
     // Persist baseline every 10 ticks
     if (tick.current++ % 10 === 0) {
@@ -222,7 +223,7 @@ export function usePatternOfLife({ satData, liveAlerts = [], tgRecent = [], arti
     }
 
     return newAnomalies
-  }, [satData, liveAlerts, tgRecent, articles, polyMarkets, baseline])
+  }, [satData, liveAlerts, tgRecent, articles, polyMarkets])
 
   useEffect(() => {
     const iv = setInterval(computeSignals, 5 * 60 * 1000)  // recompute every minute

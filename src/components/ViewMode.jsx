@@ -544,6 +544,12 @@ export default function ViewMode({ articles = [] }) {
   const acpl = useACPL({ signals: allPts, enabled: true })
   const emb  = useEmbeddings()
 
+  // Cluster articles for richer display - must be declared before useIntelBriefing
+  const clusteredArticles = useMemo(() => {
+    if (!emb.ready || !articles?.length) return {}
+    return emb.clusterArticles([...articles])
+  }, [articles?.length, emb.ready]) // eslint-disable-line
+
   // ── Global intelligence briefing (Groq, max context) ───────────────────────
   const { data: voxSim } = { data: null }  // placeholder - wired via prop if needed
   const briefing = useIntelBriefing({
@@ -587,12 +593,6 @@ export default function ViewMode({ articles = [] }) {
     setEmbeddingDelta((arts, sigs) => emb.worldVectorDelta(arts, sigs))
     return () => setEmbeddingDelta(null)
   }, [emb.ready]) // eslint-disable-line
-
-  // Cluster articles for richer display
-  const clusteredArticles = useMemo(() => {
-    if (!emb.ready || !articles?.length) return {}
-    return emb.clusterArticles([...articles])
-  }, [articles?.length, emb.ready]) // eslint-disable-line
   const { reportOutcome: reportToServer } = useSupabaseData()
   // processedSignals is a useCallback - only rerun when allPts changes
   const acplSignals = useMemo(() => acpl.processedSignals(), [allPts]) // eslint-disable-line

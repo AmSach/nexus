@@ -79,29 +79,29 @@ export function useSignalConvergence({ articles = [], acledEvents = [], satellit
       }
 
       // 3. Polymarket — 2.0× deviation from 50%, scaled by volume
-      const polyHits = polyMarkets.filter(m => matches(m.question || '', kws) >= 1 && m.probability != null)
+      const polyHits = (polyMarkets || []).filter(m => m && matches(m.question || m.title || '', kws) >= 1 && m.probability != null)
       polyHits.forEach(m => {
         const dev = Math.abs((m.probability || 0.5) - 0.5)
         if (dev > 0.05) {
           const s = 2.0 * dev * Math.min((m.volume || 0) / 10000, 3)
           cii += s
-          signals.push({ layer: '🎯 Polymarket', count: 1, score: +s.toFixed(1), topItem: `${(m.question || '').slice(0, 55)} (${Math.round((m.probability || 0) * 100)}%)` })
+          signals.push({ layer: '🎯 Polymarket', count: 1, score: +s.toFixed(1), topItem: `${(m.question || m.title || '').slice(0, 55)} (${Math.round((m.probability || 0) * 100)}%)` })
         }
       })
 
       // 4. Kalshi — same formula
-      const kalHits = kalshiMarkets.filter(m => matches(m.title || '', kws) >= 1 && m.probability != null)
+      const kalHits = (kalshiMarkets || []).filter(m => m && matches(m.title || m.question || '', kws) >= 1 && m.probability != null)
       kalHits.forEach(m => {
         const dev = Math.abs((m.probability || 0.5) - 0.5)
         if (dev > 0.05) {
           const s = 2.0 * dev * Math.min((m.volume || 0) / 10000, 3)
           cii += s
-          signals.push({ layer: '🏦 Kalshi', count: 1, score: +s.toFixed(1), topItem: `${(m.title || '').slice(0, 55)} (${Math.round((m.probability || 0) * 100)}%)` })
+          signals.push({ layer: '🏦 Kalshi', count: 1, score: +s.toFixed(1), topItem: `${(m.title || m.question || '').slice(0, 55)} (${Math.round((m.probability || 0) * 100)}%)` })
         }
       })
 
       // 5. Live alerts — 4.0 base weight (strongest signal)
-      const alertHits = liveAlerts.filter(a =>
+      const alertHits = (liveAlerts || []).filter(a =>
         matches((a.title || '') + (a.detail || ''), kws) >= 1 ||
         (name === 'Middle East/Gaza' && a.type === 'red_alert') ||
         (name === 'Yemen' && a.type === 'naval')

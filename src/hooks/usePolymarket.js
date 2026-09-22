@@ -5,10 +5,12 @@ function usePolymarketFromSupabase() {
   const pmMkts = (markets || []).filter(m => m.platform === 'polymarket').map(m => ({
     ...m, ...(typeof m.meta === 'object' ? m.meta : {}),
     id: m.id, title: m.title || m.meta?.title,
+    question: m.title || m.meta?.title || m.question || '',
     probability: m.probability, volume: m.volume, url: m.url,
     isGeo: m.is_geo, category: m.category,
   }))
-  return { geoMarkets: pmMkts.filter(m => m.isGeo), allMarkets: pmMkts }
+  const geo = pmMkts.filter(m => m.isGeo)
+  return { markets: pmMkts, geoMarkets: geo, allMarkets: pmMkts, resolvedMarkets: [], loading: false, error: null, lastFetch: new Date(), refresh: () => {} }
 }
 /**
  * usePolymarket v7 — Active markets + resolved questions for calibration
@@ -104,5 +106,8 @@ export function usePolymarket() {
   // isSupabaseConfigured() is constant at module load time (env vars don't change)
   const sbResult  = usePolymarketFromSupabase()
   const legResult = usePolymarketLegacy()
-  return isSupabaseConfigured() ? sbResult : legResult
+  if (isSupabaseConfigured() && sbResult.markets && sbResult.markets.length > 0) {
+    return sbResult
+  }
+  return legResult
 }

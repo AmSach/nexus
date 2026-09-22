@@ -75,14 +75,15 @@ export function useADSBLive() {
 
     ws.onclose = () => {
       setConnected(false)
-      // Exponential backoff: 5s, 10s, 20s, 40s, max 60s
-      const delay = Math.min(5000 * Math.pow(2, retryRef.current), 60000)
-      retryRef.current++
-      console.log(`[ADSB-WS] Disconnected. Reconnecting in ${delay/1000}s (attempt ${retryRef.current})`)
-      setTimeout(connect, delay)
+      // Cap WebSocket retries to 2 attempts; rely on REST fallback thereafter
+      if (retryRef.current < 2) {
+        const delay = Math.min(5000 * Math.pow(2, retryRef.current), 60000)
+        retryRef.current++
+        setTimeout(connect, delay)
+      }
     }
 
-    ws.onerror = () => { ws.close() }
+    ws.onerror = () => { try { ws.close() } catch {} }
   }, [updateMap])
 
   // REST fallback — polls airplanes.live /v2/mil every 30s when WS unavailable

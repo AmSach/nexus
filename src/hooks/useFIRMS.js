@@ -122,10 +122,10 @@ export async function fetchFIRMSGlobal(apiKey) {
     const r = await fetch(`/api/firms${keyParam}`, {
       signal: AbortSignal.timeout(30000)
     })
-    if (!r.ok) return []
     const zoneData = await r.json()
+    const list = Array.isArray(zoneData) ? zoneData : (zoneData?.data || [])
     // Convert serverless response to signal format
-    return zoneData.map(z => {
+    return list.map(z => {
       const zone = WATCH_ZONES.find(w => w.label === z.zone) || { label: z.zone, bbox: [0,0,0,0], country: z.country }
       const detections = (z.detections || []).map(d => ({
         lat: d.lat, lng: d.lng, brightness: d.brightness,

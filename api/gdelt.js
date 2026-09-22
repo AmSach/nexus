@@ -35,32 +35,39 @@ export default async function handler(req, res) {
     // Must replace '+' → ' ' BEFORE decoding
     const query = decodeURIComponent(q.replace(/\+/g, ' ')).trim()
     const words = query.split(/\s+/).filter(w => w.length > 0)
-
-    // Build all search angles — all parallel
-    const variants = [
-      { vq: query,                                        n: 250, angle: 'general' },
-      words.length > 1 ? { vq: `"${query}"`,             n: 100, angle: 'exact' } : null,
-      words.length > 1 ? { vq: words.join(' OR '),        n: 100, angle: 'broad' } : null,
-      { vq: `${query} crime fraud corruption`,            n: 50,  angle: 'crime' },
-      { vq: `${query} court arrested charged convicted`,  n: 50,  angle: 'legal' },
-      { vq: `${query} sanction indicted investigation`,   n: 50,  angle: 'sanctions' },
-      { vq: `${query} offshore money laundering shell`,   n: 40,  angle: 'financial' },
-      { vq: `${query} associate partner ally network`,    n: 40,  angle: 'network' },
-      { vq: `${query} military weapons attack strike`,    n: 40,  angle: 'military' },
-      { vq: `${query} death dead killed died`,            n: 30,  angle: 'death' },
-      { vq: `${query} nuclear weapons missile biological`,n: 30,  angle: 'wmd' },
-      { vq: `${query} hacked leak breach cyber attack`,   n: 30,  angle: 'cyber' },
-    ].filter(Boolean)
-
-    const seen = new Set()
-    const articles = []
-    let timeline = null
+    const isDeep = req.query?.deep === '1' || req.query?.mode === 'deep'
 
     // Build GDELT URL correctly — sourcelang:english appended WITHOUT encoding
     const buildUrl = (vq, n, m, ts, s) => {
       const enc = encodeURIComponent(vq)
       return `https://api.gdeltproject.org/api/v2/doc/doc?query=${enc}+sourcelang:english&mode=${m}&maxrecords=${n}&sort=${s}&timespan=${ts}&format=json`
     }
+
+    // Fast path: for standard feed queries, execute a single direct query
+    if (!isDeep) {
+      try {
+        const r = await get(buildUrl(query, maxr, mode, timespan, sort), 8000)
+        if (r) {
+          const d = await r.json().catch(() => null)
+          const arts = d?.articles || []
+          return res.status(200).json({
+            articles: arts,
+            count: arts.length,
+            timeline: null,
+            fetchedAt: new Date().toISOString()
+          })
+        }
+      } catch {}
+      return res.status(200).json({ articles: [], count: 0, fetchedAt: new Date().toISOString() })
+    }
+
+    // Deep search mode: run focused subset of 4 essential angles
+    const variants = [
+      { vq: query,                                        n: Math.min(+maxr, 100), angle: 'general' },
+      words.length > 1 ? { vq: `"${query}"`,             n: 50,  angle: 'exact' } : null,
+      { vq: `${query} court arrested charged fraud`,      n: 40,  angle: 'legal' },
+      { vq: `${query} sanction indicted military strike`, n: 40,  angle: 'security' },
+    ].filter(Boolean)
 
     await Promise.allSettled([
       ...variants.map(({ vq, n, angle }) =>

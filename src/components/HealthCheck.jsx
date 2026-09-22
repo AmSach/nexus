@@ -671,7 +671,7 @@ const CHECKS = [
   { group:'🔍 Intel Search', id:'intelx',        name:'IntelX (dark web)' },
   { group:'🤖 AI / Keys',    id:'groq',          name:'Groq AI (briefings + connections)' },
   { group:'🚨 Alerts',       id:'telegram',      name:'Telegram OSINT (Intel Slava Z, War Translated, OSINT Defender, Ukraine Now)' },
-  { group:'🚨 Alerts',       id:'promed',        name:'ProMED Disease (RSS + homepage scrape)' },
+  { group:'🚨 Alerts',       id:'promed_scrape', name:'ProMED Disease (RSS + homepage scrape)' },
   { group:'🛰 Map Data',     id:'warships',      name:'Warships (embedded in /api/satellite — fleet tracker)' },
   { group:'🛰 Map Data',     id:'opensky_auth',  name:'OpenSky Aircraft (authenticated: OpenSky)' },
   { group:'📡 RSS Feeds', id:'rss_promedmail', name:'ProMED Mail RSS (promedmail.org/feed/)' },

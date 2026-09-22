@@ -4,6 +4,20 @@
 // DOB, addresses, aliases, legal authorities, sanctions programs
 // Source: /public/data/sdn_full.json (parsed from SDN_ENHANCED.XML)
 
+import { OFAC_SEED } from './sanctions_seed'
+
+function seedToEntries() {
+  return (OFAC_SEED || []).map((row, i) => ({
+    uid: 'seed-' + i,
+    name: row[0] || '',
+    type: row[1] || 'individual',
+    programs: [row[2] || 'OFAC'],
+    country: row[3] || '',
+    notes: row[4] || '',
+    aliases: []
+  }))
+}
+
 let _db = null
 let _loading = false
 let _callbacks = []
@@ -14,17 +28,22 @@ export async function loadSDN() {
   _loading = true
   try {
     const r = await fetch('/data/sdn_full.json')
-    if (!r.ok) throw new Error('SDN DB not found')
-    _db = await r.json()
+    if (r.ok) {
+      _db = await r.json()
+      console.log(`[SDN] Loaded ${_db.length} sanctioned entities from full DB`)
+    } else {
+      _db = seedToEntries()
+      console.log(`[SDN] Using embedded OFAC seed (${_db.length} entries)`)
+    }
+  } catch (e) {
+    _db = seedToEntries()
+    console.log(`[SDN] Using embedded OFAC seed fallback (${_db.length} entries)`)
+  } finally {
+    _loading = false
     _callbacks.forEach(cb => cb(_db))
     _callbacks = []
-    console.log(`[SDN] Loaded ${_db.length} sanctioned entities`)
-    return _db
-  } catch (e) {
-    console.error('[SDN] Failed to load:', e)
-    _loading = false
-    return []
   }
+  return _db
 }
 
 // ── Token normalization ──────────────────────────────────────────────────────

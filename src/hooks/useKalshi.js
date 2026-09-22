@@ -9,7 +9,8 @@ function useKalshiFromSupabase() {
     probability: m.probability, volume: m.volume, url: m.url,
     isGeo: m.is_geo, category: m.category,
   }))
-  return { markets: kalshiMkts, loading: false, lastFetch: new Date() }
+  const geo = kalshiMkts.filter(m => m.isGeo)
+  return { markets: kalshiMkts, geoMarkets: geo, loading: false, live: kalshiMkts.length > 0, lastFetch: new Date(), refresh: () => {} }
 }
 /**
  * useKalshi v5 - Uses /api/kalshi server endpoint (no CORS)
@@ -84,5 +85,8 @@ export function useKalshi() {
   // isSupabaseConfigured() is constant at module load time (env vars don't change)
   const sbResult  = useKalshiFromSupabase()
   const legResult = useKalshiLegacy()
-  return isSupabaseConfigured() ? sbResult : legResult
+  if (isSupabaseConfigured() && sbResult.markets && sbResult.markets.length > 0) {
+    return sbResult
+  }
+  return legResult
 }

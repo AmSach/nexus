@@ -140,18 +140,18 @@ function SituationCard({ sit, expanded, onToggle }) {
 }
 
 export default function CIIDashboard({ articles = [], acledEvents = [], satellite = null }) {
-  const { markets: polyMarkets } = usePolymarket()
-  const { markets: kalshiMarkets } = useKalshi()
-  const { alerts: liveAlerts } = useLiveAlerts()
+  const { markets: polyMarkets = [] } = usePolymarket()
+  const { markets: kalshiMarkets = [] } = useKalshi()
+  const { alerts: liveAlerts = [] } = useLiveAlerts()
   const [expanded, setExpanded] = useState(null)
 
-  const { situations, criticalCount, highCount } = useSignalConvergence({
+  const { situations = [], criticalCount = 0, highCount = 0 } = useSignalConvergence({
     articles: articles || [],
     acledEvents: [],
     satellite: satellite || null,
-    polyMarkets,
-    kalshiMarkets,
-    liveAlerts,
+    polyMarkets: polyMarkets || [],
+    kalshiMarkets: kalshiMarkets || [],
+    liveAlerts: liveAlerts || [],
   })
 
   return (

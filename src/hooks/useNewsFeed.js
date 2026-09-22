@@ -174,10 +174,8 @@ async function fetchFeed(feed, proxyIdx = 0) {
       }
       // /api/rss returned empty — feed is dead or currently empty, don't try proxies
       // (proxy would hit same dead endpoint from browser = worse result)
-      return []
     }
-    // /api/rss returned non-OK status (502 = upstream failed) — try client-side proxy
-    if (r.status !== 502) return []
+    // If /api/rss returned non-OK status (e.g. 404 on local dev or 502/504), fall through to proxy
   } catch { /* timeout or network error — fall through to proxy */ }
 
   // Proxy fallback: only for feeds where /api/rss timed out or had a network error
@@ -250,7 +248,7 @@ async function fetchGDELTBackground() {
     await Promise.allSettled(batch.map(async q => {
       try {
         const url = `/api/gdelt?q=${encodeURIComponent(q)}&maxrecords=75&timespan=24h&sort=DateDesc`
-        const r = await fetch(url, { signal: AbortSignal.timeout(20000) })
+        const r = await fetch(url, { signal: AbortSignal.timeout(5000) })
         if (!r.ok) return
         const d = await r.json().catch(() => null)
         if (!d?.articles) return
@@ -443,7 +441,7 @@ async function fetchGDELTGeo() {
     await Promise.allSettled(batch.map(async ({ q, label, region }) => {
       try {
         const url = `/api/gdelt?q=${encodeURIComponent(q)}&maxrecords=30&timespan=24h&sort=DateDesc`
-        const r = await fetch(url, { signal: AbortSignal.timeout(18000) })
+        const r = await fetch(url, { signal: AbortSignal.timeout(5000) })
         if (!r.ok) return
         const d = await r.json().catch(() => null)
         if (!d?.articles) return
@@ -529,6 +527,17 @@ function useNewsFeedLegacy() {
           }
         })
         if (i + BATCH < thisRound.length) await new Promise(r => setTimeout(r, 200))
+      }
+
+      // Progressive render: show RSS articles immediately so feed never waits for slower sources
+      if (rssArts.length > 0 && mounted.current) {
+        const cached = cacheRead('articles')
+        const cachedArts = cached?.data?.map(a => ({...a, pub: a.pub ? new Date(a.pub) : new Date()})) || []
+        const interim = dedup(mergeArticles(rssArts, cachedArts, 10000))
+          .sort((a, b) => new Date(b.pub||0) - new Date(a.pub||0))
+          .slice(0, 10000)
+        setArticles(interim)
+        setSynced(new Date())
       }
 
       // ── 2. GDELT — 6 topic queries, always runs ──────────────────────────
@@ -751,5 +760,13 @@ export function useNewsFeed() {
   // isSupabaseConfigured() is constant at module load time (env vars don't change)
   const sbResult  = useNewsFeedFromSupabase()
   const legResult = useNewsFeedLegacy()
-  return isSupabaseConfigured() ? sbResult : legResult
+  if (isSupabaseConfigured() && sbResult.articles && sbResult.articles.length > 0) {
+    return {
+      ...legResult,
+      ...sbResult,
+      articles: sbResult.articles,
+      refetch: legResult.refetch,
+    }
+  }
+  return legResult
 }
