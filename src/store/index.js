@@ -4,8 +4,14 @@ import { persist } from 'zustand/middleware'
 export const useStore = create(
   persist(
     (set, get) => ({
-      // Nav
-      tab: 'feed',
+      // Nav — initialize from hash if present (e.g. #map, #finnews, #econ)
+      tab: (() => {
+        if (typeof window === 'undefined') return 'feed'
+        const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
+        if (['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox'].includes(h)) return h
+        if (['econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) return 'finnews'
+        return 'feed'
+      })(),
       setTab: t => set({ tab: t }),
 
       // Sidebar
@@ -153,3 +159,7 @@ export const useStore = create(
     }
   )
 )
+
+if (typeof window !== 'undefined') {
+  window.nexusSetTab = (t) => useStore.getState().setTab(t)
+}
