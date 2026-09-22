@@ -341,14 +341,52 @@ export default async function handler(req, res) {
       const all = []
       const seen = new Set()
 
-      // ── Fire OpenSky IMMEDIATELY in parallel with adsb.fi ──────────────
-      // OpenSky (15s) and adsb.fi zones (12s) run concurrently — total wait = max(15,12) = 15s
-      // Previously: sequential = 14s adsb.fi + 15s OpenSky = 29s worst case
-      const openSkyPromise = get(
-        'https://opensky-network.org/api/states/all',
-        8000,
-        { 'Authorization': OPENSKY_AUTH }
-      )
+      // ── Fire OpenSky Regional Bounding Boxes in parallel with adsb.fi ────
+      const osRegionalBoxes = [
+        { name: 'Eastern Europe / Black Sea', lamin: 44, lomin: 22, lamax: 56, lomax: 42 },
+        { name: 'Middle East / Persian Gulf', lamin: 12, lomin: 32, lamax: 38, lomax: 60 },
+        { name: 'Taiwan Strait / East Asia', lamin: 18, lomin: 115, lamax: 32, lomax: 130 },
+        { name: 'Western Europe / Baltic', lamin: 48, lomin: -5, lamax: 62, lomax: 25 },
+        { name: 'North America Strategic', lamin: 25, lomin: -125, lamax: 49, lomax: -70 }
+      ]
+
+      const openSkyPromises = osRegionalBoxes.map(async box => {
+        const url = `https://opensky-network.org/api/states/all?lamin=${box.lamin}&lomin=${box.lomin}&lamax=${box.lamax}&lomax=${box.lomax}`
+        const r = await get(url, 3000, OPENSKY_USER ? { 'Authorization': OPENSKY_AUTH } : {})
+        if (!r) return
+        try {
+          const d = await r.json()
+          ;(d?.states || []).forEach(s => {
+            if (!s[5] || !s[6]) return
+            const sq = s[14] || ''
+            const cs = (s[1] || '').trim()
+            const isEmerg = sq === '7700' || sq === '7500' || sq === '7600'
+            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|FORTE|SPAR|EXEC|REACH|ATLAS|JAKE|KNIFE|DUKE|VALOR|GHOST|NINJA|IRON|STEEL|MIGHT)/i.test(cs)
+            if (s[8] === true && !isEmerg && !isMilCS) return
+            if (seen.has(s[0])) return
+            seen.add(s[0])
+            all.push({
+              icao24: s[0],
+              callsign: cs,
+              country: s[2] || '',
+              lng: s[5],
+              lat: s[6],
+              altitude: Math.round((s[7] || s[13] || 0) * 3.28084),
+              altMeters: s[7] || s[13] || 0,
+              velocity: s[9] ? Math.round(s[9] * 1.944) : null,
+              heading: s[10] ? Math.round(s[10]) : null,
+              vertRate: s[11],
+              squawk: s[14],
+              onGround: s[8] === true,
+              zone: box.name,
+              type: 'aircraft',
+              severity: s[14] === '7700' ? 'critical' : isEmerg ? 'high' : isMilCS ? 'medium' : 'low',
+              _military: isMilCS,
+              _glow: isEmerg || isMilCS,
+            })
+          })
+        } catch {}
+      })
 
       // adsb.fi zones — Vercel IPs often blocked but try anyway
       // No stagger — all fire simultaneously, 10s timeout each
@@ -465,77 +503,10 @@ export default async function handler(req, res) {
         }
       } catch {}
 
-      // Resolve OpenSky (was fired in parallel above — now just await the result)
+      // Resolve OpenSky regional bounding boxes (fired in parallel above)
       try {
-        const osR = await openSkyPromise
-        if (osR) {
-          const osD = await osR.json().catch(() => null)
-          let osAdded = 0
-          ;(osD?.states || []).forEach(s => {
-            // s[0]=icao24, s[1]=callsign, s[2]=origin_country
-            // s[5]=lon, s[6]=lat, s[7]=baro_alt, s[8]=on_ground
-            // s[9]=velocity(m/s), s[10]=heading, s[11]=vert_rate
-            // s[13]=geo_alt, s[14]=squawk
-            if (!s[5] || !s[6]) return  // must have position
-            // Keep on-ground aircraft IF they have military callsign or emergency squawk
-            const sq = s[14]||''
-            const cs = (s[1]||'').trim()
-            const isEmerg = sq==='7700'||sq==='7500'||sq==='7600'
-            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF)/i.test(cs)
-            if (s[8] === true && !isEmerg && !isMilCS) return  // skip grounded civil aircraft
-            if (seen.has(s[0])) return
-            seen.add(s[0])
-            osAdded++
-            const emerg = s[14]==='7700'||s[14]==='7500'||s[14]==='7600'
-            const isGround = s[8] === true
-            all.push({
-              icao24: s[0], callsign: (s[1]||'').trim(),
-              country: s[2], lng: s[5], lat: s[6],
-              altitude: Math.round((s[7]||s[13]||0)*3.28084),
-              altMeters: s[7]||s[13]||0,
-              velocity: s[9]?Math.round(s[9]*1.944):null,
-              heading: s[10]?Math.round(s[10]):null,
-              vertRate: s[11], squawk: s[14],
-              onGround: isGround,
-              zone: 'OpenSky Global', type: 'aircraft',
-              severity: s[14]==='7700'?'critical':emerg?'high':'low',
-              _glow: emerg,
-            })
-          })
-          console.log('[OpenSky] Global query: total states=', (osD?.states||[]).length, ', added=', osAdded, ', existing from adsb.fi=', all.length-osAdded)
-        }
-      } catch (e) {
-        // Fallback: try with regional bboxes if global query fails
-        try {
-          const osZones = [
-            {name:'Europe',        la:35,lo:-12,La:72,Lo:40},
-            {name:'Middle East',   la:20,lo:30, La:45,Lo:65},
-            {name:'Asia Pacific',  la:-10,lo:95,La:55,Lo:145},
-            {name:'Americas',      la:-35,lo:-130,La:60,Lo:-35},
-            {name:'Africa',        la:-35,lo:-20, La:37, Lo:55},
-          ]
-          await Promise.allSettled(osZones.map(async (z, idx) => {
-            await new Promise(r => setTimeout(r, idx * 1500))
-            const r = await get(
-              `https://opensky-network.org/api/states/all?lamin=${z.la}&lomin=${z.lo}&lamax=${z.La}&lomax=${z.Lo}`,
-              6000, { 'Authorization': OPENSKY_AUTH }
-            )
-            if (!r) return
-            const d = await r.json().catch(()=>null)
-            ;(d?.states||[]).forEach(s => {
-              if (!s[5]||!s[6]||seen.has(s[0])) return
-              seen.add(s[0])
-              const emerg = s[14]==='7700'||s[14]==='7500'||s[14]==='7600'
-              all.push({ icao24:s[0], callsign:(s[1]||'').trim(), country:s[2],
-                lng:s[5], lat:s[6], altitude:Math.round((s[7]||s[13]||0)*3.28084),
-                altMeters:s[7]||s[13]||0, velocity:s[9]?Math.round(s[9]*1.944):null,
-                heading:s[10]?Math.round(s[10]):null, vertRate:s[11], squawk:s[14],
-                onGround:s[8]===true, zone:z.name, type:'aircraft',
-                severity:s[14]==='7700'?'critical':emerg?'high':'low', _glow:emerg })
-            })
-          }))
-        } catch {}
-      }
+        await Promise.allSettled(openSkyPromises)
+      } catch (e) {}
 
       results.aircraft = all.filter(a => a.lat && a.lng !== undefined)
       results.aircraftEmergency = all.filter(a => a.severity === 'critical' || a.severity === 'high')
@@ -607,36 +578,32 @@ export default async function handler(req, res) {
         }
       } catch {}
 
-      // 1c. OpenSky military squawk + callsign from global states (already fired above)
-      // Extract military from the OpenSky global result if it's available
-      try {
-        const osMilR = await get('https://opensky-network.org/api/states/all', 6000, { 'Authorization': OPENSKY_AUTH })
-        if (osMilR) {
-          const osD = await osMilR.json().catch(()=>null)
-          ;(osD?.states||[]).forEach(s => {
-            if (!s[5]||!s[6]) return
-            const cs = (s[1]||'').trim()
-            const sq = s[14]||''
-            const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|FORTE|SPAR|EXEC|REACH|ATLAS|JAKE|KNIFE|DUKE|VALOR|GHOST|NINJA|IRON|STEEL|MIGHT)/i.test(cs)
-            const isMilSq = ['7777','7400','7501','6100','6400'].includes(sq)
-            const hex = (s[0]||'').toLowerCase()
-            const isMilHex = /^ae[0-9a-f]{4}|^43[0-9a-f]{4}|^3c[0-9a-f]{4}|^3d[0-9a-f]{4}/i.test(hex)
-            if (!isMilCS && !isMilSq && !isMilHex) return
-            if (milSeen.has(s[0])) return
-            milSeen.add(s[0])
-            milAc.push({
-              icao24: s[0], callsign: cs,
-              lat: s[6], lng: s[5],
-              altitude: Math.round((s[7]||s[13]||0)*3.28084),
-              velocity: s[9]?Math.round(s[9]*1.944):null,
-              heading: s[10]?Math.round(s[10]):null,
-              squawk: sq, zone: 'OpenSky Military', _military: true,
-              country: s[2]||'',
-            })
-          })
-          console.log('[MIL] OpenSky military filter:', milAc.length, 'total mil after OpenSky')
-        }
-      } catch {}
+      // 1c. OpenSky military squawk + callsign from regional aircraft populated above
+      all.forEach(a => {
+        if (!a.lat || !a.lng) return
+        const cs = (a.callsign || '').trim()
+        const sq = a.squawk || ''
+        const isMilCS = /^(RCH|RRR|RFR|CNV|NAVY|USMC|USAF|USN|GAF|FAF|RAF|SAF|RSAF|ROCAF|JASDF|PLAAF|FORTE|SPAR|EXEC|REACH|ATLAS|JAKE|KNIFE|DUKE|VALOR|GHOST|NINJA|IRON|STEEL|MIGHT)/i.test(cs)
+        const isMilSq = ['7777','7400','7501','6100','6400'].includes(sq)
+        const hex = (a.icao24 || '').toLowerCase()
+        const isMilHex = /^ae[0-9a-f]{4}|^43[0-9a-f]{4}|^3c[0-9a-f]{4}|^3d[0-9a-f]{4}/i.test(hex)
+        if (!isMilCS && !isMilSq && !isMilHex && !a._military) return
+        if (milSeen.has(a.icao24)) return
+        milSeen.add(a.icao24)
+        milAc.push({
+          icao24: a.icao24,
+          callsign: cs,
+          lat: a.lat,
+          lng: a.lng,
+          altitude: a.altitude || 0,
+          velocity: a.velocity || null,
+          heading: a.heading || null,
+          squawk: sq,
+          zone: a.zone || 'OpenSky Military',
+          _military: true,
+          country: a.country || '',
+        })
+      })
 
       // 2. airplanes.live /v2/squawk emergency + military squawks
       try {

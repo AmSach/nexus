@@ -18,6 +18,7 @@ import { RefreshCw, X, ExternalLink, ZoomIn, ZoomOut, Maximize2 } from 'lucide-r
 import { getSharedPlaneGeo, getSharedClusterGeo, getMarkerMaterial, getClusterMaterial } from './markerTextureCache'
 import DeepOSINTDossier from './DeepOSINTDossier'
 import { getPointCountry, COUNTRY_DATA } from './countryUtils'
+import ActionableIntelPanel from './ActionableIntelPanel'
 
 const SEV_COLORS_HEX = { critical: 0xef4444, high: 0xf97316, medium: 0xeab308, low: 0x2dd4bf }
 const SEV_COLORS_CSS = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#2dd4bf' }
@@ -115,6 +116,7 @@ export default function IntelMap({ articles }) {
   const { data: satData, loading: satLoading, lastFetch: satLastFetch, refresh: satRefresh } = useSatellite()
   const { alerts: liveAlerts } = useLiveAlerts()
   const [showCategories, setShowCategories] = useState(true)
+  const [showActionableIntel, setShowActionableIntel] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState(null)
   const [layers,     setLayers]     = useState({
     // ENV mode defaults — matches what the mapMode effect sets for 'environment'
@@ -869,6 +871,10 @@ export default function IntelMap({ articles }) {
   }, [])
 
   const globeTo = useCallback((lat, lng) => {
+    if (typeof lat === 'object' && lat !== null) {
+      lng = lat.lng
+      lat = lat.lat
+    }
     if (lat == null || lng == null || !threeRef.current?.globe) return
     const theta = (lng + 180) * (Math.PI / 180)
     threeRef.current.globe.rotation.y = Math.PI / 2 - theta
@@ -1005,6 +1011,25 @@ export default function IntelMap({ articles }) {
         </span>
         <button onClick={()=>setShowCategories(s=>!s)} className="btn" style={{ fontSize:'8px', padding:'2px 7px', background: showCategories ? 'rgba(45,212,191,0.1)' : 'transparent', borderColor: showCategories ? 'var(--accent)' : 'var(--border)', color: showCategories ? 'var(--accent)' : 'var(--t4)' }}>
           ☰ Categories
+        </button>
+        <button
+          onClick={() => setShowActionableIntel(s => !s)}
+          className="btn"
+          style={{
+            fontSize: '8px',
+            padding: '2px 8px',
+            background: showActionableIntel ? 'rgba(6,182,212,0.25)' : 'rgba(6,182,212,0.12)',
+            borderColor: showActionableIntel ? '#06b6d4' : 'rgba(6,182,212,0.4)',
+            color: showActionableIntel ? '#67e8f9' : '#22d3ee',
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <span style={{ fontSize: '10px' }}>⚡</span>
+          <span>ACTIONABLE INTEL</span>
         </button>
         {(mapMode === 'environment' ? [
           { k:'aircraft',    label:`Air Patterns (${loading && !stats.aircraft ? '…' : stats.aircraft})`,  color:'#00ffcc' },
@@ -1233,6 +1258,22 @@ export default function IntelMap({ articles }) {
             setAutoRotate={setAutoRotate}
             setExpandedCluster={setExpandedCluster}
             setCameraZ={setCameraZ}
+          />
+        )}
+
+        {/* ── ACTIONABLE OSINT INTELLIGENCE & DECISION ORACLE PANEL ── */}
+        {showActionableIntel && (
+          <ActionableIntelPanel
+            points={allPointsUnfiltered}
+            onFlyTo={(lat, lng, zoom) => {
+              globeTo(lat, lng)
+              if (typeof zoom === 'number' && threeRef.current?.camera) {
+                const targetZ = Math.max(120, 260 - (zoom - 4) * 20)
+                threeRef.current.camera.position.z = targetZ
+                setCameraZ(targetZ)
+              }
+            }}
+            onClose={() => setShowActionableIntel(false)}
           />
         )}
 

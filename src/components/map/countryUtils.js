@@ -2,53 +2,81 @@
 // Provides high-accuracy country identification, ISO 3166-1 alpha-2 codes, and flag emojis across all intelligence feeds.
 
 export const COUNTRY_DATA = {
-  US: { name: 'United States', flag: '🇺🇸', aliases: ['usa', 'united states', 'u.s.', 'u.s.a.', 'america'] },
-  UA: { name: 'Ukraine', flag: '🇺🇦', aliases: ['ukraine', 'kyiv', 'donbas', 'donetsk', 'luhansk', 'crimea', 'kharkiv', 'zaporizhzhia', 'odesa'] },
-  RU: { name: 'Russia', flag: '🇷🇺', aliases: ['russia', 'russian federation', 'moscow', 'belgorod', 'kursk', 'rostov', 'voronezh'] },
-  IL: { name: 'Israel', flag: '🇮🇱', aliases: ['israel', 'gaza', 'palestine', 'tel aviv', 'jerusalem', 'haifa', 'west bank', 'rafah', 'khan younis'] },
-  IR: { name: 'Iran', flag: '🇮🇷', aliases: ['iran', 'islamic republic of iran', 'tehran', 'isfahan', 'fordow', 'natanz', 'bushehr', 'shiraz'] },
-  TW: { name: 'Taiwan', flag: '🇹🇼', aliases: ['taiwan', 'taipei', 'kaohsiung', 'hsinchu', 'taichung', 'rocf', 'rocn'] },
-  CN: { name: 'China', flag: '🇨🇳', aliases: ['china', 'prc', "people's republic of china", 'beijing', 'shanghai', 'shenzhen', 'pla', 'plan'] },
-  GB: { name: 'United Kingdom', flag: '🇬🇧', aliases: ['united kingdom', 'uk', 'great britain', 'britain', 'england', 'scotland', 'royal navy', 'raf'] },
-  DE: { name: 'Germany', flag: '🇩🇪', aliases: ['germany', 'deutschland', 'berlin', 'munich', 'frankfurt', 'hamburg', 'bundeswehr'] },
-  FR: { name: 'France', flag: '🇫🇷', aliases: ['france', 'paris', 'marseille', 'lyon', 'toulon', 'french navy', 'marine nationale'] },
-  JP: { name: 'Japan', flag: '🇯🇵', aliases: ['japan', 'tokyo', 'osaka', 'honshu', 'hokkaido', 'kyushu', 'okinawa', 'noto', 'jmsdf'] },
-  KR: { name: 'South Korea', flag: '🇰🇷', aliases: ['south korea', 'korea, republic of', 'seoul', 'incheon', 'busan', 'rokaf', 'rokn'] },
-  KP: { name: 'North Korea', flag: '🇰🇵', aliases: ['north korea', 'dprk', "democratic people's republic of korea", 'pyongyang', 'yongbyon'] },
-  IN: { name: 'India', flag: '🇮🇳', aliases: ['india', 'new delhi', 'mumbai', 'kashmir', 'ladakh', 'indian air force', 'indian navy'] },
-  PK: { name: 'Pakistan', flag: '🇵🇰', aliases: ['pakistan', 'islamabad', 'karachi', 'lahore', 'rawalpindi'] },
-  PL: { name: 'Poland', flag: '🇵🇱', aliases: ['poland', 'warsaw', 'krakow', 'gdansk', 'rzeszow'] },
-  TR: { name: 'Turkey', flag: '🇹🇷', aliases: ['turkey', 'turkiye', 'türkiye', 'ankara', 'istanbul', 'izmir', 'malatya'] },
-  GR: { name: 'Greece', flag: '🇬🇷', aliases: ['greece', 'athens', 'thessaloniki', 'crete', 'aegean'] },
-  IT: { name: 'Italy', flag: '🇮🇹', aliases: ['italy', 'rome', 'milan', 'naples', 'sicily', 'etna', 'campi flegrei'] },
-  ES: { name: 'Spain', flag: '🇪🇸', aliases: ['spain', 'madrid', 'barcelona', 'gibraltar strait', 'rota'] },
-  CA: { name: 'Canada', flag: '🇨🇦', aliases: ['canada', 'ottawa', 'toronto', 'vancouver', 'quebec', 'rcaf'] },
-  AU: { name: 'Australia', flag: '🇦🇺', aliases: ['australia', 'canberra', 'sydney', 'melbourne', 'perth', 'raaf', 'ran'] },
-  BR: { name: 'Brazil', flag: '🇧🇷', aliases: ['brazil', 'brasil', 'brasilia', 'sao paulo', 'rio de janeiro', 'itaipu'] },
-  CL: { name: 'Chile', flag: '🇨🇱', aliases: ['chile', 'santiago', 'antofagasta', 'valparaiso'] },
-  MX: { name: 'Mexico', flag: '🇲🇽', aliases: ['mexico', 'mexico city', 'popocatepetl', 'guadalajara', 'monterrey'] },
-  ID: { name: 'Indonesia', flag: '🇮🇩', aliases: ['indonesia', 'jakarta', 'java', 'sumatra', 'sulawesi', 'bali', 'merapi', 'semeru'] },
-  PH: { name: 'Philippines', flag: '🇵🇭', aliases: ['philippines', 'manila', 'luzon', 'mindanao', 'subic', 'palawan'] },
-  IS: { name: 'Iceland', flag: '🇮🇸', aliases: ['iceland', 'reykjavik', 'reykjanes', 'sundhnukur', 'grindavik'] },
-  YE: { name: 'Yemen', flag: '🇾🇪', aliases: ['yemen', 'sanaa', 'hodeidah', 'aden', 'houthi', 'bab el-mandeb'] },
-  SY: { name: 'Syria', flag: '🇸🇾', aliases: ['syria', 'damascus', 'aleppo', 'idlib', 'homs', 'latakia'] },
-  SD: { name: 'Sudan', flag: '🇸🇩', aliases: ['sudan', 'khartoum', 'darfur', 'el fasher', 'port sudan'] },
-  MM: { name: 'Myanmar', flag: '🇲🇲', aliases: ['myanmar', 'burma', 'naypyidaw', 'yangon', 'mandalay', 'sagaing'] },
-  SA: { name: 'Saudi Arabia', flag: '🇸🇦', aliases: ['saudi arabia', 'riyadh', 'jeddah', 'aramco'] },
-  AE: { name: 'UAE', flag: '🇦🇪', aliases: ['uae', 'united arab emirates', 'dubai', 'abu dhabi'] },
-  SG: { name: 'Singapore', flag: '🇸🇬', aliases: ['singapore', 'jurong', 'changi'] },
+  US: { name: 'United States', flag: '🇺🇸', aliases: ['usa', 'united states', 'u.s.', 'u.s.a.', 'america', 'alaska', 'hawaii', 'california', 'texas', 'florida', 'nevada', 'washington'] },
+  UA: { name: 'Ukraine', flag: '🇺🇦', aliases: ['ukraine', 'kyiv', 'donbas', 'donetsk', 'luhansk', 'crimea', 'kharkiv', 'zaporizhzhia', 'odesa', 'dnipro', 'bakhmut'] },
+  RU: { name: 'Russia', flag: '🇷🇺', aliases: ['russia', 'russian federation', 'moscow', 'belgorod', 'kursk', 'rostov', 'voronezh', 'st. petersburg', 'kamchatka', 'sakhalin', 'kuril'] },
+  IL: { name: 'Israel', flag: '🇮🇱', aliases: ['israel', 'gaza', 'palestine', 'tel aviv', 'jerusalem', 'haifa', 'west bank', 'rafah', 'khan younis', 'negev', 'idf'] },
+  IR: { name: 'Iran', flag: '🇮🇷', aliases: ['iran', 'islamic republic of iran', 'tehran', 'isfahan', 'fordow', 'natanz', 'bushehr', 'shiraz', 'irgc', 'bandar abbas'] },
+  TW: { name: 'Taiwan', flag: '🇹🇼', aliases: ['taiwan', 'taipei', 'kaohsiung', 'hsinchu', 'taichung', 'rocf', 'rocn', 'kinmen', 'matsu'] },
+  CN: { name: 'China', flag: '🇨🇳', aliases: ['china', 'prc', "people's republic of china", 'beijing', 'shanghai', 'shenzhen', 'pla', 'plan', 'tibet', 'xinjiang', 'hainan'] },
+  GB: { name: 'United Kingdom', flag: '🇬🇧', aliases: ['united kingdom', 'uk', 'great britain', 'britain', 'england', 'scotland', 'wales', 'royal navy', 'raf'] },
+  DE: { name: 'Germany', flag: '🇩🇪', aliases: ['germany', 'deutschland', 'berlin', 'munich', 'frankfurt', 'hamburg', 'bundeswehr', 'ramstein'] },
+  FR: { name: 'France', flag: '🇫🇷', aliases: ['france', 'paris', 'marseille', 'lyon', 'toulon', 'french navy', 'marine nationale', 'brest'] },
+  JP: { name: 'Japan', flag: '🇯🇵', aliases: ['japan', 'tokyo', 'osaka', 'honshu', 'hokkaido', 'kyushu', 'okinawa', 'noto', 'jmsdf', 'izu', 'ryukyu', 'fukushima'] },
+  KR: { name: 'South Korea', flag: '🇰🇷', aliases: ['south korea', 'korea, republic of', 'seoul', 'incheon', 'busan', 'rokaf', 'rokn', 'jeju'] },
+  KP: { name: 'North Korea', flag: '🇰🇵', aliases: ['north korea', 'dprk', "democratic people's republic of korea", 'pyongyang', 'yongbyon', 'kpa'] },
+  IN: { name: 'India', flag: '🇮🇳', aliases: ['india', 'new delhi', 'mumbai', 'kashmir', 'ladakh', 'indian air force', 'indian navy', 'bengaluru', 'andaman'] },
+  PK: { name: 'Pakistan', flag: '🇵🇰', aliases: ['pakistan', 'islamabad', 'karachi', 'lahore', 'rawalpindi', 'gwadar', 'paf'] },
+  PL: { name: 'Poland', flag: '🇵🇱', aliases: ['poland', 'warsaw', 'krakow', 'gdansk', 'rzeszow', 'suwalki'] },
+  TR: { name: 'Turkey', flag: '🇹🇷', aliases: ['turkey', 'turkiye', 'türkiye', 'ankara', 'istanbul', 'izmir', 'malatya', 'incirlik', 'bosphorus', 'dardanelles'] },
+  GR: { name: 'Greece', flag: '🇬🇷', aliases: ['greece', 'athens', 'thessaloniki', 'crete', 'aegean', 'souda bay'] },
+  IT: { name: 'Italy', flag: '🇮🇹', aliases: ['italy', 'rome', 'milan', 'naples', 'sicily', 'etna', 'campi flegrei', 'taranto'] },
+  ES: { name: 'Spain', flag: '🇪🇸', aliases: ['spain', 'madrid', 'barcelona', 'gibraltar strait', 'rota', 'cadiz'] },
+  CA: { name: 'Canada', flag: '🇨🇦', aliases: ['canada', 'ottawa', 'toronto', 'vancouver', 'quebec', 'rcaf', 'halifax'] },
+  AU: { name: 'Australia', flag: '🇦🇺', aliases: ['australia', 'canberra', 'sydney', 'melbourne', 'perth', 'raaf', 'ran', 'darwin', 'brisbane'] },
+  PE: { name: 'Peru', flag: '🇵🇪', aliases: ['peru', 'lima', 'arequipa', 'cusco', 'trujillo', 'callao', 'barranca', 'pisco', 'ica', 'chimbote', 'piura'] },
+  AR: { name: 'Argentina', flag: '🇦🇷', aliases: ['argentina', 'buenos aires', 'cordoba', 'rosario', 'mendoza', 'salta', 'mosconi', 'general mosconi', 'ushuaia', 'jujuy', 'tucuman'] },
+  CL: { name: 'Chile', flag: '🇨🇱', aliases: ['chile', 'santiago', 'antofagasta', 'valparaiso', 'concepcion', 'coquimbo', 'iquique', 'atacama'] },
+  CO: { name: 'Colombia', flag: '🇨🇴', aliases: ['colombia', 'bogota', 'medellin', 'cali', 'barranquilla', 'cartagena', 'cucuta'] },
+  EC: { name: 'Ecuador', flag: '🇪🇨', aliases: ['ecuador', 'quito', 'guayaquil', 'cuenca', 'galapagos', 'esmeraldas'] },
+  BO: { name: 'Bolivia', flag: '🇧🇴', aliases: ['bolivia', 'la paz', 'sucre', 'santa cruz', 'cochabamba', 'oruro', 'potosi'] },
+  VE: { name: 'Venezuela', flag: '🇻🇪', aliases: ['venezuela', 'caracas', 'maracaibo', 'valencia', 'maracay'] },
+  BR: { name: 'Brazil', flag: '🇧🇷', aliases: ['brazil', 'brasil', 'brasilia', 'sao paulo', 'rio de janeiro', 'itaipu', 'manaus', 'salvador'] },
+  MX: { name: 'Mexico', flag: '🇲🇽', aliases: ['mexico', 'mexico city', 'popocatepetl', 'guadalajara', 'monterrey', 'tijuana', 'cancun', 'baja'] },
+  ID: { name: 'Indonesia', flag: '🇮🇩', aliases: ['indonesia', 'jakarta', 'java', 'sumatra', 'sulawesi', 'bali', 'merapi', 'semeru', 'halmahera', 'banda sea', 'flores', 'molucca', 'papua'] },
+  PH: { name: 'Philippines', flag: '🇵🇭', aliases: ['philippines', 'manila', 'luzon', 'mindanao', 'subic', 'palawan', 'davao', 'cebu'] },
+  NZ: { name: 'New Zealand', flag: '🇳🇿', aliases: ['new zealand', 'auckland', 'wellington', 'christchurch', 'kermadec', 'kermadec islands', 'rotorua'] },
+  PG: { name: 'Papua New Guinea', flag: '🇵🇬', aliases: ['papua new guinea', 'png', 'port moresby', 'new britain', 'new ireland', 'bougainville', 'kokopo'] },
+  FJ: { name: 'Fiji', flag: '🇫🇯', aliases: ['fiji', 'suva', 'nadi', 'lau', 'vanua levu', 'viti levu'] },
+  TO: { name: 'Tonga', flag: '🇹🇴', aliases: ['tonga', "nuku'alofa", 'tongatapu', 'haapai', 'vavau'] },
+  VU: { name: 'Vanuatu', flag: '🇻🇺', aliases: ['vanuatu', 'port vila', 'espiritu santo', 'tanna'] },
+  SB: { name: 'Solomon Islands', flag: '🇸🇧', aliases: ['solomon islands', 'honiara', 'guadalcanal', 'malaita'] },
+  PR: { name: 'Puerto Rico', flag: '🇵🇷', aliases: ['puerto rico', 'san juan', 'ponce', 'mayaguez', 'bayamon', 'arecibo'] },
+  DO: { name: 'Dominican Republic', flag: '🇩🇴', aliases: ['dominican republic', 'santo domingo', 'santiago de los caballeros', 'punta cana'] },
+  CU: { name: 'Cuba', flag: '🇨🇺', aliases: ['cuba', 'havana', 'santiago de cuba', 'guantanamo'] },
+  PA: { name: 'Panama', flag: '🇵🇦', aliases: ['panama', 'panama city', 'colon', 'panama canal'] },
+  CR: { name: 'Costa Rica', flag: '🇨🇷', aliases: ['costa rica', 'san jose', 'alajuela', 'limon'] },
+  GT: { name: 'Guatemala', flag: '🇬🇹', aliases: ['guatemala', 'guatemala city', 'antigua guatemala', 'fuego'] },
+  IS: { name: 'Iceland', flag: '🇮🇸', aliases: ['iceland', 'reykjavik', 'reykjanes', 'sundhnukur', 'grindavik', 'askja', 'katla'] },
+  YE: { name: 'Yemen', flag: '🇾🇪', aliases: ['yemen', 'sanaa', 'hodeidah', 'aden', 'houthi', 'bab el-mandeb', 'mukalla'] },
+  SY: { name: 'Syria', flag: '🇸🇾', aliases: ['syria', 'damascus', 'aleppo', 'idlib', 'homs', 'latakia', 'tartus', 'deir ez-zor'] },
+  SD: { name: 'Sudan', flag: '🇸🇩', aliases: ['sudan', 'khartoum', 'darfur', 'el fasher', 'port sudan', 'omdurman'] },
+  MM: { name: 'Myanmar', flag: '🇲🇲', aliases: ['myanmar', 'burma', 'naypyidaw', 'yangon', 'mandalay', 'sagaing', 'rakhine'] },
+  SA: { name: 'Saudi Arabia', flag: '🇸🇦', aliases: ['saudi arabia', 'riyadh', 'jeddah', 'aramco', 'dammam', 'neom', 'rsaf'] },
+  AE: { name: 'UAE', flag: '🇦🇪', aliases: ['uae', 'united arab emirates', 'dubai', 'abu dhabi', 'jebel ali'] },
+  SG: { name: 'Singapore', flag: '🇸🇬', aliases: ['singapore', 'jurong', 'changi', 'rsaf'] },
   NL: { name: 'Netherlands', flag: '🇳🇱', aliases: ['netherlands', 'holland', 'amsterdam', 'rotterdam', 'the hague'] },
-  SE: { name: 'Sweden', flag: '🇸🇪', aliases: ['sweden', 'stockholm', 'gotland'] },
-  NO: { name: 'Norway', flag: '🇳🇴', aliases: ['norway', 'oslo', 'barentswatch', 'bergen'] },
-  FI: { name: 'Finland', flag: '🇫🇮', aliases: ['finland', 'helsinki'] },
-  RO: { name: 'Romania', flag: '🇷🇴', aliases: ['romania', 'bucharest', 'constanta'] },
-  EG: { name: 'Egypt', flag: '🇪🇬', aliases: ['egypt', 'cairo', 'suez canal', 'sinai', 'alexandria'] },
-  IQ: { name: 'Iraq', flag: '🇮🇶', aliases: ['iraq', 'baghdad', 'erbil', 'basra'] },
-  LB: { name: 'Lebanon', flag: '🇱🇧', aliases: ['lebanon', 'beirut', 'southern lebanon', 'hezbollah'] },
-  SO: { name: 'Somalia', flag: '🇸🇴', aliases: ['somalia', 'mogadishu', 'gulf of aden'] },
-  CD: { name: 'DR Congo', flag: '🇨🇩', aliases: ['dr congo', 'congo', 'drc', 'kinshasa', 'goma', 'rutshuru'] },
-  NG: { name: 'Nigeria', flag: '🇳🇬', aliases: ['nigeria', 'abuja', 'lagos'] },
-  ZA: { name: 'South Africa', flag: '🇿🇦', aliases: ['south africa', 'pretoria', 'johannesburg', 'cape town'] },
+  SE: { name: 'Sweden', flag: '🇸🇪', aliases: ['sweden', 'stockholm', 'gotland', 'malmo', 'saab'] },
+  NO: { name: 'Norway', flag: '🇳🇴', aliases: ['norway', 'oslo', 'barentswatch', 'bergen', 'tromso', 'svalbard'] },
+  FI: { name: 'Finland', flag: '🇫🇮', aliases: ['finland', 'helsinki', 'tampere'] },
+  RO: { name: 'Romania', flag: '🇷🇴', aliases: ['romania', 'bucharest', 'constanta', 'mihail kogalniceanu'] },
+  EG: { name: 'Egypt', flag: '🇪🇬', aliases: ['egypt', 'cairo', 'suez canal', 'sinai', 'alexandria', 'port said'] },
+  IQ: { name: 'Iraq', flag: '🇮🇶', aliases: ['iraq', 'baghdad', 'erbil', 'basra', 'mosul', 'al asad'] },
+  LB: { name: 'Lebanon', flag: '🇱🇧', aliases: ['lebanon', 'beirut', 'southern lebanon', 'hezbollah', 'tyre', 'sidon'] },
+  SO: { name: 'Somalia', flag: '🇸🇴', aliases: ['somalia', 'mogadishu', 'gulf of aden', 'puntland', 'somaliland'] },
+  CD: { name: 'DR Congo', flag: '🇨🇩', aliases: ['dr congo', 'congo', 'drc', 'kinshasa', 'goma', 'rutshuru', 'kivu'] },
+  NG: { name: 'Nigeria', flag: '🇳🇬', aliases: ['nigeria', 'abuja', 'lagos', 'kano', 'port harcourt'] },
+  ZA: { name: 'South Africa', flag: '🇿🇦', aliases: ['south africa', 'pretoria', 'johannesburg', 'cape town', 'durban'] },
+  TH: { name: 'Thailand', flag: '🇹🇭', aliases: ['thailand', 'bangkok', 'phuket', 'chiang mai'] },
+  VN: { name: 'Vietnam', flag: '🇻🇳', aliases: ['vietnam', 'hanoi', 'ho chi minh city', 'saigon', 'da nang', 'cam ranh'] },
+  MY: { name: 'Malaysia', flag: '🇲🇾', aliases: ['malaysia', 'kuala lumpur', 'penang', 'johor'] },
+  AF: { name: 'Afghanistan', flag: '🇦🇫', aliases: ['afghanistan', 'kabul', 'kandahar', 'herat', 'hindu kush'] },
+  MA: { name: 'Morocco', flag: '🇲🇦', aliases: ['morocco', 'rabat', 'casablanca', 'marrakech', 'tangier'] },
+  DZ: { name: 'Algeria', flag: '🇩🇿', aliases: ['algeria', 'algiers', 'oran', 'constantine'] },
+  TN: { name: 'Tunisia', flag: '🇹🇳', aliases: ['tunisia', 'tunis', 'sfax'] },
+  LY: { name: 'Libya', flag: '🇱🇾', aliases: ['libya', 'tripoli', 'benghazi', 'misrata', 'tobruk'] },
+  KE: { name: 'Kenya', flag: '🇰🇪', aliases: ['kenya', 'nairobi', 'mombasa'] },
+  ET: { name: 'Ethiopia', flag: '🇪🇹', aliases: ['ethiopia', 'addis ababa', 'tigray'] },
   INTL: { name: 'International Waters', flag: '🌊', aliases: ['international waters', 'high seas', 'open ocean', 'atlantic', 'pacific', 'indian ocean', 'red sea', 'persian gulf', 'strait of hormuz', 'malacca strait', 'taiwan strait', 'black sea', 'baltic sea'] },
   SPACE: { name: 'Orbital Space', flag: '🛰️', aliases: ['space', 'low earth orbit', 'orbital', 'iss'] }
 }
@@ -61,15 +89,31 @@ const US_STATES = new Set([
   'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire', 'new jersey', 'new mexico',
   'new york', 'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon', 'pennsylvania',
   'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas', 'utah', 'vermont',
-  'virginia', 'washington', 'west virginia', 'wisconsin', 'wyoming', 'puerto rico', 'virgin islands', 'guam'
+  'virginia', 'washington', 'west virginia', 'wisconsin', 'wyoming', 'virgin islands', 'guam'
 ])
 
 const US_POSTAL_CODES = new Set([
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS',
   'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY',
   'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV',
-  'WI', 'WY', 'PR', 'VI'
+  'WI', 'WY', 'VI'
 ])
+
+function escapeRegex(s) {
+  return s.replace(/[\^$\\.*+?()[\]{}|]/g, '\\$&')
+}
+
+/**
+ * Tests whether an alias appears in text with strict word boundaries.
+ * Prevents substring false positives like "ran" matching inside "barranca",
+ * or "con" matching inside "mosconi".
+ */
+export function matchesAlias(text, alias) {
+  if (!text || !alias) return false
+  const esc = escapeRegex(alias)
+  const re = new RegExp('(^|[^a-zA-Z0-9])' + esc + '([^a-zA-Z0-9]|$)', 'i')
+  return re.test(text)
+}
 
 /**
  * Normalizes raw country code or name string
@@ -84,26 +128,31 @@ export function normalizeCountry(raw) {
     return { code: upper, name: COUNTRY_DATA[upper].name, flag: COUNTRY_DATA[upper].flag }
   }
 
-  // Postal code check for US states
-  if (upper.length === 2 && US_POSTAL_CODES.has(upper)) {
+  // Postal code check for US states (exclude AR, PR which are Argentina and Puerto Rico)
+  if (upper.length === 2 && US_POSTAL_CODES.has(upper) && upper !== 'AR') {
     return { code: 'US', name: 'United States', flag: '🇺🇸' }
+  }
+
+  // Check Puerto Rico postal code
+  if (upper === 'PR') {
+    return { code: 'PR', name: 'Puerto Rico', flag: '🇵🇷' }
   }
 
   const lower = trimmed.toLowerCase()
 
-  // Full state check
+  // Full US state check
   if (US_STATES.has(lower)) {
     return { code: 'US', name: 'United States', flag: '🇺🇸' }
   }
 
-  // Alias scan across registered countries
+  // Exact or word-boundary alias scan across registered countries
   for (const [code, info] of Object.entries(COUNTRY_DATA)) {
-    if (info.aliases.some(alias => lower === alias || lower.includes(alias))) {
+    if (info.aliases.some(alias => lower === alias || matchesAlias(lower, alias))) {
       return { code, name: info.name, flag: info.flag }
     }
   }
 
-  // Generic fallback if it's 2 characters
+  // Generic fallback if it's 2 uppercase characters
   if (upper.length === 2 && /^[A-Z]{2}$/.test(upper)) {
     return { code: upper, name: upper, flag: '🌐' }
   }
@@ -138,25 +187,41 @@ export function parseZoneCountry(zone) {
 export function extractCountryFromText(text) {
   if (!text || typeof text !== 'string') return null
 
-  // Check for trailing USGS earthquake format: "75 km W of Ferndale, California" or "Macedonia, Greece"
+  // 1. Check for trailing USGS earthquake format: "75 km W of Ferndale, California", "14 km ENE of Ridgecrest, CA", or "117 km NW of Barranca, Peru"
   const commaParts = text.split(',').map(s => s.trim())
   if (commaParts.length > 1) {
-    const candidate = commaParts[commaParts.length - 1]
-    const norm = normalizeCountry(candidate)
-    if (norm) return norm
+    const last = commaParts[commaParts.length - 1]
+    const lastUpper = last.toUpperCase()
+
+    // Trailing 2-letter postal code is a US state in USGS feeds (CA, NV, AK, HI, TX, WA, etc.)
+    if (US_POSTAL_CODES.has(lastUpper)) {
+      return { code: 'US', name: 'United States', flag: '🇺🇸' }
+    }
+
+    // Trailing full US state name
+    if (US_STATES.has(last.toLowerCase())) {
+      return { code: 'US', name: 'United States', flag: '🇺🇸' }
+    }
+
+    // Trailing full country name (e.g. "Peru", "Argentina", "New Zealand", "Chile", "Japan")
+    for (let i = commaParts.length - 1; i >= 1; i--) {
+      const candidate = commaParts[i]
+      const norm = normalizeCountry(candidate)
+      if (norm) return norm
+    }
   }
 
-  // Regex for parenthesized country codes like (US), (RU), (CN), (UA), (IL), (IR), (TW)
+  // 2. Regex for parenthesized country codes like (US), (RU), (CN), (UA), (IL), (IR), (TW), (PE), (AR)
   const parenMatch = text.match(/\(([A-Z]{2,3})\)/)
   if (parenMatch && parenMatch[1]) {
     const norm = normalizeCountry(parenMatch[1])
     if (norm) return norm
   }
 
-  const lower = text.toLowerCase()
+  // 3. Strict word-boundary alias scan across registered countries
   for (const [code, info] of Object.entries(COUNTRY_DATA)) {
     if (code === 'INTL' || code === 'SPACE') continue
-    if (info.aliases.some(alias => lower.includes(alias))) {
+    if (info.aliases.some(alias => matchesAlias(text, alias))) {
       return { code, name: info.name, flag: info.flag }
     }
   }
@@ -182,10 +247,30 @@ export function inferCountryFromCoords(lat, lng) {
   if (lat >= 11.5 && lat <= 28.0 && lng >= 32.0 && lng <= 52.0) return { code: 'YE', name: 'Yemen / Red Sea', flag: '🇾🇪' }
   // Continental United States
   if (lat >= 24.0 && lat <= 49.5 && lng >= -125.0 && lng <= -66.5) return { code: 'US', name: 'United States', flag: '🇺🇸' }
-  // Alaska
-  if (lat >= 51.0 && lat <= 72.0 && lng >= -170.0 && lng <= -130.0) return { code: 'US', name: 'United States (AK)', flag: '🇺🇸' }
-  // Hawaii
-  if (lat >= 18.5 && lat <= 22.5 && lng >= -161.0 && lng <= -154.0) return { code: 'US', name: 'United States (HI)', flag: '🇺🇸' }
+  // Alaska -> rolls up cleanly to US
+  if (lat >= 51.0 && lat <= 72.0 && lng >= -179.0 && lng <= -129.0) return { code: 'US', name: 'United States', flag: '🇺🇸' }
+  // Hawaii -> rolls up cleanly to US
+  if (lat >= 18.5 && lat <= 22.5 && lng >= -161.0 && lng <= -154.0) return { code: 'US', name: 'United States', flag: '🇺🇸' }
+  // Puerto Rico
+  if (lat >= 17.8 && lat <= 18.6 && lng >= -67.4 && lng <= -65.2) return { code: 'PR', name: 'Puerto Rico', flag: '🇵🇷' }
+  // Chile
+  if (lat >= -56.0 && lat <= -17.5 && lng >= -76.0 && lng <= -66.5) return { code: 'CL', name: 'Chile', flag: '🇨🇱' }
+  // Peru
+  if (lat >= -18.5 && lat <= 0.0 && lng >= -81.5 && lng <= -68.5) return { code: 'PE', name: 'Peru', flag: '🇵🇪' }
+  // Argentina
+  if (lat >= -55.0 && lat <= -21.5 && lng >= -73.0 && lng <= -53.5) return { code: 'AR', name: 'Argentina', flag: '🇦🇷' }
+  // Bolivia
+  if (lat >= -23.0 && lat <= -9.5 && lng >= -69.5 && lng <= -57.5) return { code: 'BO', name: 'Bolivia', flag: '🇧🇴' }
+  // Colombia
+  if (lat >= -4.5 && lat <= 13.0 && lng >= -79.0 && lng <= -66.5) return { code: 'CO', name: 'Colombia', flag: '🇨🇴' }
+  // Brazil
+  if ((lat >= -33.8 && lat <= 5.3 && lng >= -53.5 && lng <= -34.8) || (lat >= -10.0 && lat <= 4.0 && lng >= -65.0 && lng <= -53.5)) return { code: 'BR', name: 'Brazil', flag: '🇧🇷' }
+  // New Zealand
+  if (lat >= -47.5 && lat <= -34.0 && lng >= 165.0 && lng <= 179.0) return { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' }
+  // Papua New Guinea
+  if (lat >= -12.0 && lat <= -1.0 && lng >= 140.5 && lng <= 156.0) return { code: 'PG', name: 'Papua New Guinea', flag: '🇵🇬' }
+  // Fiji
+  if (lat >= -21.0 && lat <= -15.5 && lng >= 177.0 && lng <= 180.0) return { code: 'FJ', name: 'Fiji', flag: '🇫🇯' }
   // Japan
   if (lat >= 24.0 && lat <= 46.0 && lng >= 123.0 && lng <= 146.0) return { code: 'JP', name: 'Japan', flag: '🇯🇵' }
   // Korean Peninsula
@@ -208,10 +293,6 @@ export function inferCountryFromCoords(lat, lng) {
   if (lat >= 36.5 && lat <= 47.1 && lng >= 6.6 && lng <= 18.5) return { code: 'IT', name: 'Italy', flag: '🇮🇹' }
   // India
   if (lat >= 6.5 && lat <= 35.5 && lng >= 68.0 && lng <= 97.5) return { code: 'IN', name: 'India', flag: '🇮🇳' }
-  // Brazil
-  if (lat >= -34.0 && lat <= 5.5 && lng >= -74.0 && lng <= -34.5) return { code: 'BR', name: 'Brazil', flag: '🇧🇷' }
-  // Chile
-  if (lat >= -56.0 && lat <= -17.5 && lng >= -76.0 && lng <= -66.0) return { code: 'CL', name: 'Chile', flag: '🇨🇱' }
   // Indonesia
   if (lat >= -11.0 && lat <= 6.0 && lng >= 95.0 && lng <= 141.0) return { code: 'ID', name: 'Indonesia', flag: '🇮🇩' }
   // Australia
