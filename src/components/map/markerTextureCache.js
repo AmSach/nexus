@@ -52,6 +52,11 @@ export function getMarkerMaterialKey(pt) {
 }
 
 export function getMarkerMaterial(THREE, pt) {
+  const type = pt.type || 'default'
+  const sev = pt.severity || 'medium'
+  const isMil = /^(RCH|JAKE|KNIFE|REACH|NATO|RRR|USAF|THUD|BART|TOPOL|SPAR|SAM|VENUS|VIPER|ATLAS)/i.test(pt.meta?.callsign || pt.callsign || '')
+  const shipType = (pt.meta?.shipType || pt.meta?.vesselType || pt.type || '').toLowerCase()
+  const isWarship = type === 'warship' || shipType.includes('naval') || shipType.includes('destroyer') || shipType.includes('carrier')
   const cacheKey = getMarkerMaterialKey(pt)
 
   if (MATERIAL_CACHE.has(cacheKey)) {
