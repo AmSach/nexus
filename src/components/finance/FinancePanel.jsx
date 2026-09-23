@@ -343,7 +343,7 @@ function FinancePanel({ articles = [] }) {
 
         {/* ── ECONOMIC & MACRO TERMINAL TABS ── */}
         {['chokepoints', 'correlations', 'alpha', 'stress', 'export'].includes(tab) && (
-          <EconomicResearchTerminal activeSubTab={tab} onTabChange={setTab} articles={articles} />
+          <EconomicResearchTerminal activeSubTab={tab} onTabChange={setTab} articles={articles} quotes={quotes} />
         )}
 
         {/* ── OVERVIEW ── */}

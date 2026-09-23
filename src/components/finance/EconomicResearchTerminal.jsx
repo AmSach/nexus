@@ -61,7 +61,7 @@ const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
 const monoXs = { fontFamily: 'JetBrains Mono', fontSize: 9 }
 
-function EconomicResearchTerminal({ activeSubTab: externalSubTab, onTabChange, onSelectChokepoint, articles = [] }) {
+function EconomicResearchTerminal({ activeSubTab: externalSubTab, onTabChange, onSelectChokepoint, articles = [], quotes = {} }) {
   const [subTab, setSubTab] = useState(externalSubTab || 'chokepoints')
   const [selectedChokeId, setSelectedChokeId] = useState('bab_el_mandeb')
   const [selectedScenarioId, setSelectedScenarioId] = useState('hormuz_blockade')
@@ -431,6 +431,29 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                 )}
               </div>
 
+              {/* Dynamic Live Adaptive Incident Banner for Selected Chokepoint */}
+              {(() => {
+                const liveMatch = adaptiveConflicts.find(c =>
+                  (selectedChokeId === 'bab_el_mandeb' && /houthi|yemen|bab el[- ]mandeb|red sea|suez|ansar allah/i.test(`${c.headline || ''} ${c.title || ''}`)) ||
+                  (selectedChokeId === 'strait_of_hormuz' && /hormuz|iran|irgc|persian gulf/i.test(`${c.headline || ''} ${c.title || ''}`)) ||
+                  (selectedChokeId === 'taiwan_strait' && /taiwan|pla|tsmc|bashi/i.test(`${c.headline || ''} ${c.title || ''}`)) ||
+                  (selectedChokeId === 'bosphorus_dardanelles' && /black sea|danube|ukraine|grain/i.test(`${c.headline || ''} ${c.title || ''}`))
+                )
+                if (!liveMatch) return null
+                return (
+                  <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+                      <span style={{ ...monoXs, color: '#f87171', fontWeight: 700 }}>LIVE OSINT INCIDENT:</span>
+                      <span style={{ ...monoXs, color: 'var(--t1)' }}>"{liveMatch.headline || liveMatch.title}"</span>
+                    </div>
+                    <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>
+                      Threat: {liveMatch.threatScore}/100 ({liveMatch.severity}) · Source: {liveMatch.source}
+                    </span>
+                  </div>
+                )
+              })()}
+
               {/* Chokepoint Metrics Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4, padding: '8px 10px' }}>
@@ -467,7 +490,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
 
               {/* Affected Commodities Table */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ ...monoXs, color: 'var(--t4)', marginBottom: 6, letterSpacing: '0.08em' }}>AFFECTED COMMODITIES & BENCHMARKS</div>
+                <div style={{ ...monoXs, color: 'var(--t4)', marginBottom: 6, letterSpacing: '0.08em' }}>AFFECTED COMMODITIES & BENCHMARKS (STREAMING QUOTES)</div>
                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', ...monoSm }}>
                     <thead>
@@ -475,22 +498,31 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                         <th style={{ padding: '6px 10px' }}>TICKER</th>
                         <th style={{ padding: '6px 10px' }}>COMMODITY / BENCHMARK</th>
                         <th style={{ padding: '6px 10px' }}>DIRECTION</th>
+                        <th style={{ padding: '6px 10px' }}>LIVE PRICE</th>
                         <th style={{ padding: '6px 10px' }}>SENSITIVITY / RISK PREMIUM</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedChokepoint.affectedCommodities.map(c => (
-                        <tr key={c.sym} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                          <td style={{ padding: '6px 10px', color: 'var(--accent)', fontWeight: 600 }}>{c.sym}</td>
-                          <td style={{ padding: '6px 10px', color: 'var(--t1)' }}>{c.name}</td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <span style={{ color: c.direction === 'UP' ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
-                              {c.direction === 'UP' ? '▲ BULLISH' : '▼ BEARISH'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '6px 10px', color: 'var(--t2)' }}>{c.sensitivity}</td>
-                        </tr>
-                      ))}
+                      {selectedChokepoint.affectedCommodities.map(c => {
+                        const q = quotes?.[c.sym]
+                        const hasQuote = q && q.price != null && !isNaN(q.price)
+                        const sign = (q?.changePercent || 0) >= 0 ? '+' : ''
+                        return (
+                          <tr key={c.sym} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <td style={{ padding: '6px 10px', color: 'var(--accent)', fontWeight: 600 }}>{c.sym}</td>
+                            <td style={{ padding: '6px 10px', color: 'var(--t1)' }}>{c.name}</td>
+                            <td style={{ padding: '6px 10px' }}>
+                              <span style={{ color: c.direction === 'UP' ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
+                                {c.direction === 'UP' ? '▲ BULLISH' : '▼ BEARISH'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '6px 10px', ...monoXs, color: hasQuote ? ((q.changePercent || 0) >= 0 ? '#4ade80' : '#f87171') : 'var(--t4)' }}>
+                              {hasQuote ? `$${q.price.toFixed(2)} (${sign}${(q.changePercent || 0).toFixed(2)}%)` : 'Streaming quote...'}
+                            </td>
+                            <td style={{ padding: '6px 10px', color: 'var(--t2)' }}>{c.sensitivity}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -534,7 +566,15 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
 
         {/* ── 2. GRAPH & GAME THEORY NETWORK ENGINE ────────────────────────── */}
         {subTab === 'correlations' && (
-          <GraphAndGameTheoryEngine adaptiveConflicts={adaptiveConflicts} />
+          <GraphAndGameTheoryEngine
+            adaptiveConflicts={adaptiveConflicts}
+            quotes={quotes}
+            onAddConflict={(headline, details, region) => {
+              const newPlaybook = addCustomConflict(headline, details, region)
+              setAdaptiveConflicts(prev => [newPlaybook, ...prev.filter(p => p.id !== newPlaybook.id)])
+              return newPlaybook
+            }}
+          />
         )}
 
         {/* ── 3. ALPHA DESK & BUSINESS OPPORTUNITIES ────────────────────────── */}

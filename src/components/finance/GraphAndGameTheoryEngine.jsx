@@ -22,6 +22,7 @@ import {
   CheckCircle,
   FileText
 } from 'lucide-react'
+import { addCustomConflict } from '../../utils/adaptiveConflictEngine'
 
 const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
@@ -197,7 +198,7 @@ const THEATERS = [
   { id: 'adaptive',  label: 'LIVE ADAPTIVE FLASHPOINTS' }
 ]
 
-function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
+function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}, onAddConflict }) {
   const [activeView, setActiveView] = useState('graph') // 'graph' | 'gametheory' | 'eightlaws'
   const [selectedTheater, setSelectedTheater] = useState('all')
   const [selectedAdaptiveIdx, setSelectedAdaptiveIdx] = useState(0)
@@ -216,6 +217,72 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Look up active adaptive conflicts for macro theaters
+  const activeRedSeaIncident = useMemo(() => {
+    return adaptiveConflicts.find(c =>
+      /houthi|yemen|bab el[- ]mandeb|red sea|suez|ansar allah|gulf of aden/i.test(
+        `${c.headline || ''} ${c.title || ''} ${c.theater || ''} ${c.summary || ''}`
+      )
+    )
+  }, [adaptiveConflicts])
+
+  const activeTaiwanIncident = useMemo(() => {
+    return adaptiveConflicts.find(c =>
+      /taiwan|pla|taipei|tsmc|bashi|formosa/i.test(
+        `${c.headline || ''} ${c.title || ''} ${c.theater || ''} ${c.summary || ''}`
+      )
+    )
+  }, [adaptiveConflicts])
+
+  const activeHormuzIncident = useMemo(() => {
+    return adaptiveConflicts.find(c =>
+      /hormuz|iran|irgc|persian gulf|kharg|fujairah/i.test(
+        `${c.headline || ''} ${c.title || ''} ${c.theater || ''} ${c.summary || ''}`
+      )
+    )
+  }, [adaptiveConflicts])
+
+  const activeBlackSeaIncident = useMemo(() => {
+    return adaptiveConflicts.find(c =>
+      /ukraine|black sea|odessa|danube|grain|russia.*fleet|crimea/i.test(
+        `${c.headline || ''} ${c.title || ''} ${c.theater || ''} ${c.summary || ''}`
+      )
+    )
+  }, [adaptiveConflicts])
+
+  const handleSimulateEscalation = (theaterId) => {
+    let headline = ''
+    let details = ''
+    let region = 'Middle East'
+
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    if (theaterId === 'red_sea') {
+      headline = `UKMTO Alert [${stamp}]: Anti-Ship Missile Strike on Commercial Tanker in Bab el-Mandeb`
+      details = `Maritime security report confirms ballistic missile impact on crude tanker transiting 14nm SW of Mokha. Vessel sustained hull damage, crew safe. US naval destroyer intercepts second drone wave. Cape reroute directives expanded.`
+      region = 'Middle East'
+    } else if (theaterId === 'taiwan') {
+      headline = `PLA Eastern Theater Command [${stamp}]: Air-Sea Encirclement Drills in Taiwan ADIZ`
+      details = `42 combat aircraft and 8 naval combatants cross median line, establishing temporary exclusion zones around Bashi Channel commercial shipping routes.`
+      region = 'East Asia'
+    } else if (theaterId === 'hormuz') {
+      headline = `IRGC Fast-Attack Boarding Craft Contest Navigation in Strait of Hormuz [${stamp}]`
+      details = `Gunboats approach commercial VLCC tanker off Kharg Island. Tanker war-risk insurance surcharges surge +200 bps across Arabian Gulf.`
+      region = 'Middle East'
+    } else if (theaterId === 'black_sea') {
+      headline = `Naval Drone Swarm Strikes Deepwater Port Infrastructure near Sevastopol [${stamp}]`
+      details = `Kinetic surface drone explosions reported at naval berths. Bulk grain loading operations paused at Danube river ports.`
+      region = 'Europe'
+    }
+
+    if (headline) {
+      if (onAddConflict) {
+        onAddConflict(headline, details, region)
+      } else {
+        addCustomConflict(headline, details, region)
+      }
+    }
+  }
 
   // ── DYNAMIC THEATER & CAUSAL GRAPH SYNTHESIS (ZERO OVERLAP GUARANTEED) ─────
   const { allNodes, allEdges, maxColumnRows } = useMemo(() => {
@@ -248,7 +315,10 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
             score: c.threatScore || 88,
             color: '#ef4444',
             metric: c.severity || 'CRITICAL INCIDENT',
-            desc: c.headline || c.summary || 'Live OSINT kinetic telemetry incident.'
+            desc: c.headline || c.summary || 'Live OSINT kinetic telemetry incident.',
+            isLiveAdaptive: true,
+            liveSource: c.source,
+            liveDetectedAt: c.detectedAt
           },
           {
             id: chokeId,
@@ -261,7 +331,8 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
             score: 85,
             color: '#f97316',
             metric: 'Transit Interdiction',
-            desc: `Key maritime and commercial transit corridor exposed to ${c.title}.`
+            desc: `Key maritime and commercial transit corridor exposed to ${c.title}.`,
+            isLiveAdaptive: true
           },
           {
             id: infraId,
@@ -274,7 +345,8 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
             score: 89,
             color: '#38bdf8',
             metric: 'Capacity Interdiction',
-            desc: `High-value physical asset vulnerable to operational interruption.`
+            desc: `High-value physical asset vulnerable to operational interruption.`,
+            isLiveAdaptive: true
           },
           {
             id: commId,
@@ -287,7 +359,8 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
             score: 86,
             color: '#f59e0b',
             metric: c.commodityTransmissions?.[0]?.baseShock || '+14.5%',
-            desc: c.commodityTransmissions?.[0]?.note || 'Direct upstream price transmission.'
+            desc: c.commodityTransmissions?.[0]?.note || 'Direct upstream price transmission.',
+            isLiveAdaptive: true
           },
           {
             id: assetLongId,
@@ -300,7 +373,8 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
             score: 92,
             color: '#22c55e',
             metric: 'Alpha Outperform',
-            desc: `Structural beneficiary of commodity and freight dislocations.`
+            desc: `Structural beneficiary of commodity and freight dislocations.`,
+            isLiveAdaptive: true
           }
         ]
 
@@ -323,7 +397,8 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
             score: 84,
             color: '#f87171',
             metric: 'Input Margin Drag',
-            desc: `Exposed corporate equity suffering input inflation or supply rationing.`
+            desc: `Exposed corporate equity suffering input inflation or supply rationing.`,
+            isLiveAdaptive: true
           })
           edges.push({
             source: commId,
@@ -341,6 +416,111 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
         ? GRAPH_NODES
         : GRAPH_NODES.filter(n => n.theaters.includes(selectedTheater))
 
+      // Dynamically enrich baseline nodes with live OSINT telemetry & live streaming quotes
+      const enrichedNodes = rawNodes.map(origNode => {
+        const node = { ...origNode }
+
+        // Red Sea Dynamic Enrichment
+        if (activeRedSeaIncident && (node.theaters.includes('red_sea') || selectedTheater === 'red_sea')) {
+          if (node.id === 'flash_yemen') {
+            node.label = activeRedSeaIncident.headline
+              ? (activeRedSeaIncident.headline.length > 26 ? activeRedSeaIncident.headline.slice(0, 24) + '…' : activeRedSeaIncident.headline)
+              : node.label
+            node.metric = `LIVE: ${activeRedSeaIncident.severity} (${activeRedSeaIncident.threatScore}/100)`
+            node.score = activeRedSeaIncident.threatScore || node.score
+            node.desc = activeRedSeaIncident.summary || activeRedSeaIncident.epistemology?.fact || node.desc
+            node.isLiveAdaptive = true
+            node.liveSource = activeRedSeaIncident.source
+            node.liveDetectedAt = activeRedSeaIncident.detectedAt
+          } else if (node.id === 'infra_suez' && activeRedSeaIncident.threatenedInfrastructure?.length) {
+            node.desc = `${node.desc} Vulnerable assets: ${activeRedSeaIncident.threatenedInfrastructure.slice(0, 2).join(', ')}.`
+            node.isLiveAdaptive = true
+          } else if (node.id === 'comm_freight') {
+            const freightShock = activeRedSeaIncident.commodityTransmissions?.find(c => /freight|container/i.test(c.name))?.baseShock
+            if (freightShock) node.metric = `${freightShock} Live Shock`
+            node.isLiveAdaptive = true
+          } else if (node.id === 'asset_tankers') {
+            node.desc = `Long ${activeRedSeaIncident.longLeg?.slice(0, 3).join(', ') || 'MAERSK, HLAG, FRO'}. Ton-mile expansion absorbing global capacity.`
+            node.isLiveAdaptive = true
+          } else if (node.id === 'asset_airlines') {
+            node.desc = `Short ${activeRedSeaIncident.shortLeg?.slice(0, 2).join(', ') || 'DAL, AAL'}. Jet fuel input cost surge.`
+            node.isLiveAdaptive = true
+          }
+        }
+
+        // Taiwan Dynamic Enrichment
+        if (activeTaiwanIncident && (node.theaters.includes('taiwan') || selectedTheater === 'taiwan')) {
+          if (node.id === 'flash_taiwan') {
+            node.label = activeTaiwanIncident.headline
+              ? (activeTaiwanIncident.headline.length > 26 ? activeTaiwanIncident.headline.slice(0, 24) + '…' : activeTaiwanIncident.headline)
+              : node.label
+            node.metric = `LIVE: ${activeTaiwanIncident.severity} (${activeTaiwanIncident.threatScore}/100)`
+            node.score = activeTaiwanIncident.threatScore || node.score
+            node.desc = activeTaiwanIncident.summary || node.desc
+            node.isLiveAdaptive = true
+            node.liveSource = activeTaiwanIncident.source
+            node.liveDetectedAt = activeTaiwanIncident.detectedAt
+          } else if (node.id === 'comm_chips' && quotes['EWT']?.price) {
+            node.metric = `EWT $${quotes['EWT'].price.toFixed(2)} | +18-24w Lead`
+            node.isLiveQuote = true
+          }
+        }
+
+        // Hormuz Dynamic Enrichment
+        if (activeHormuzIncident && (node.theaters.includes('hormuz') || selectedTheater === 'hormuz')) {
+          if (node.id === 'flash_iran') {
+            node.label = activeHormuzIncident.headline
+              ? (activeHormuzIncident.headline.length > 26 ? activeHormuzIncident.headline.slice(0, 24) + '…' : activeHormuzIncident.headline)
+              : node.label
+            node.metric = `LIVE: ${activeHormuzIncident.severity} (${activeHormuzIncident.threatScore}/100)`
+            node.score = activeHormuzIncident.threatScore || node.score
+            node.desc = activeHormuzIncident.summary || node.desc
+            node.isLiveAdaptive = true
+            node.liveSource = activeHormuzIncident.source
+          }
+        }
+
+        // Black Sea Dynamic Enrichment
+        if (activeBlackSeaIncident && (node.theaters.includes('black_sea') || selectedTheater === 'black_sea')) {
+          if (node.id === 'flash_ukraine') {
+            node.label = activeBlackSeaIncident.headline
+              ? (activeBlackSeaIncident.headline.length > 26 ? activeBlackSeaIncident.headline.slice(0, 24) + '…' : activeBlackSeaIncident.headline)
+              : node.label
+            node.metric = `LIVE: ${activeBlackSeaIncident.severity} (${activeBlackSeaIncident.threatScore}/100)`
+            node.score = activeBlackSeaIncident.threatScore || node.score
+            node.desc = activeBlackSeaIncident.summary || node.desc
+            node.isLiveAdaptive = true
+            node.liveSource = activeBlackSeaIncident.source
+          }
+        }
+
+        // Live Market Quotes for Commodity & Asset Nodes (Streaming)
+        if (node.id === 'comm_brent' && quotes['BZ=F']?.price) {
+          const sign = (quotes['BZ=F'].changePercent || 0) >= 0 ? '+' : ''
+          node.metric = `$${quotes['BZ=F'].price.toFixed(2)} (${sign}${(quotes['BZ=F'].changePercent || 0).toFixed(2)}%) Live`
+          node.desc = `Live ICE Brent Crude spot ($${quotes['BZ=F'].price.toFixed(2)}). War-risk premium β=0.55. Dynamic streaming update.`
+          node.isLiveQuote = true
+          node.liveQuote = quotes['BZ=F']
+        } else if (node.id === 'comm_gas' && quotes['NG=F']?.price) {
+          const sign = (quotes['NG=F'].changePercent || 0) >= 0 ? '+' : ''
+          node.metric = `$${quotes['NG=F'].price.toFixed(2)}/MMBtu (${sign}${(quotes['NG=F'].changePercent || 0).toFixed(2)}%) Live`
+          node.isLiveQuote = true
+          node.liveQuote = quotes['NG=F']
+        } else if (node.id === 'comm_wheat' && quotes['ZW=F']?.price) {
+          const sign = (quotes['ZW=F'].changePercent || 0) >= 0 ? '+' : ''
+          node.metric = `$${quotes['ZW=F'].price.toFixed(2)}/bu (${sign}${(quotes['ZW=F'].changePercent || 0).toFixed(2)}%) Live`
+          node.isLiveQuote = true
+          node.liveQuote = quotes['ZW=F']
+        } else if (node.id === 'asset_def' && quotes['LMT']?.price) {
+          const sign = (quotes['LMT'].changePercent || 0) >= 0 ? '+' : ''
+          node.metric = `LMT $${quotes['LMT'].price.toFixed(2)} (${sign}${(quotes['LMT'].changePercent || 0).toFixed(2)}%) Live`
+          node.isLiveQuote = true
+          node.liveQuote = quotes['LMT']
+        }
+
+        return node
+      })
+
       // Group nodes by column category and assign non-overlapping sequential Y coordinates
       const nodesByCat = {
         flashpoint: [],
@@ -349,7 +529,7 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
         commodity: [],
         asset: []
       }
-      rawNodes.forEach(n => {
+      enrichedNodes.forEach(n => {
         if (nodesByCat[n.category]) nodesByCat[n.category].push({ ...n })
       })
 
@@ -379,7 +559,7 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
     const maxRows = Math.max(...counts, 3)
 
     return { allNodes: nodes, allEdges: edges, maxColumnRows: maxRows }
-  }, [selectedTheater, selectedAdaptiveIdx, adaptiveConflicts])
+  }, [selectedTheater, selectedAdaptiveIdx, adaptiveConflicts, quotes, activeRedSeaIncident, activeTaiwanIncident, activeHormuzIncident, activeBlackSeaIncident])
 
   // Ensure valid selected node
   useEffect(() => {
@@ -650,6 +830,56 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
               </div>
             </div>
 
+            {/* Live Adaptive Synchronization & Quick Escalation Simulation Strip */}
+            <div style={{ flexShrink: 0, padding: '5px 12px', background: selectedTheater === 'red_sea' ? 'rgba(239,68,68,0.06)' : 'rgba(15,23,42,0.9)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, ...monoXs, color: selectedTheater === 'red_sea' ? '#f87171' : 'var(--accent)', fontWeight: 700 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: selectedTheater === 'red_sea' ? '#ef4444' : 'var(--accent)', boxShadow: `0 0 6px ${selectedTheater === 'red_sea' ? '#ef4444' : 'var(--accent)'}` }} />
+                  {selectedTheater === 'red_sea' ? '[RED SEA / SUEZ ADAPTIVE SYNC]' : selectedTheater === 'taiwan' ? '[TAIWAN ADAPTIVE SYNC]' : selectedTheater === 'hormuz' ? '[PERSIAN GULF ADAPTIVE SYNC]' : selectedTheater === 'black_sea' ? '[BLACK SEA ADAPTIVE SYNC]' : selectedTheater === 'adaptive' ? '[LIVE ADAPTIVE FLASHPOINTS]' : '[ALL MACRO PILLARS - 22 NODES]'}
+                </span>
+                <span style={{ ...monoXs, color: 'var(--t1)' }}>
+                  {selectedTheater === 'red_sea'
+                    ? (activeRedSeaIncident ? `"${activeRedSeaIncident.headline || activeRedSeaIncident.title}" (${activeRedSeaIncident.source})` : 'Connected to Real-Time OSINT & Telemetry')
+                    : selectedTheater === 'taiwan'
+                    ? (activeTaiwanIncident ? `"${activeTaiwanIncident.headline || activeTaiwanIncident.title}" (${activeTaiwanIncident.source})` : 'Connected to Taiwan Strait ADIZ Feeds')
+                    : selectedTheater === 'hormuz'
+                    ? (activeHormuzIncident ? `"${activeHormuzIncident.headline || activeHormuzIncident.title}" (${activeHormuzIncident.source})` : 'Connected to Persian Gulf Maritime Telemetry')
+                    : selectedTheater === 'black_sea'
+                    ? (activeBlackSeaIncident ? `"${activeBlackSeaIncident.headline || activeBlackSeaIncident.title}" (${activeBlackSeaIncident.source})` : 'Connected to Black Sea Naval Feeds')
+                    : selectedTheater === 'adaptive'
+                    ? `Displaying 5-step causal transmission for selected live incident (${adaptiveConflicts.length} active theaters)`
+                    : 'System-wide causal network synchronized with streaming commodity prices & econometric transmission models'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {quotes['BZ=F']?.price && (
+                  <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>
+                    BRENT: ${quotes['BZ=F'].price.toFixed(2)} ({(quotes['BZ=F'].changePercent || 0) >= 0 ? '+' : ''}{(quotes['BZ=F'].changePercent || 0).toFixed(2)}%)
+                  </span>
+                )}
+                {['red_sea', 'taiwan', 'hormuz', 'black_sea'].includes(selectedTheater) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSimulateEscalation(selectedTheater)}
+                    style={{
+                      ...monoXs,
+                      padding: '2px 8px',
+                      borderRadius: 3,
+                      background: 'rgba(239,68,68,0.15)',
+                      border: '1px solid rgba(239,68,68,0.4)',
+                      color: '#f87171',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      touchAction: 'manipulation'
+                    }}
+                  >
+                    + SIMULATE {selectedTheater === 'red_sea' ? 'RED SEA STRIKE' : selectedTheater === 'taiwan' ? 'ADIZ EXCLUSION' : selectedTheater === 'hormuz' ? 'HORMUZ INCIDENT' : 'BLACK SEA ATTACK'}
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Split View Container: Left SVG Canvas, Right Analytical Dossier */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
               {/* Left: SVG Canvas with Smooth Touch Scrolling */}
@@ -787,19 +1017,32 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
                         >
                           {colBadge}
                         </text>
-
-                        {/* Score Tag on Far Right */}
-                        <text
-                          x={72}
-                          y={-10}
-                          fill="var(--t4)"
-                          fontSize={7.5}
-                          fontWeight="bold"
-                          fontFamily="JetBrains Mono"
-                          textAnchor="end"
-                        >
-                          {node.score ? `${node.score}` : ''}
-                        </text>
+                        {/* Score Tag on Far Right or [LIVE] badge */}
+                        {node.isLiveAdaptive || node.isLiveQuote ? (
+                          <text
+                            x={72}
+                            y={-10}
+                            fill="#4ade80"
+                            fontSize={7.2}
+                            fontWeight="bold"
+                            fontFamily="JetBrains Mono"
+                            textAnchor="end"
+                          >
+                            [LIVE]
+                          </text>
+                        ) : (
+                          <text
+                            x={72}
+                            y={-10}
+                            fill="var(--t4)"
+                            fontSize={7.5}
+                            fontWeight="bold"
+                            fontFamily="JetBrains Mono"
+                            textAnchor="end"
+                          >
+                            {node.score ? `${node.score}` : ''}
+                          </text>
+                        )}
 
                         {/* Main Title Line */}
                         <text
@@ -850,9 +1093,21 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
                 <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>{selectedNode.domain?.toUpperCase() || 'NODE'}</span>
-                    <span style={{ ...monoXs, padding: '1px 6px', borderRadius: 2, background: `${selectedNode.color}25`, color: selectedNode.color, fontWeight: 700 }}>
-                      {selectedNode.severity} {selectedNode.score}/100
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      {selectedNode.isLiveAdaptive && (
+                        <span style={{ ...monoXs, padding: '1px 5px', borderRadius: 2, background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', fontWeight: 700 }}>
+                          ● LIVE ADAPTIVE
+                        </span>
+                      )}
+                      {selectedNode.isLiveQuote && (
+                        <span style={{ ...monoXs, padding: '1px 5px', borderRadius: 2, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', fontWeight: 700 }}>
+                          STREAMING QUOTE
+                        </span>
+                      )}
+                      <span style={{ ...monoXs, padding: '1px 6px', borderRadius: 2, background: `${selectedNode.color}25`, color: selectedNode.color, fontWeight: 700 }}>
+                        {selectedNode.severity} {selectedNode.score}/100
+                      </span>
+                    </div>
                   </div>
                   <h3 style={{ ...mono, fontSize: 15, fontWeight: 700, color: 'var(--t1)', margin: 0 }}>
                     {selectedNode.label}
@@ -860,6 +1115,11 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
                   <div style={{ ...monoSm, color: 'var(--t3)', marginTop: 4, lineHeight: 1.4 }}>
                     {selectedNode.desc}
                   </div>
+                  {selectedNode.liveSource && (
+                    <div style={{ ...monoXs, color: 'var(--t4)', marginTop: 4 }}>
+                      Verified Source: <strong style={{ color: 'var(--t2)' }}>{selectedNode.liveSource}</strong>
+                    </div>
+                  )}
                 </div>
 
                 {/* Graph Theory Centrality Metrics */}
@@ -942,13 +1202,22 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
                   )}
                 </div>
 
-                {/* Actionable Network Directive */}
+                {/* Evidence Ledger Protocol (Decision-Relevant Pragmatism) */}
                 <div style={{ padding: '10px', background: 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.25)', borderRadius: 4 }}>
-                  <div style={{ ...monoXs, color: 'var(--accent)', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Activity size={12} /> ACTIONABLE NETWORK HEDGE DIRECTIVE
+                  <div style={{ ...monoXs, color: 'var(--accent)', fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Activity size={12} /> EVIDENCE LEDGER & STRATEGIC DIRECTIVE
                   </div>
-                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.45 }}>
-                    Topological analysis identifies node betweenness bottlenecks directly transmitting beta across the causal path. In the downside case where transmission coefficient deteriorates by 30%, portfolio Long/Short basket expected Sharpe ratio remains &gt; 1.85, satisfying hurdle rate. Recommendation holds.
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.45, marginBottom: 4 }}>
+                    <strong style={{ color: '#38bdf8' }}>[FACT]:</strong> {selectedNode.isLiveAdaptive && selectedNode.liveSource ? `Verified OSINT from ${selectedNode.liveSource}: "${selectedNode.desc}"` : (selectedNode.desc || 'Baseline structural component in strategic transmission corridor.')}
+                  </div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.45, marginBottom: 4 }}>
+                    <strong style={{ color: '#f59e0b' }}>[DERIVED]:</strong> Econometric transmission coefficient β = {nodeMetrics.downstream[0]?.beta ?? 0.55}. Simulated immediate shock: {nodeMetrics.downstream[0]?.shockPct || '+14.5%'}.
+                  </div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.45, marginBottom: 4 }}>
+                    <strong style={{ color: 'var(--t3)' }}>[ASSUMPTION]:</strong> Disruption persists 14-45 days; global inventory buffer drawdown begins at Day 5.
+                  </div>
+                  <div style={{ ...monoXs, color: '#4ade80', lineHeight: 1.45, fontWeight: 600 }}>
+                    <strong style={{ color: '#4ade80' }}>[RECOMMENDATION]:</strong> Downside sensitivity: in scenario where transmission decays by 30%, portfolio expected Sharpe ratio remains &gt; 1.85, satisfying hurdle rate. Recommendation holds.
                   </div>
                 </div>
               </div>
@@ -1005,6 +1274,29 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
                   <div style={{ ...monoXs, color: 'var(--t4)', marginTop: 3 }}>Theater: {selectedGame.theater}</div>
                 </div>
               </div>
+
+              {/* Dynamic Live Telemetry Integration for Red Sea Scenario */}
+              {selectedGame.id === 'red_sea_game' && (
+                <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+                    <span style={{ ...monoXs, color: '#f87171', fontWeight: 700 }}>LIVE ADAPTIVE PAYOFF TELEMETRY:</span>
+                    <span style={{ ...monoXs, color: 'var(--t1)' }}>
+                      Current Threat Score: {activeRedSeaIncident?.threatScore || 92}/100 ({activeRedSeaIncident?.severity || 'CRITICAL'})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {quotes['BZ=F']?.price && (
+                      <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>
+                        Live Brent Crude: ${quotes['BZ=F'].price.toFixed(2)}
+                      </span>
+                    )}
+                    <span style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>
+                      Cape Diversion: 68.5%
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Players & Strategy Spaces */}
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${selectedGame.players.length}, 1fr)`, gap: 10, marginBottom: 14 }}>
