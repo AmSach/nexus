@@ -4,7 +4,7 @@
  * and Multi-Variable Relation Graphs strictly enforcing Decision-Relevant Pragmatism (<RULE[user_global]>)
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   Share2,
   Shield,
@@ -181,17 +181,143 @@ const EIGHT_LAWS = [
   { id: 8, name: 'Law 8: Causal Feedback Loops (Negative Working Capital Moat)', formula: 'CCC = DIO + DSO - DPO = -36 Days; Free_Cash_Float = +₹7,370/unit', desc: 'Volume increases credit terms, creating Day-1 liquid cash float that funds balance-sheet expansion.' }
 ]
 
-export default function GraphAndGameTheoryEngine() {
+export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
   const [activeView, setActiveView] = useState('graph') // 'graph' | 'gametheory' | 'eightlaws' | 'asymmetric'
   const [selectedNodeId, setSelectedNodeId] = useState('choke_bab')
   const [selectedGameId, setSelectedGameId] = useState('red_sea_game')
   const [shockMultiplier, setShockMultiplier] = useState(1.0)
   const [filterDomain, setFilterDomain] = useState('all')
 
+  // Responsive iPad/tablet detection
+  const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200)
+  const isTablet = windowWidth < 1080
+  const [tabletView, setTabletView] = useState('graph') // 'graph' | 'dossier'
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Dynamically compute nodes and edges from baseline + live adaptive conflicts
+  const { allNodes, allEdges } = useMemo(() => {
+    const nodes = [...GRAPH_NODES]
+    const edges = [...GRAPH_EDGES]
+    const seenNodeIds = new Set(nodes.map(n => n.id))
+
+    adaptiveConflicts.forEach((conflict, idx) => {
+      const cId = conflict.id || `novel_${idx}`
+      const flashId = `flash_${cId}`
+
+      if (!seenNodeIds.has(flashId)) {
+        seenNodeIds.add(flashId)
+        const yPos = 110 + ((idx * 85) % 490)
+
+        // 1. Kinetic Flashpoint Node
+        nodes.push({
+          id: flashId,
+          label: conflict.title || conflict.headline || 'Kinetic Incident',
+          category: 'flashpoint',
+          domain: 'Kinetic Flashpoint (Adaptive)',
+          x: 80,
+          y: yPos,
+          severity: conflict.severity || 'CRITICAL',
+          score: conflict.threatScore || 85,
+          color: conflict.severityColor || '#ef4444',
+          desc: conflict.summary || conflict.headline || 'Live OSINT kinetic telemetry flashpoint.'
+        })
+
+        // 2. Critical Infrastructure Node
+        const infraName = conflict.threatenedInfrastructure?.[0] || `${conflict.region || 'Regional'} Supply Corridor`
+        const infraId = `infra_${cId}`
+        if (!seenNodeIds.has(infraId)) {
+          seenNodeIds.add(infraId)
+          nodes.push({
+            id: infraId,
+            label: infraName,
+            category: 'infrastructure',
+            domain: 'Critical Infrastructure (Adaptive)',
+            x: 480,
+            y: yPos + 15,
+            severity: conflict.severity || 'HIGH',
+            score: 82,
+            color: '#38bdf8',
+            desc: `Key physical asset vulnerable to ${conflict.title}`
+          })
+          edges.push({
+            source: flashId,
+            target: infraId,
+            weight: -0.85,
+            label: 'Capacity Interdiction',
+            beta: -0.85,
+            delayDays: 2
+          })
+        }
+
+        // 3. Commodity Shock Node
+        const commData = conflict.commodityTransmissions?.[0]
+        const commName = commData?.name || 'Energy & Freight Benchmark'
+        const commId = `comm_${cId}`
+        if (!seenNodeIds.has(commId)) {
+          seenNodeIds.add(commId)
+          nodes.push({
+            id: commId,
+            label: commName,
+            category: 'commodity',
+            domain: 'Commodity & Logistics (Adaptive)',
+            x: 680,
+            y: yPos,
+            severity: 'HIGH',
+            score: 86,
+            color: '#f59e0b',
+            desc: commData?.note || `Estimated base shock: ${commData?.baseShock || '+12.0%'}`
+          })
+          edges.push({
+            source: infraId,
+            target: commId,
+            weight: commData?.beta || 0.65,
+            label: `Price Transmission (${commData?.baseShock || '+12%'})`,
+            beta: commData?.beta || 0.65,
+            delayDays: 5
+          })
+        }
+
+        // 4. Equity Long Basket Node
+        const longAsset = conflict.longLeg?.[0] || 'Long Macro Hedges'
+        const assetId = `asset_${cId}`
+        if (!seenNodeIds.has(assetId)) {
+          seenNodeIds.add(assetId)
+          nodes.push({
+            id: assetId,
+            label: `Long ${longAsset}`,
+            category: 'asset',
+            domain: 'Equity & Trade Expression (Adaptive)',
+            x: 890,
+            y: yPos + 10,
+            severity: 'BULLISH',
+            score: 88,
+            color: '#22c55e',
+            desc: `Institutional beneficiary of ${conflict.title} transmission`
+          })
+          edges.push({
+            source: commId,
+            target: assetId,
+            weight: 0.80,
+            label: 'Alpha Capture',
+            beta: 0.80,
+            delayDays: 9
+          })
+        }
+      }
+    })
+
+    return { allNodes: nodes, allEdges: edges }
+  }, [adaptiveConflicts])
+
   // Selected Node Data
   const selectedNode = useMemo(() => {
-    return GRAPH_NODES.find(n => n.id === selectedNodeId) || GRAPH_NODES[0]
-  }, [selectedNodeId])
+    return allNodes.find(n => n.id === selectedNodeId) || allNodes[0]
+  }, [selectedNodeId, allNodes])
 
   // Selected Game Data
   const selectedGame = useMemo(() => {
@@ -200,17 +326,16 @@ export default function GraphAndGameTheoryEngine() {
 
   // Graph Theory Centrality Metrics Calculation
   const nodeMetrics = useMemo(() => {
-    const inDegree = GRAPH_EDGES.filter(e => e.target === selectedNodeId).length
-    const outDegree = GRAPH_EDGES.filter(e => e.source === selectedNodeId).length
-    const connectedEdges = GRAPH_EDGES.filter(e => e.source === selectedNodeId || e.target === selectedNodeId)
+    const inDegree = allEdges.filter(e => e.target === selectedNodeId).length
+    const outDegree = allEdges.filter(e => e.source === selectedNodeId).length
 
     // Calculate Betweenness Centrality Proxy
     const isBottleneck = selectedNode.category === 'chokepoint' || selectedNode.category === 'infrastructure'
     const betweennessScore = isBottleneck ? 0.94 : (selectedNode.category === 'flashpoint' ? 0.78 : 0.62)
 
     // Downstream Shock Path
-    const downstream = GRAPH_EDGES.filter(e => e.source === selectedNodeId).map(e => {
-      const targetNode = GRAPH_NODES.find(n => n.id === e.target)
+    const downstream = allEdges.filter(e => e.source === selectedNodeId).map(e => {
+      const targetNode = allNodes.find(n => n.id === e.target)
       const calculatedShock = (e.beta * shockMultiplier * 100).toFixed(1)
       return {
         target: targetNode?.label || e.target,
@@ -224,8 +349,8 @@ export default function GraphAndGameTheoryEngine() {
     })
 
     // Upstream Cause Path
-    const upstream = GRAPH_EDGES.filter(e => e.target === selectedNodeId).map(e => {
-      const sourceNode = GRAPH_NODES.find(n => n.id === e.source)
+    const upstream = allEdges.filter(e => e.target === selectedNodeId).map(e => {
+      const sourceNode = allNodes.find(n => n.id === e.source)
       return {
         source: sourceNode?.label || e.source,
         category: sourceNode?.domain || 'Node',
@@ -242,7 +367,7 @@ export default function GraphAndGameTheoryEngine() {
       downstream,
       upstream
     }
-  }, [selectedNodeId, shockMultiplier, selectedNode])
+  }, [selectedNodeId, shockMultiplier, selectedNode, allNodes, allEdges])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--void)' }}>
@@ -322,189 +447,237 @@ export default function GraphAndGameTheoryEngine() {
 
         {/* ── 1. INTERACTIVE CAUSAL DAG NETWORK GRAPH ──────────────────────── */}
         {activeView === 'graph' && (
-          <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-            {/* Left: SVG Interactive Network Graph */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', background: '#030813', position: 'relative' }}>
-              {/* Controls bar over graph */}
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.4)', zIndex: 10 }}>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ ...monoXs, color: 'var(--t4)' }}>CLUSTER FILTER:</span>
-                  {['all', 'flashpoint', 'chokepoint', 'infrastructure', 'commodity', 'asset'].map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFilterDomain(f)}
-                      style={{
-                        ...monoXs,
-                        padding: '2px 6px',
-                        borderRadius: 2,
-                        border: 'none',
-                        cursor: 'pointer',
-                        background: filterDomain === f ? 'rgba(45,212,191,0.2)' : 'transparent',
-                        color: filterDomain === f ? 'var(--accent)' : 'var(--t4)',
-                        fontWeight: filterDomain === f ? 700 : 400
-                      }}
-                    >
-                      {f.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Shock Multiplier Slider */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>SHOCK AMPLIFIER:</span>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.5"
-                    step="0.1"
-                    value={shockMultiplier}
-                    onChange={e => setShockMultiplier(parseFloat(e.target.value))}
-                    style={{ width: 80, accentColor: '#f59e0b', cursor: 'pointer' }}
-                  />
-                  <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 700, width: 35 }}>{shockMultiplier.toFixed(1)}x</span>
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            {/* iPad/Tablet View Toggle (Only shown on < 1080px viewports) */}
+            {isTablet && (
+              <div style={{ display: 'flex', gap: 6, padding: '6px 12px', background: 'rgba(10,18,34,0.95)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                <button
+                  onClick={() => setTabletView('graph')}
+                  style={{
+                    ...monoSm,
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: 4,
+                    border: '1px solid var(--border)',
+                    background: tabletView === 'graph' ? 'var(--accent)' : 'transparent',
+                    color: tabletView === 'graph' ? '#000' : 'var(--t2)',
+                    fontWeight: 700,
+                    touchAction: 'manipulation',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📊 Network DAG Canvas
+                </button>
+                <button
+                  onClick={() => setTabletView('dossier')}
+                  style={{
+                    ...monoSm,
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: 4,
+                    border: '1px solid var(--border)',
+                    background: tabletView === 'dossier' ? 'var(--accent)' : 'transparent',
+                    color: tabletView === 'dossier' ? '#000' : 'var(--t2)',
+                    fontWeight: 700,
+                    touchAction: 'manipulation',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📋 Analytical Dossier ({selectedNode.label.length > 20 ? selectedNode.label.slice(0, 18) + '…' : selectedNode.label})
+                </button>
               </div>
+            )}
 
-              {/* SVG Canvas */}
-              <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <svg width="100%" height="100%" viewBox="0 0 1000 660" style={{ display: 'block' }}>
-                  <defs>
-                    <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="rgba(239,68,68,0.7)" />
-                      <stop offset="50%" stopColor="rgba(245,158,11,0.6)" />
-                      <stop offset="100%" stopColor="rgba(34,197,94,0.7)" />
-                    </linearGradient>
-                    <marker id="arrow" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                      <path d="M 0 1 L 8 5 L 0 9 z" fill="rgba(45,212,191,0.7)" />
-                    </marker>
-                    <marker id="arrowActive" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                      <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b" />
-                    </marker>
-                  </defs>
-
-                  {/* Column Background Dividers */}
-                  {[
-                    { label: 'KINETIC FLASHPOINTS', x: 80 },
-                    { label: 'MARITIME CHOKEPOINTS', x: 280 },
-                    { label: 'CRITICAL INFRASTRUCTURE', x: 480 },
-                    { label: 'COMMODITY SHOCKS', x: 680 },
-                    { label: 'EQUITY & ALPHA BASKETS', x: 890 }
-                  ].map((col, i) => (
-                    <g key={i}>
-                      <line x1={col.x} y1={25} x2={col.x} y2={640} stroke="rgba(255,255,255,0.03)" strokeWidth={1} strokeDasharray="3,3" />
-                      <text x={col.x} y={18} fill="rgba(255,255,255,0.25)" fontSize={8} fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="bold">
-                        {col.label}
-                      </text>
-                    </g>
-                  ))}
-
-                  {/* Directed Edges */}
-                  {GRAPH_EDGES.map((edge, idx) => {
-                    const s = GRAPH_NODES.find(n => n.id === edge.source)
-                    const t = GRAPH_NODES.find(n => n.id === edge.target)
-                    if (!s || !t) return null
-
-                    const isConnected = edge.source === selectedNodeId || edge.target === selectedNodeId
-                    const strokeColor = isConnected ? '#f59e0b' : 'rgba(45,212,191,0.25)'
-                    const strokeWidth = isConnected ? 2.2 : 1.0
-                    const strokeOpacity = isConnected ? 0.95 : (filterDomain === 'all' ? 0.4 : 0.15)
-
-                    // Cubic bezier curve for smooth causal flow
-                    const dx = t.x - s.x
-                    const pathD = `M ${s.x} ${s.y} C ${s.x + dx * 0.4} ${s.y}, ${t.x - dx * 0.4} ${t.y}, ${t.x} ${t.y}`
-
-                    return (
-                      <g key={idx}>
-                        <path
-                          d={pathD}
-                          fill="none"
-                          stroke={strokeColor}
-                          strokeWidth={strokeWidth}
-                          strokeOpacity={strokeOpacity}
-                          markerEnd={isConnected ? 'url(#arrowActive)' : 'url(#arrow)'}
-                        />
-                        {isConnected && (
-                          <text
-                            x={(s.x + t.x) / 2}
-                            y={(s.y + t.y) / 2 - 4}
-                            fill="#f59e0b"
-                            fontSize={8}
-                            fontFamily="JetBrains Mono"
-                            textAnchor="middle"
-                            fontWeight="bold"
-                          >
-                            β={edge.beta} ({edge.label})
-                          </text>
-                        )}
-                      </g>
-                    )
-                  })}
-
-                  {/* Graph Nodes */}
-                  {GRAPH_NODES.map(node => {
-                    const isSelected = node.id === selectedNodeId
-                    const isVisible = filterDomain === 'all' || node.category === filterDomain
-                    const opacity = isVisible ? 1.0 : 0.2
-
-                    return (
-                      <g
-                        key={node.id}
-                        transform={`translate(${node.x}, ${node.y})`}
-                        onClick={() => setSelectedNodeId(node.id)}
-                        style={{ cursor: 'pointer', transition: 'all 0.2s ease', opacity }}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* Left: SVG Interactive Network Graph */}
+              <div style={{ flex: 1, minWidth: 0, display: isTablet && tabletView === 'dossier' ? 'none' : 'flex', flexDirection: 'column', borderRight: isTablet ? 'none' : '1px solid var(--border)', background: '#030813', position: 'relative' }}>
+                {/* Controls bar over graph */}
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.4)', zIndex: 10, flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ ...monoXs, color: 'var(--t4)' }}>CLUSTER FILTER:</span>
+                    {['all', 'flashpoint', 'chokepoint', 'infrastructure', 'commodity', 'asset'].map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setFilterDomain(f)}
+                        style={{
+                          ...monoXs,
+                          padding: '3px 7px',
+                          borderRadius: 2,
+                          border: 'none',
+                          cursor: 'pointer',
+                          touchAction: 'manipulation',
+                          background: filterDomain === f ? 'rgba(45,212,191,0.2)' : 'transparent',
+                          color: filterDomain === f ? 'var(--accent)' : 'var(--t4)',
+                          fontWeight: filterDomain === f ? 700 : 400
+                        }}
                       >
-                        {/* Glow halo if selected */}
-                        {isSelected && (
-                          <circle r={22} fill="none" stroke="var(--accent)" strokeWidth={1.5} opacity={0.8}>
-                            <animate attributeName="r" values="18;24;18" dur="2s" repeatCount="indefinite" />
-                            <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" />
-                          </circle>
-                        )}
+                        {f.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
 
-                        {/* Node circle */}
-                        <circle
-                          r={isSelected ? 16 : 12}
-                          fill="#091426"
-                          stroke={isSelected ? 'var(--accent)' : node.color}
-                          strokeWidth={isSelected ? 2.5 : 1.5}
-                        />
+                  {/* Shock Multiplier Slider */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>SHOCK AMPLIFIER:</span>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.5"
+                      step="0.1"
+                      value={shockMultiplier}
+                      onChange={e => setShockMultiplier(parseFloat(e.target.value))}
+                      style={{ width: 80, accentColor: '#f59e0b', cursor: 'pointer', touchAction: 'manipulation' }}
+                    />
+                    <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 700, width: 35 }}>{shockMultiplier.toFixed(1)}x</span>
+                  </div>
+                </div>
 
-                        {/* Node Center Dot */}
-                        <circle
-                          r={isSelected ? 5 : 3.5}
-                          fill={isSelected ? 'var(--accent)' : node.color}
-                        />
+                {/* SVG Canvas with Horizontal Scroll on Tablet */}
+                <div style={{ flex: 1, position: 'relative', overflowX: 'auto', overflowY: 'auto' }}>
+                  <svg width={isTablet ? 1100 : '100%'} height="100%" viewBox="0 0 1000 660" style={{ display: 'block', minWidth: 800 }}>
+                    <defs>
+                      <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="rgba(239,68,68,0.7)" />
+                        <stop offset="50%" stopColor="rgba(245,158,11,0.6)" />
+                        <stop offset="100%" stopColor="rgba(34,197,94,0.7)" />
+                      </linearGradient>
+                      <marker id="arrow" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="rgba(45,212,191,0.7)" />
+                      </marker>
+                      <marker id="arrowActive" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b" />
+                      </marker>
+                    </defs>
 
-                        {/* Node Label */}
-                        <text
-                          x={0}
-                          y={isSelected ? 26 : 22}
-                          fill={isSelected ? 'var(--accent)' : 'var(--t1)'}
-                          fontSize={isSelected ? 9.5 : 8.5}
-                          fontWeight={isSelected ? 700 : 500}
-                          fontFamily="JetBrains Mono"
-                          textAnchor="middle"
-                        >
-                          {node.label}
+                    {/* Column Background Dividers */}
+                    {[
+                      { label: 'KINETIC FLASHPOINTS', x: 80 },
+                      { label: 'MARITIME CHOKEPOINTS', x: 280 },
+                      { label: 'CRITICAL INFRASTRUCTURE', x: 480 },
+                      { label: 'COMMODITY SHOCKS', x: 680 },
+                      { label: 'EQUITY & ALPHA BASKETS', x: 890 }
+                    ].map((col, i) => (
+                      <g key={i}>
+                        <line x1={col.x} y1={25} x2={col.x} y2={640} stroke="rgba(255,255,255,0.03)" strokeWidth={1} strokeDasharray="3,3" />
+                        <text x={col.x} y={18} fill="rgba(255,255,255,0.25)" fontSize={8} fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="bold">
+                          {col.label}
                         </text>
                       </g>
-                    )
-                  })}
-                </svg>
+                    ))}
+
+                    {/* Directed Edges */}
+                    {allEdges.map((edge, idx) => {
+                      const s = allNodes.find(n => n.id === edge.source)
+                      const t = allNodes.find(n => n.id === edge.target)
+                      if (!s || !t) return null
+
+                      const isConnected = edge.source === selectedNodeId || edge.target === selectedNodeId
+                      const strokeColor = isConnected ? '#f59e0b' : 'rgba(45,212,191,0.25)'
+                      const strokeWidth = isConnected ? 2.2 : 1.0
+                      const strokeOpacity = isConnected ? 0.95 : (filterDomain === 'all' ? 0.4 : 0.15)
+
+                      // Cubic bezier curve for smooth causal flow
+                      const dx = t.x - s.x
+                      const pathD = `M ${s.x} ${s.y} C ${s.x + dx * 0.4} ${s.y}, ${t.x - dx * 0.4} ${t.y}, ${t.x} ${t.y}`
+
+                      return (
+                        <g key={idx}>
+                          <path
+                            d={pathD}
+                            fill="none"
+                            stroke={strokeColor}
+                            strokeWidth={strokeWidth}
+                            strokeOpacity={strokeOpacity}
+                            markerEnd={isConnected ? 'url(#arrowActive)' : 'url(#arrow)'}
+                          />
+                          {isConnected && (
+                            <text
+                              x={(s.x + t.x) / 2}
+                              y={(s.y + t.y) / 2 - 4}
+                              fill="#f59e0b"
+                              fontSize={8}
+                              fontFamily="JetBrains Mono"
+                              textAnchor="middle"
+                              fontWeight="bold"
+                            >
+                              β={edge.beta} ({edge.label})
+                            </text>
+                          )}
+                        </g>
+                      )
+                    })}
+
+                    {/* Graph Nodes */}
+                    {allNodes.map(node => {
+                      const isSelected = node.id === selectedNodeId
+                      const isVisible = filterDomain === 'all' || node.category === filterDomain
+                      const opacity = isVisible ? 1.0 : 0.2
+
+                      return (
+                        <g
+                          key={node.id}
+                          transform={`translate(${node.x}, ${node.y})`}
+                          onClick={() => {
+                            setSelectedNodeId(node.id)
+                            if (isTablet) setTabletView('dossier')
+                          }}
+                          style={{ cursor: 'pointer', transition: 'all 0.2s ease', opacity, touchAction: 'manipulation' }}
+                        >
+                          {/* Invisible expanded touch hitbox for iPad */}
+                          <circle r={28} fill="transparent" />
+
+                          {/* Glow halo if selected */}
+                          {isSelected && (
+                            <circle r={22} fill="none" stroke="var(--accent)" strokeWidth={1.5} opacity={0.8}>
+                              <animate attributeName="r" values="18;24;18" dur="2s" repeatCount="indefinite" />
+                              <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" />
+                            </circle>
+                          )}
+
+                          {/* Node circle */}
+                          <circle
+                            r={isSelected ? 16 : 12}
+                            fill="#091426"
+                            stroke={isSelected ? 'var(--accent)' : node.color}
+                            strokeWidth={isSelected ? 2.5 : 1.5}
+                          />
+
+                          {/* Node Center Dot */}
+                          <circle
+                            r={isSelected ? 5 : 3.5}
+                            fill={isSelected ? 'var(--accent)' : node.color}
+                          />
+
+                          {/* Node Label */}
+                          <text
+                            x={0}
+                            y={isSelected ? 26 : 22}
+                            fill={isSelected ? 'var(--accent)' : 'var(--t1)'}
+                            fontSize={isSelected ? 9.5 : 8.5}
+                            fontWeight={isSelected ? 700 : 500}
+                            fontFamily="JetBrains Mono"
+                            textAnchor="middle"
+                          >
+                            {node.label}
+                          </text>
+                        </g>
+                      )
+                    })}
+                  </svg>
+                </div>
+
+                {/* Legend bar */}
+                <div style={{ padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 14, ...monoXs, color: 'var(--t4)', background: 'rgba(0,0,0,0.5)', overflowX: 'auto' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} /> Kinetic Flashpoint</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f97316' }} /> Maritime Chokepoint</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38bdf8' }} /> Critical Infrastructure</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} /> Commodity Benchmark</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} /> Equity Alpha Basket</span>
+                </div>
               </div>
 
-              {/* Legend bar */}
-              <div style={{ padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 14, ...monoXs, color: 'var(--t4)', background: 'rgba(0,0,0,0.5)' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} /> Kinetic Flashpoint</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f97316' }} /> Maritime Chokepoint</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38bdf8' }} /> Critical Infrastructure</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} /> Commodity Benchmark</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} /> Equity Alpha Basket</span>
-              </div>
-            </div>
-
-            {/* Right: Graph Theory Analytics & Downstream Shock Cascade */}
-            <div style={{ width: 380, flexShrink: 0, overflowY: 'auto', padding: '14px', background: 'rgba(10,18,34,0.6)' }}>
+              {/* Right: Graph Theory Analytics & Downstream Shock Cascade */}
+              <div style={{ width: isTablet ? '100%' : 380, flexShrink: 0, overflowY: 'auto', padding: '14px', background: 'rgba(10,18,34,0.6)', display: isTablet && tabletView === 'graph' ? 'none' : 'block' }}>
               {/* Selected Node Header */}
               <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -613,7 +786,8 @@ export default function GraphAndGameTheoryEngine() {
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* ── 2. GAME THEORY PAYOFF MATRICES & NASH EQUILIBRIUM ──────────────── */}
         {activeView === 'gametheory' && (

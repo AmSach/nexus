@@ -986,7 +986,7 @@ export default function ViewMode({ articles = [] }) {
                         style={{ flexShrink:0, width:'80px', textDecoration:'none' }}>
                         <div style={{ width:'80px', height:'54px', background:'rgba(167,139,250,0.1)', border:'1px solid rgba(167,139,250,0.3)', borderRadius:'3px', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
                           {item.thumbnail
-                            ? <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex'}} />
+                            ? <img src={item.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex'}} />
                             : null}
                           <span style={{ fontSize:'18px', display: item.thumbnail ? 'none' : 'flex' }}>{item.icon||'🛰'}</span>
                           <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(0,0,0,0.7)', padding:'1px 3px' }}>

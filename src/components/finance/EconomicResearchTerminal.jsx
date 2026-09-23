@@ -61,7 +61,7 @@ const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
 const monoXs = { fontFamily: 'JetBrains Mono', fontSize: 9 }
 
-export default function EconomicResearchTerminal({ activeSubTab: externalSubTab, onSelectChokepoint, articles = [] }) {
+export default function EconomicResearchTerminal({ activeSubTab: externalSubTab, onTabChange, onSelectChokepoint, articles = [] }) {
   const [subTab, setSubTab] = useState(externalSubTab || 'chokepoints')
   const [selectedChokeId, setSelectedChokeId] = useState('bab_el_mandeb')
   const [selectedScenarioId, setSelectedScenarioId] = useState('hormuz_blockade')
@@ -69,6 +69,11 @@ export default function EconomicResearchTerminal({ activeSubTab: externalSubTab,
   const [stressSeverity, setStressSeverity] = useState(80)
   const [copiedMemo, setCopiedMemo] = useState(false)
   const [activeEpistemologyTab, setActiveEpistemologyTab] = useState('all')
+
+  const changeTab = (id) => {
+    setSubTab(id)
+    if (onTabChange) onTabChange(id)
+  }
 
   // Adaptive Conflict State
   const [adaptiveConflicts, setAdaptiveConflicts] = useState(() => {
@@ -248,103 +253,88 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--void)' }}>
-      {/* Sub-navigation bar */}
-      <div style={{ flexShrink: 0, padding: '6px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(15,23,42,0.6)' }}>
-        <span style={{ ...mono, color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Sparkles size={12} /> MACRO & ALPHA
-        </span>
-        <div style={{ height: 14, width: 1, background: 'var(--border)', margin: '0 4px' }} />
-        
-        <button
-          onClick={() => setSubTab('chokepoints')}
-          style={{
-            ...monoSm,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 10px',
-            borderRadius: 3,
-            border: 'none',
-            cursor: 'pointer',
-            background: subTab === 'chokepoints' ? 'rgba(45,212,191,0.15)' : 'transparent',
-            color: subTab === 'chokepoints' ? 'var(--accent)' : 'var(--t3)',
-            borderBottom: subTab === 'chokepoints' ? '2px solid var(--accent)' : '2px solid transparent'
-          }}
-        >
-          <Anchor size={11} /> 1. Chokepoints & Supply Chains
-        </button>
+      {/* Action & Context Bar (Zero Redundant Tabs) */}
+      <div style={{ flexShrink: 0, padding: '7px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(15,23,42,0.7)', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ ...mono, color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Sparkles size={12} /> MACRO RESEARCH DESK
+          </span>
+          <span style={{ color: 'var(--border)' }}>/</span>
+          <span style={{ ...monoSm, color: 'var(--t1)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+            {subTab === 'chokepoints' && <><Anchor size={11} color="var(--accent)"/> 1. Chokepoints & Supply Chains</>}
+            {subTab === 'correlations' && <><Share2 size={11} color="var(--accent)"/> 2. Graph & Game Theory Engine</>}
+            {subTab === 'alpha' && <><Target size={11} color="var(--accent)"/> 3. Alpha Desk & Trade Ops</>}
+            {subTab === 'stress' && <><Cpu size={11} color="var(--accent)"/> 4. Scenario Stress-Testing Lab</>}
+            {subTab === 'export' && <><FileText size={11} color="var(--accent)"/> 5. Strategic Briefing Export</>}
+          </span>
+          <span style={{ ...monoXs, padding: '2px 7px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f59e0b' }} />
+            {adaptiveConflicts.length} Live Theaters
+          </span>
+        </div>
 
-        <button
-          onClick={() => setSubTab('correlations')}
-          style={{
-            ...monoSm,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 10px',
-            borderRadius: 3,
-            border: 'none',
-            cursor: 'pointer',
-            background: subTab === 'correlations' ? 'rgba(45,212,191,0.15)' : 'transparent',
-            color: subTab === 'correlations' ? 'var(--accent)' : 'var(--t3)',
-            borderBottom: subTab === 'correlations' ? '2px solid var(--accent)' : '2px solid transparent'
-          }}
-        >
-          <Share2 size={11} /> 2. Graph & Game Theory Engine
-        </button>
-
-        <button
-          onClick={() => setSubTab('alpha')}
-          style={{
-            ...monoSm,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 10px',
-            borderRadius: 3,
-            border: 'none',
-            cursor: 'pointer',
-            background: subTab === 'alpha' ? 'rgba(45,212,191,0.15)' : 'transparent',
-            color: subTab === 'alpha' ? 'var(--accent)' : 'var(--t3)',
-            borderBottom: subTab === 'alpha' ? '2px solid var(--accent)' : '2px solid transparent'
-          }}
-        >
-          <Target size={11} /> 3. Alpha Desk & Trade Ops
-        </button>
-
-        <button
-          onClick={() => setSubTab('stress')}
-          style={{
-            ...monoSm,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 10px',
-            borderRadius: 3,
-            border: 'none',
-            cursor: 'pointer',
-            background: subTab === 'stress' ? 'rgba(45,212,191,0.15)' : 'transparent',
-            color: subTab === 'stress' ? 'var(--accent)' : 'var(--t3)',
-            borderBottom: subTab === 'stress' ? '2px solid var(--accent)' : '2px solid transparent'
-          }}
-        >
-          <Cpu size={11} /> 4. Scenario Stress-Tester
-        </button>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+        {/* Action Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <button
-            onClick={() => setSubTab('export')}
+            onClick={handleReScan}
+            disabled={isScanning}
             style={{
               ...monoXs,
+              minHeight: 28,
+              touchAction: 'manipulation',
+              padding: '3px 9px',
+              borderRadius: 3,
+              border: '1px solid rgba(45,212,191,0.4)',
+              background: isScanning ? 'rgba(45,212,191,0.2)' : 'rgba(45,212,191,0.08)',
+              color: 'var(--accent)',
+              cursor: isScanning ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+            title="Scan all live incoming RSS & GDELT articles for newly emerged flashpoints"
+          >
+            <RefreshCw size={10} className={isScanning ? 'spin' : ''} />
+            {isScanning ? 'Scanning…' : '⚡ Live Scan'}
+          </button>
+
+          <button
+            onClick={() => setShowCustomModal(true)}
+            style={{
+              ...monoXs,
+              minHeight: 28,
+              touchAction: 'manipulation',
+              padding: '3px 9px',
+              borderRadius: 3,
+              border: '1px solid rgba(245,158,11,0.5)',
+              background: 'rgba(245,158,11,0.12)',
+              color: '#f59e0b',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '3px 8px',
+              fontWeight: 600
+            }}
+            title="Ingest custom conflict or breaking event"
+          >
+            <Plus size={11} /> + Ingest Conflict
+          </button>
+
+          <button
+            onClick={() => changeTab('export')}
+            style={{
+              ...monoXs,
+              minHeight: 28,
+              touchAction: 'manipulation',
+              padding: '3px 9px',
               borderRadius: 3,
-              border: '1px solid var(--border)',
-              background: subTab === 'export' ? 'var(--accent)' : 'transparent',
+              border: `1px solid ${subTab === 'export' ? 'var(--accent)' : 'var(--border)'}`,
+              background: subTab === 'export' ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
               color: subTab === 'export' ? '#000' : 'var(--t2)',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
             }}
           >
             <FileText size={10} /> Export Memo
@@ -544,7 +534,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
 
         {/* ── 2. GRAPH & GAME THEORY NETWORK ENGINE ────────────────────────── */}
         {subTab === 'correlations' && (
-          <GraphAndGameTheoryEngine />
+          <GraphAndGameTheoryEngine adaptiveConflicts={adaptiveConflicts} />
         )}
 
         {/* ── 3. ALPHA DESK & BUSINESS OPPORTUNITIES ────────────────────────── */}
@@ -950,27 +940,27 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                     {/* Evidence Ledger Section */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12, background: 'rgba(0,0,0,0.35)', padding: 10, borderRadius: 4, border: '1px solid rgba(255,255,255,0.04)' }}>
                       {(activeEpistemologyTab === 'all' || activeEpistemologyTab === 'fact') && (
-                        <div style={{ ...monoXs, display: 'flex', gap: 8 }}>
+                        <div style={{ ...monoXs, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                           <span style={{ color: '#38bdf8', fontWeight: 700, width: 85, flexShrink: 0 }}>[FACT]</span>
-                          <span style={{ color: 'var(--t2)' }}>{p.epistemology.fact}</span>
+                          <span style={{ color: 'var(--t2)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.45, flex: 1 }}>{p.epistemology.fact}</span>
                         </div>
                       )}
                       {(activeEpistemologyTab === 'all' || activeEpistemologyTab === 'derived') && (
-                        <div style={{ ...monoXs, display: 'flex', gap: 8 }}>
+                        <div style={{ ...monoXs, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                           <span style={{ color: '#fbbf24', fontWeight: 700, width: 85, flexShrink: 0 }}>[DERIVED]</span>
-                          <span style={{ color: 'var(--t2)' }}>{p.epistemology.derived}</span>
+                          <span style={{ color: 'var(--t2)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.45, flex: 1 }}>{p.epistemology.derived}</span>
                         </div>
                       )}
                       {(activeEpistemologyTab === 'all' || activeEpistemologyTab === 'assumption') && (
-                        <div style={{ ...monoXs, display: 'flex', gap: 8 }}>
+                        <div style={{ ...monoXs, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                           <span style={{ color: '#f97316', fontWeight: 700, width: 85, flexShrink: 0 }}>[ASSUMPTION]</span>
-                          <span style={{ color: 'var(--t2)' }}>{p.epistemology.assumption}</span>
+                          <span style={{ color: 'var(--t2)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.45, flex: 1 }}>{p.epistemology.assumption}</span>
                         </div>
                       )}
                       {(activeEpistemologyTab === 'all' || activeEpistemologyTab === 'recommendation') && (
-                        <div style={{ ...monoXs, display: 'flex', gap: 8 }}>
+                        <div style={{ ...monoXs, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                           <span style={{ color: 'var(--accent)', fontWeight: 700, width: 85, flexShrink: 0 }}>[ACTION]</span>
-                          <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{p.epistemology.recommendation}</span>
+                          <span style={{ color: 'var(--t1)', fontWeight: 600, wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.45, flex: 1 }}>{p.epistemology.recommendation}</span>
                         </div>
                       )}
                     </div>
@@ -981,7 +971,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                         <div style={{ ...monoXs, color: 'var(--t4)', marginBottom: 4, fontWeight: 600 }}>
                           MACRO TRANSMISSION CHANNELS (PRICE SHOCKS & BETAS):
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(p.commodityTransmissions.length, 3)}, 1fr)`, gap: 6 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(180px, 1fr))`, gap: 6 }}>
                           {p.commodityTransmissions.map((c, i) => (
                             <div key={i} style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 3 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -996,35 +986,35 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                     )}
 
                     {/* Long / Short Legs & Operational Hedge */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, marginBottom: 10 }}>
                       <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 4, padding: '8px' }}>
                         <div style={{ ...monoXs, color: '#4ade80', fontWeight: 700, marginBottom: 4 }}>LONG LEG (OUTPERFORM)</div>
                         {p.longLeg.map((l, i) => (
-                          <div key={i} style={{ ...monoSm, color: 'var(--t1)' }}>▲ {l}</div>
+                          <div key={i} style={{ ...monoSm, color: 'var(--t1)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>▲ {l}</div>
                         ))}
                       </div>
                       <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4, padding: '8px' }}>
                         <div style={{ ...monoXs, color: '#f87171', fontWeight: 700, marginBottom: 4 }}>SHORT LEG (UNDERPERFORM)</div>
                         {p.shortLeg.map((s, i) => (
-                          <div key={i} style={{ ...monoSm, color: 'var(--t1)' }}>▼ {s}</div>
+                          <div key={i} style={{ ...monoSm, color: 'var(--t1)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>▼ {s}</div>
                         ))}
                       </div>
                       <div style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '8px' }}>
                         <div style={{ ...monoXs, color: '#60a5fa', fontWeight: 700, marginBottom: 4 }}>OPERATIONAL SUPPLY HEDGE</div>
-                        <div style={{ ...monoSm, color: 'var(--t2)', lineHeight: 1.4 }}>{p.operationalHedge}</div>
+                        <div style={{ ...monoSm, color: 'var(--t2)', lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'normal' }}>{p.operationalHedge}</div>
                       </div>
                     </div>
 
                     {/* Quantitative Kill Gate */}
                     {p.killGate && (
-                      <div style={{ ...monoXs, color: '#f59e0b', padding: '6px 8px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 3, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ ...monoXs, color: '#f59e0b', padding: '6px 8px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 3, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>
                         <Shield size={12} color="#f59e0b" style={{ flexShrink: 0 }} />
                         <span><strong>Quantitative Kill Gate:</strong> {p.killGate}</span>
                       </div>
                     )}
 
                     {/* Downside Stress Test */}
-                    <div style={{ ...monoXs, color: 'var(--t4)', padding: '6px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: 3 }}>
+                    <div style={{ ...monoXs, color: 'var(--t4)', padding: '6px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: 3, wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>
                       <strong style={{ color: 'var(--t3)' }}>Downside Stress-Test:</strong> {p.downsideStressTest}
                     </div>
                   </div>

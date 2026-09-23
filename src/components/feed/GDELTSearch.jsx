@@ -370,9 +370,55 @@ export default function GDELTSearch() {
       // Auto-switch to news if articles arrived but no wiki profile
       if (intelArts.length > 0 && !data.wiki && !data.wikidata) setActiveTab('news')
     } catch (err) {
-      setApiError(`Intel API unavailable (${err.message}) — GDELT dedicated still running`)
-      data = { articles: [], gnews: [], _summary: {} }
-      setIntelData(data)
+      setApiError(`Server endpoint unavailable (${err.message}) — running direct client OSINT search`)
+      const fallbackData = {
+        articles: [],
+        gnews: [],
+        _summary: {},
+        wiki: null,
+        wikidata: null,
+        sanctions: [],
+        companies: [],
+        icij: []
+      }
+
+      try {
+        const [wikiRes, wdRes, gdeltRes] = await Promise.allSettled([
+          fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(trimmed)}`, { signal: AbortSignal.timeout(6000) })
+            .then(r => r.ok ? r.json() : null)
+            .then(w => w ? { title: w.title, extract: w.extract, url: w.content_urls?.desktop?.page, thumbnail: w.thumbnail?.source } : null)
+            .catch(() => null),
+          fetch(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(trimmed)}&language=en&format=json&origin=*`, { signal: AbortSignal.timeout(6000) })
+            .then(r => r.ok ? r.json() : null)
+            .then(wd => wd?.search?.[0] ? { description: wd.search[0].description, id: wd.search[0].id } : null)
+            .catch(() => null),
+          fetchGDELTFallback(trimmed, timespan).catch(() => [])
+        ])
+
+        if (wikiRes.status === 'fulfilled' && wikiRes.value) fallbackData.wiki = wikiRes.value
+        if (wdRes.status === 'fulfilled' && wdRes.value) fallbackData.wikidata = wdRes.value
+
+        const icijHits = typeof searchICIJ === 'function' ? searchICIJ(trimmed) : []
+        const ofacHits = typeof searchOFAC === 'function' ? searchOFAC(trimmed) : []
+        const sdnHits  = typeof searchSDN === 'function'  ? searchSDN(trimmed) : []
+
+        fallbackData.icij = icijHits.slice(0, 15)
+        fallbackData.sanctions = [...ofacHits, ...sdnHits].slice(0, 15)
+
+        const fallbackArticles = (gdeltRes.status === 'fulfilled' && Array.isArray(gdeltRes.value))
+          ? gdeltRes.value.map(articleToLocal).filter(a => a.title && a.title.length > 6)
+          : []
+
+        fallbackData.articles = fallbackArticles
+        data = fallbackData
+        setIntelData(fallbackData)
+        if (fallbackArticles.length > 0) setArticles(fallbackArticles)
+        if (fallbackData.wiki || fallbackData.wikidata) setActiveTab('overview')
+        else if (fallbackArticles.length > 0) setActiveTab('news')
+      } catch (fbErr) {
+        data = fallbackData
+        setIntelData(fallbackData)
+      }
     } finally {
       setLoadMain(false)
     }

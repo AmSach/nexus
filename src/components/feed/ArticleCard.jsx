@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { useStore } from '../../store'
 import { useGroq } from '../../hooks/useGroq'
+import { translateGoogle } from '../../hooks/useNewsFeed'
 import { Bookmark, BookmarkCheck, Plus, ExternalLink, Brain, X } from 'lucide-react'
 
 // Detect non-English text (heuristic: non-ASCII chars > 15% or common non-English patterns)
@@ -32,9 +33,23 @@ export default function ArticleCard({ article, flash = false }) {
   const [open,    setOpen]    = useState(false)
   const [aiText,  setAiText]  = useState('')
   const [aiShown, setAiShown] = useState(false)
+  const [translatedTitle, setTranslatedTitle] = useState('')
+  const [showOriginal, setShowOriginal] = useState(false)
 
   const saved      = isSaved(article.id)
   const needsTranslation = isNonEnglish(article.title)
+
+  React.useEffect(() => {
+    let cancelled = false
+    if (needsTranslation && !translatedTitle) {
+      translateGoogle(article.title).then(res => {
+        if (!cancelled && res && res !== article.title) {
+          setTranslatedTitle(res)
+        }
+      })
+    }
+    return () => { cancelled = true }
+  }, [article.title, needsTranslation])
   const color  = SEV[article.severity] || 'var(--accent)'
   const ago    = (() => { try { return formatDistanceToNow(article.pub, { addSuffix: true }) } catch { return '' } })()
   const local  = (() => { try { return article.pub.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) } catch { return '' } })()
@@ -94,7 +109,24 @@ export default function ArticleCard({ article, flash = false }) {
 
         {/* Line 2: headline */}
         <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--t1)', lineHeight: 1.4, marginBottom: open ? '8px' : '0' }}>
-          {highlight(article.title)}
+          {highlight(translatedTitle && !showOriginal ? translatedTitle : article.title)}
+          {translatedTitle && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowOriginal(s => !s) }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent)',
+                fontSize: '9px',
+                fontFamily: 'JetBrains Mono, monospace',
+                cursor: 'pointer',
+                marginLeft: '8px',
+                textDecoration: 'underline'
+              }}
+            >
+              {showOriginal ? 'Show translation' : 'Show original'}
+            </button>
+          )}
         </div>
 
         {/* Expanded content */}

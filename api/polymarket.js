@@ -57,22 +57,61 @@ export default async function handler(req, res) {
 
     const all = []
     for (const p of pages) {
-      if (p.status === 'fulfilled' && p.value.ok) {
-        const data = await p.value.json()
-        const list = Array.isArray(data) ? data : (data.markets || [])
-        all.push(...list)
+      if (p.status === 'fulfilled' && p.value?.ok) {
+        try {
+          const data = await p.value.json()
+          const list = Array.isArray(data) ? data : (data.markets || [])
+          all.push(...list)
+        } catch {}
       }
     }
 
     const seen = new Set()
-    const deduped = all.filter(m => {
-      if (seen.has(m.id)) return false
+    let deduped = all.filter(m => {
+      if (!m || !m.id || seen.has(m.id)) return false
       seen.add(m.id)
       return true
     })
+
+    // If Polymarket gamma API is rate-limited, blocked, or timed out, query open prediction market fallbacks (Manifold)
+    if (deduped.length === 0) {
+      try {
+        const terms = ['war', 'geopolitics', 'sanctions', 'economy', 'oil', 'taiwan']
+        const mfResults = await Promise.allSettled(
+          terms.map(term =>
+            fetch(`https://api.manifold.markets/v0/search-markets?term=${encodeURIComponent(term)}&limit=25`, {
+              signal: AbortSignal.timeout(6000)
+            }).then(r => r.ok ? r.json() : [])
+          )
+        )
+        const mfAll = []
+        for (const r of mfResults) {
+          if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+            mfAll.push(...r.value)
+          }
+        }
+        const mfSeen = new Set()
+        deduped = mfAll.filter(m => {
+          if (!m || !m.id || mfSeen.has(m.id)) return false
+          mfSeen.add(m.id)
+          return true
+        }).map(m => ({
+          id: 'mf-' + m.id,
+          slug: m.slug || m.id,
+          question: m.question,
+          title: m.question,
+          outcomePrices: JSON.stringify([m.probability != null ? m.probability : 0.5, 1 - (m.probability != null ? m.probability : 0.5)]),
+          volume: m.volume || 10000,
+          volume24hr: m.volume24Hours || 2500,
+          endDateIso: m.closeTime ? new Date(m.closeTime).toISOString() : null,
+          source: 'Manifold (Live Alt)'
+        }))
+      } catch {}
+    }
 
     res.status(200).json({ markets: deduped, count: deduped.length })
   } catch (e) {
     res.status(500).json({ error: e.message, markets: [] })
   }
 }
+

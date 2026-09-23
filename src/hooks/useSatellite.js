@@ -52,7 +52,7 @@ async function fetchWithRetry(url, maxRetries = 2) {
 function useSatelliteLegacy() {
   const [data,      setData]      = useState(() => {
     const cached = cacheRead('satellite', 10 * 60 * 1000)
-    return cached?.data || SEED_SATELLITE_BASELINE
+    return cached?.data ? { ...SEED_SATELLITE_BASELINE, ...cached.data } : SEED_SATELLITE_BASELINE
   })
   const [loading,   setLoading]   = useState(false)
   const [lastFetch, setLastFetch] = useState(null)
@@ -132,6 +132,13 @@ function useSatelliteLegacy() {
           const seen = new Set((merged.conflictEvents||[]).map(e=>`${e.lat?.toFixed(2)},${e.lng?.toFixed(2)}`))
           const oldConflicts = prev.data.conflictEvents.filter(e => !seen.has(`${e.lat?.toFixed(2)},${e.lng?.toFixed(2)}`))
           merged.conflictEvents = [...(merged.conflictEvents||[]), ...oldConflicts].slice(0, 800)
+        }
+      }
+
+      // ── Comprehensive Zero-Count Safeguard: Backfill empty layers from OSINT baseline ──
+      for (const [layerKey, baselineData] of Object.entries(SEED_SATELLITE_BASELINE)) {
+        if (!merged[layerKey] || (Array.isArray(merged[layerKey]) && merged[layerKey].length === 0)) {
+          merged[layerKey] = baselineData
         }
       }
 

@@ -6,9 +6,28 @@
  */
 import { useState, useEffect } from 'react'
 
-// ── Auto-translate non-English posts ──────────────────────────────────────────
+// ── Auto-translate non-English posts via Google Translate ──────────────────────
+const tgTranslationCache = new Map()
+
 async function autoTranslate(text) {
-  // Preserve original text immediately; avoid connection pool exhaustion & 429 flood
+  if (!text || text.length < 5) return text
+  const isForeign = /[\u0400-\u04ff\u0600-\u06ff\u4e00-\u9fff\u05d0-\u05ea]/.test(text)
+  if (!isForeign) return text
+  if (tgTranslationCache.has(text)) return tgTranslationCache.get(text)
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text.slice(0, 500))}`
+    const r = await fetch(url, { signal: AbortSignal.timeout(3500) })
+    if (!r.ok) return text
+    const j = await r.json()
+    const translated = (j?.[0] || []).map(c => c[0]).filter(Boolean).join('')
+    const lang = (j?.[2] || 'RU').toUpperCase()
+    if (translated && translated.trim().toLowerCase() !== text.trim().toLowerCase()) {
+      const result = `[🌐 Translated from ${lang}] ${translated}`
+      tgTranslationCache.set(text, result)
+      return result
+    }
+  } catch {}
   return text
 }
 
@@ -125,7 +144,7 @@ async function scrapeChannel(handle) {
     })
     if (!r.ok) return []
     const d = await r.json()
-    return (d.posts || []).map(p => ({ handle, msgId: p.msgId, text: p.text, ts: p.ts, url: p.url }))
+    return (d.posts || []).map(p => ({ handle, msgId: p.msgId, text: p.text, ts: p.ts, url: p.url, photoUrl: p.photoUrl }))
   } catch { return [] }
 }
 
@@ -171,6 +190,7 @@ async function fetchAll() {
             text: displayText,
             originalText: displayText !== p.text ? p.text : undefined,
             title: ch.name + ': ' + displayText.slice(0, 100),
+            photoUrl: p.photoUrl,
             ts: p.ts, date: new Date(p.ts), severity: sev,
             url: p.url || ('https://t.me/' + ch.handle),
             lat: geo ? geo[0] + (Math.random() - 0.5) * 0.6 : null,

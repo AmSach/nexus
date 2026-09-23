@@ -123,23 +123,56 @@ export default async function handler(req, res) {
       })
       if (!r.ok) return res.status(r.status).json({ error: 'Telegram ' + r.status, posts: [] })
       const html = await r.text()
-      const dateMatches = [...html.matchAll(/datetime="([^"]+)"/g)]
-      const msgIdMatches = [...html.matchAll(/data-post="[^"\/]*\/(\d+)"/g)]
-      const msgStarts = [...html.matchAll(/class="tgme_widget_message_text[^"]*"/g)]
+      // Extract discrete message blocks to accurately pair text with its photo attachment
+      const msgBlocks = [...html.matchAll(/<div[^>]*class="[^"]*tgme_widget_message\b[^"]*"[^>]*data-post="([^"]+)"([\s\S]*?)(?=<div[^>]*class="[^"]*tgme_widget_message\b|$)/gi)]
       const posts = []
-      msgStarts.forEach((m, i) => {
-        const openTag = html.indexOf('>', m.index + m[0].length) + 1
-        if (openTag < 1) return
-        const raw = html.slice(openTag, openTag + 2000)
-        const text = raw
-          .replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')
-          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
-          .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
-        if (text.length < 10) return
-        const msgId = msgIdMatches[i]?.[1] || String(i)
-        const ts = dateMatches[i]?.[1] || new Date().toISOString()
-        posts.push({ msgId, text, ts, url: 'https://t.me/' + handle + '/' + msgId })
-      })
+
+      if (msgBlocks.length > 0) {
+        for (const block of msgBlocks) {
+          const fullPostId = block[1] // e.g. "intelslava/12345"
+          const msgId = fullPostId.split('/')[1] || fullPostId
+          const body = block[2]
+          
+          const dateMatch = body.match(/datetime="([^"]+)"/)
+          const ts = dateMatch ? dateMatch[1] : new Date().toISOString()
+          
+          // Telegram image extraction from photo wrap style
+          const photoMatch = body.match(/tgme_widget_message_photo_wrap[^"]*"[^>]*style="[^"]*background-image:url\('([^']+)'\)/i)
+          const photoUrl = photoMatch ? photoMatch[1] : null
+          
+          const textMatch = body.match(/class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i)
+          let text = ''
+          if (textMatch) {
+            text = textMatch[1]
+              .replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')
+              .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+              .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+          }
+
+          if (!text && photoUrl) text = '[Image Intelligence Dispatch]'
+          if (text.length >= 6 || photoUrl) {
+            posts.push({ msgId, text, ts, photoUrl, url: 'https://t.me/' + handle + '/' + msgId })
+          }
+        }
+      } else {
+        // Fallback parser if markup variance
+        const dateMatches = [...html.matchAll(/datetime="([^"]+)"/g)]
+        const msgIdMatches = [...html.matchAll(/data-post="[^"\/]*\/(\d+)"/g)]
+        const msgStarts = [...html.matchAll(/class="tgme_widget_message_text[^"]*"/g)]
+        msgStarts.forEach((m, i) => {
+          const openTag = html.indexOf('>', m.index + m[0].length) + 1
+          if (openTag < 1) return
+          const raw = html.slice(openTag, openTag + 2000)
+          const text = raw
+            .replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+            .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+          if (text.length < 6) return
+          const msgId = msgIdMatches[i]?.[1] || String(i)
+          const ts = dateMatches[i]?.[1] || new Date().toISOString()
+          posts.push({ msgId, text, ts, photoUrl: null, url: 'https://t.me/' + handle + '/' + msgId })
+        })
+      }
       return res.status(200).json({ status: 'ok', handle, posts: posts.slice(0, parseInt(cnt)), count: posts.length })
     } catch (e) {
       return res.status(500).json({ error: e.message, posts: [] })

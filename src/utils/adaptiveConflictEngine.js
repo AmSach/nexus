@@ -283,7 +283,7 @@ export function synthesizeMacroPlaybook(rawEvent) {
   // Match against known strategic theaters
   const matchedTheater = KNOWN_THEATERS.find(t => t.matchRegex.test(text))
 
-  const theaterName = matchedTheater ? matchedTheater.name : (title.length > 50 ? title.slice(0, 48) + '…' : title)
+  const theaterName = matchedTheater ? matchedTheater.name : title
   const region = matchedTheater ? matchedTheater.region : (rawEvent.region || 'Global Geopolitical')
   const factions = extractCombatants(text, matchedTheater)
   const severity = extractSeverity(text)
@@ -323,10 +323,10 @@ export function synthesizeMacroPlaybook(rawEvent) {
     expectedSharpeRatio: severity.level === 'CRITICAL' ? '2.45' : '1.85',
     conviction: severity.level === 'CRITICAL' ? 'VERY HIGH' : 'HIGH',
     epistemology: {
-      fact: `Verified incident reported via ${source}: "${title.slice(0, 140)}". Kinetic activity detected in ${region}.`,
+      fact: `Verified incident reported via ${source}: "${title}". Kinetic activity detected in ${region}.`,
       derived: `Econometric transmission model yields β = ${primaryBeta} with estimated immediate price shock of ${primaryShock} on ${primaryCommodity}. Cross-asset volatility spillover indexed to regional freight and commodity flows.`,
       assumption: `Assumes baseline kinetic disruption persists for minimum 14-30 days without immediate diplomatic breakthrough; supply chain buffer drawdown commences at Day 5.`,
-      recommendation: `Deploy Long/Short barbell: Overweight ${transmission.longBasket.slice(0, 2).join(' & ')} while simultaneously shorting ${transmission.shortBasket.slice(0, 2).join(' & ')}. Implement supply hedge immediately.`
+      recommendation: `Deploy Long/Short barbell: Overweight ${transmission.longBasket.join(' & ')} while simultaneously shorting ${transmission.shortBasket.join(' & ')}. Implement supply hedge immediately.`
     },
     commodityTransmissions: transmission.commodityTransmissions,
     longLeg: transmission.longBasket,

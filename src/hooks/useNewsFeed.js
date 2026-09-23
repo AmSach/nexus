@@ -112,9 +112,31 @@ function detectLang(text) {
   return null
 }
 
-async function autoTranslate(text) {
-  // Preserve original title immediately; avoid unprompted network translation socket exhaustion
+export async function translateGoogle(text) {
+  if (!text || text.length < 4) return text
+  const isNonEng = /[\u0400-\u04ff\u0600-\u06ff\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af\u05d0-\u05ea\u0e00-\u0e7f\u0370-\u03ff\u0900-\u097f]/.test(text) || (text.match(/[^\x20-\x7E]/g) || []).length / text.length > 0.12
+  if (!isNonEng) return text
+
+  if (translationCache.has(text)) return translationCache.get(text)
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text.slice(0, 500))}`
+    const r = await fetch(url, { signal: AbortSignal.timeout(3500) })
+    if (!r.ok) return text
+    const j = await r.json()
+    const translated = (j?.[0] || []).map(c => c[0]).filter(Boolean).join('')
+    const lang = (j?.[2] || detectLang(text) || 'AUTO').toUpperCase()
+    if (translated && translated.trim().toLowerCase() !== text.trim().toLowerCase()) {
+      const tagged = `[🌐 Translated from ${lang}] ${translated}`
+      translationCache.set(text, tagged)
+      return tagged
+    }
+  } catch {}
   return text
+}
+
+async function autoTranslate(text) {
+  return translateGoogle(text)
 }
 
 async function fetchFeed(feed) {

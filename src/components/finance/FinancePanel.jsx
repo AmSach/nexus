@@ -228,8 +228,21 @@ const TABS = [
 // ════════════════════════════════════════════════════════════════════════════
 export default function FinancePanel({ articles = [] }) {
   const { quotes, crypto, fx, history, adultEcon, loading, lastUpdate, refresh, analytics, fetchHistoryForSymbol } = useFinanceIntel()
-  // FRED data requires an API key — show macro data from quotes when available
-  const fredData = null
+  // FRED Macro data dynamically synthesized from live streaming asset quotes
+  const fredData = useMemo(() => {
+    return {
+      us10y:  { id: 'us10y',  label: '10Y Yield (^TNX)', value: quotes['^TNX']?.price, unit: '%', changePct: quotes['^TNX']?.changePercent },
+      us2y:   { id: 'us2y',   label: 'Treasury 13W (^IRX)', value: quotes['^IRX']?.price, unit: '%', changePct: quotes['^IRX']?.changePercent },
+      dxy:    { id: 'dxy',    label: 'US Dollar (DXY)', value: quotes['DX=F']?.price, unit: 'pts', changePct: quotes['DX=F']?.changePercent },
+      brent:  { id: 'brent',  label: 'Brent Crude ($BZ)', value: quotes['BZ=F']?.price, unit: '$/bbl', changePct: quotes['BZ=F']?.changePercent },
+      wti:    { id: 'wti',    label: 'WTI Crude ($CL)', value: quotes['CL=F']?.price, unit: '$/bbl', changePct: quotes['CL=F']?.changePercent },
+      gold:   { id: 'gold',   label: 'Gold Spot ($GC)', value: quotes['GC=F']?.price, unit: '$/oz', changePct: quotes['GC=F']?.changePercent },
+      copper: { id: 'copper', label: 'Copper ($HG)', value: quotes['HG=F']?.price, unit: '$/lb', changePct: quotes['HG=F']?.changePercent },
+      natgas: { id: 'natgas', label: 'Natural Gas ($NG)', value: quotes['NG=F']?.price, unit: '$/MMBtu', changePct: quotes['NG=F']?.changePercent },
+      sp500:  { id: 'sp500',  label: 'S&P 500 (SPY)', value: quotes['SPY']?.price, unit: '$', changePct: quotes['SPY']?.changePercent },
+      vix:    { id: 'vix',    label: 'VIX Volatility', value: quotes['^VIX']?.price, unit: 'idx', changePct: quotes['^VIX']?.changePercent },
+    }
+  }, [quotes])
   const [tab, setTab] = useState(() => {
     const h = typeof window !== 'undefined' ? window.location.hash.replace(/^#\/?/, '').toLowerCase() : ''
     if (['chokepoints', 'correlations', 'graph', 'alpha', 'stress'].includes(h)) return h === 'graph' ? 'correlations' : h
@@ -330,7 +343,7 @@ export default function FinancePanel({ articles = [] }) {
 
         {/* ── ECONOMIC & MACRO TERMINAL TABS ── */}
         {['chokepoints', 'correlations', 'alpha', 'stress', 'export'].includes(tab) && (
-          <EconomicResearchTerminal activeSubTab={tab} articles={articles} />
+          <EconomicResearchTerminal activeSubTab={tab} onTabChange={setTab} articles={articles} />
         )}
 
         {/* ── OVERVIEW ── */}

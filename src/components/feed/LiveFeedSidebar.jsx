@@ -305,6 +305,20 @@ function TelegramPost({ post: p, sev, ago }) {
         {displayText}
       </div>
 
+      {/* Telegram photo attachment with hotlink referrer defense */}
+      {p.photoUrl && (
+        <div style={{ marginTop:'6px', borderRadius:'4px', overflow:'hidden', maxHeight:'180px', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(0,0,0,0.3)' }}>
+          <img
+            src={p.photoUrl}
+            alt="Telegram OSINT dispatch"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            style={{ width:'100%', height:'100%', maxHeight:'180px', objectFit:'cover', display:'block' }}
+            onError={e => { e.target.style.display = 'none' }}
+          />
+        </div>
+      )}
+
       {/* Expand / collapse toggle for long posts */}
       {isLong && (
         <button
