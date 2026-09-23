@@ -49,12 +49,12 @@ function formatVolume(v) {
 }
 
 const CATEGORY_LABELS = {
-  ukraine: '🇺🇦 Ukraine', russia: '🇷🇺 Russia', china: '🇨🇳 China', taiwan: '🇹🇼 Taiwan',
-  iran: '🇮🇷 Iran', israel: '🇮🇱 Israel', 'north-korea': '🇰🇵 DPRK', nato: '🛡️ NATO',
-  nuclear: '☢️ Nuclear', war: '⚔️ War', conflict: '⚔️ Conflict', election: '🗳️ Election',
-  military: '🪖 Military', sanctions: '🔒 Sanctions', 'middle-east': '🌍 Middle East',
-  india: '🇮🇳 India', pakistan: '🇵🇰 Pakistan', recession: '📉 Recession', fed: '🏦 Fed',
-  oil: '🛢️ Oil', general: '🌐 General',
+  ukraine: 'Ukraine', russia: 'Russia', china: 'China', taiwan: 'Taiwan',
+  iran: 'Iran', israel: 'Israel', 'north-korea': 'DPRK', nato: 'NATO',
+  nuclear: 'Nuclear', war: 'War', conflict: 'Conflict', election: 'Election',
+  military: 'Military', sanctions: 'Sanctions', 'middle-east': 'Middle East',
+  india: 'India', pakistan: 'Pakistan', recession: 'Recession', fed: 'Fed',
+  oil: 'Oil', general: 'General',
 }
 
 export default function PredictionMarkets() {
@@ -95,7 +95,7 @@ export default function PredictionMarkets() {
       {/* Header */}
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
         <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t1)', letterSpacing: '0.05em' }}>
-          🎯 PREDICTION MARKETS
+          PREDICTION MARKETS
         </span>
         <span style={{ fontSize: '11px', color: 'var(--t4)', background: 'var(--surface)', padding: '2px 8px', borderRadius: '4px' }}>
           POLYMARKET · {markets.length} MARKETS
@@ -119,7 +119,7 @@ export default function PredictionMarkets() {
           flexShrink: 0,
         }}>
           <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700, marginBottom: '4px', letterSpacing: '0.1em' }}>
-            ⚡ HIGH-CONFIDENCE SIGNALS
+            HIGH-CONFIDENCE SIGNALS
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {highSignal.map(m => (
@@ -181,7 +181,7 @@ export default function PredictionMarkets() {
         )}
         {error && markets.length === 0 && (
           <div style={{ padding: '20px 16px', color: '#f97316', fontSize: '12px' }}>
-            ⚠️ Polymarket API unavailable — {error}
+            [UNAVAILABLE] Polymarket API unavailable — {error}
           </div>
         )}
         {filtered.map(m => (

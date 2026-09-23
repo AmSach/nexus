@@ -81,14 +81,14 @@ export default function KalshiPanel() {
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t1)', letterSpacing: '0.05em' }}>
-            🎯 KALSHI MARKETS
+            KALSHI MARKETS
           </span>
           <span style={{ fontSize: '11px', color: 'var(--t4)', background: 'var(--surface)', padding: '2px 8px', borderRadius: '4px' }}>
             {markets.length} OPEN
           </span>
           {usingSeeds && (
           <span style={{ fontSize:'10px', color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'2px 7px', borderRadius:'4px' }}>
-            ⚠ API proxied — may show cached data
+            [PROXIED CACHE]
           </span>
         )}
         {lastFetch && <span style={{ fontSize: '10px', color: 'var(--t4)', marginLeft: 'auto' }}>{lastFetch.toLocaleTimeString()}</span>}
@@ -102,7 +102,7 @@ export default function KalshiPanel() {
       {/* High signal banner */}
       {highSignal.length > 0 && (
         <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(239,68,68,0.04)', flexShrink: 0 }}>
-          <div style={{ fontSize: '9px', color: '#ef4444', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '5px' }}>⚡ HIGH-CONFIDENCE MARKETS</div>
+          <div style={{ fontSize: '9px', color: '#ef4444', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '5px' }}>HIGH-CONFIDENCE MARKETS</div>
           {highSignal.map(m => (
             <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
               <span style={{ fontSize: '11px', fontWeight: 800, color: (m.probability || 0) > 0.5 ? '#ef4444' : '#4ade80', minWidth: '34px' }}>
@@ -121,7 +121,7 @@ export default function KalshiPanel() {
       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '3px' }}>
-          {[{ id: 'geo', label: `🌍 Geo (${geoMarkets.length})` }, { id: 'top', label: 'Top Vol' }, { id: 'all', label: `All (${markets.length})` }].map(t => (
+          {[{ id: 'geo', label: `Geopolitical (${geoMarkets.length})` }, { id: 'top', label: 'Top Vol' }, { id: 'all', label: `All (${markets.length})` }].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               padding: '3px 9px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer',
               background: tab === t.id ? 'var(--accent)' : 'var(--surface)',
@@ -150,7 +150,7 @@ export default function KalshiPanel() {
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--t4)', fontSize: '13px' }}>Fetching Kalshi markets…</div>
         )}
         {error && !markets.length && (
-          <div style={{ padding: '20px', color: '#f97316', fontSize: '12px' }}>⚠️ Kalshi API unavailable — {error}</div>
+          <div style={{ padding: '20px', color: '#f97316', fontSize: '12px' }}>[UNAVAILABLE] Kalshi API unavailable — {error}</div>
         )}
         {displayList.map(m => (
           <div key={m.id} style={{

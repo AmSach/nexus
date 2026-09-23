@@ -4,6 +4,7 @@
  * Uses seed data from Kalshi when live unavailable.
  */
 import React, { useMemo } from 'react'
+import { TrendingUp } from 'lucide-react'
 import { useKalshi } from '../../hooks/useKalshi'
 import { usePolymarket } from '../../hooks/usePolymarket'
 
@@ -43,7 +44,8 @@ export function KalshiTicker() {
   return (
     <div style={{ height:'26px', borderBottom:'1px solid var(--border)', background:'var(--void)', overflow:'hidden', display:'flex', alignItems:'center', flexShrink:0 }}>
       <div style={{ flexShrink:0, padding:'0 8px', borderRight:'1px solid var(--border)', height:'100%', display:'flex', alignItems:'center', gap:'5px' }}>
-        <span style={{ fontSize:'8px', fontWeight:800, color:'var(--accent)', letterSpacing:'0.1em' }}>🎯 MARKETS</span>
+        <TrendingUp size={11} color="var(--accent)" />
+        <span style={{ fontSize:'8px', fontWeight:800, color:'var(--accent)', letterSpacing:'0.1em' }}>MARKETS</span>
       </div>
       <div style={{ flex:1, overflow:'hidden', height:'100%', display:'flex', alignItems:'center' }}>
         <div className="ticker-track">

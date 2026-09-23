@@ -210,23 +210,23 @@ function SecHead({ title, icon:Icon }) {
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 const TABS = [
-  {id:'chokepoints', label:'🚢 Chokepoints', icon:Anchor},
-  {id:'correlations',label:'🕸 Graph & Game Theory',icon:Share2},
-  {id:'alpha',       label:'🎯 Alpha Desk',  icon:Target},
-  {id:'stress',      label:'⚡ Stress-Test', icon:Cpu},
-  {id:'overview',    label:'Overview',       icon:Activity},
-  {id:'charts',      label:'Charts',         icon:BarChart2},
-  {id:'technical',   label:'Signals',        icon:Zap},
-  {id:'portfolio',   label:'Portfolio',      icon:Shield},
-  {id:'options',     label:'Options',        icon:Target},
-  {id:'macro',       label:'Macro',          icon:Globe},
-  {id:'backtest',    label:'Backtest',       icon:Cpu},
-  {id:'crypto',      label:'Crypto',         icon:DollarSign},
-  {id:'fx',          label:'FX',             icon:Globe},
+  {id:'chokepoints', label:'Chokepoints',        icon:Anchor},
+  {id:'correlations',label:'Graph & Game Theory',icon:Share2},
+  {id:'alpha',       label:'Alpha Desk',         icon:Target},
+  {id:'stress',      label:'Stress-Test',        icon:Cpu},
+  {id:'overview',    label:'Overview',           icon:Activity},
+  {id:'charts',      label:'Charts',             icon:BarChart2},
+  {id:'technical',   label:'Signals',            icon:Zap},
+  {id:'portfolio',   label:'Portfolio',          icon:Shield},
+  {id:'options',     label:'Options',            icon:Target},
+  {id:'macro',       label:'Macro',              icon:Globe},
+  {id:'backtest',    label:'Backtest',           icon:Cpu},
+  {id:'crypto',      label:'Crypto',             icon:DollarSign},
+  {id:'fx',          label:'FX',                 icon:Globe},
 ]
 
 // ════════════════════════════════════════════════════════════════════════════
-export default function FinancePanel({ articles = [] }) {
+function FinancePanel({ articles = [] }) {
   const { quotes, crypto, fx, history, adultEcon, loading, lastUpdate, refresh, analytics, fetchHistoryForSymbol } = useFinanceIntel()
   // FRED Macro data dynamically synthesized from live streaming asset quotes
   const fredData = useMemo(() => {
@@ -323,7 +323,7 @@ export default function FinancePanel({ articles = [] }) {
           {vix!=null&&<span style={{...monoSm,color:vixColor}}>VIX {vix.toFixed(1)}</span>}
           {analytics?.riskRegime&&<span style={{...monoSm,color:analytics.riskRegime.regime==='RISK_ON'?'#22c55e':analytics.riskRegime.regime==='RISK_OFF'?'#ef4444':'var(--t3)'}}>{analytics.riskRegime.regime.replace('_',' ')}</span>}
           {analytics?.fci&&<span style={{...monoSm,color:analytics.fci.level==='TIGHT'?'#ef4444':analytics.fci.level==='LOOSE'?'#22c55e':'var(--t3)'}}>FCI {analytics.fci.fci}</span>}
-          {analytics?.ycMetrics?.inverted&&<span style={{...monoSm,color:'#f97316'}}>⚠ YIELD CURVE INVERTED</span>}
+          {analytics?.ycMetrics?.inverted&&<span style={{...monoSm,color:'#f97316'}}>[YIELD CURVE INVERTED]</span>}
         </div>
         {loading&&<RefreshCw size={11} style={{animation:'spin 1s linear infinite',color:'var(--t4)'}}/>}
         {lastUpdate&&<span style={{...monoXs,color:'var(--t4)'}}>{timeSince(lastUpdate)} ago</span>}
@@ -667,7 +667,7 @@ export default function FinancePanel({ articles = [] }) {
                       </div>
                     ))}
                     {yc&&<div style={{marginTop:8,padding:'6px 8px',background:`${yc.inverted?'rgba(239,68,68,0.08)':'rgba(34,197,94,0.08)'}`,border:`1px solid ${yc.inverted?'rgba(239,68,68,0.3)':'rgba(34,197,94,0.3)'}`,borderRadius:4}}>
-                      <div style={{...monoSm,color:yc.inverted?'#ef4444':'#22c55e'}}>{yc.inverted?'⚠ INVERTED CURVE':'✓ NORMAL CURVE'}</div>
+                      <div style={{...monoSm,color:yc.inverted?'#ef4444':'#22c55e'}}>{yc.inverted?'[INVERTED CURVE]':'[NORMAL CURVE]'}</div>
                       <div style={{...monoXs,color:'var(--t4)',marginTop:2}}>10Y-2Y spread: {yc.slope!=null?yc.slope+'%':'—'}</div>
                       {yc.recessionSignal&&<div style={{...monoXs,color:'#f97316',marginTop:2}}>Recession signal threshold crossed (&lt;-25bp)</div>}
                     </div>}
@@ -871,7 +871,7 @@ export default function FinancePanel({ articles = [] }) {
                       <span style={{color:'var(--t2)'}}>{code} <span style={{...monoXs,color:'var(--t4)'}}>{labels[code]||code}</span></span>
                       <span style={{color:stress>2?'#ef4444':stress>1.5?'#f97316':'var(--t1)'}}>{rate?fmt(rate,2):'—'}</span>
                     </div>
-                    {stress!=null&&<div style={{...monoXs,color:'var(--t4)',marginTop:2}}>{stress>2?'⚠ SEVERE DEVALUATION':stress>1.5?'⚡ STRESS':''} {(stress*100-100).toFixed(0)}% above 2022 baseline</div>}
+                    {stress!=null&&<div style={{...monoXs,color:'var(--t4)',marginTop:2}}>{stress>2?'CRITICAL DEVALUATION':stress>1.5?'ELEVATED STRESS':''} {(stress*100-100).toFixed(0)}% above 2022 baseline</div>}
                   </div>
                 })}
                 <SecHead title="CARRY TRADE SIGNALS" icon={TrendingUp}/>
@@ -891,3 +891,6 @@ export default function FinancePanel({ articles = [] }) {
     </div>
   )
 }
+
+const MemoizedFinancePanel = React.memo(FinancePanel)
+export default MemoizedFinancePanel

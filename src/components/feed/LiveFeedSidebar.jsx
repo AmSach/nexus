@@ -109,7 +109,7 @@ function PlanetImageStrip({ alerts }) {
   if (!items.length) return null
   return (
     <div style={{ padding:'4px 6px', borderBottom:'1px solid var(--border)', background:'rgba(167,139,250,0.04)', flexShrink:0 }}>
-      <div className="mono" style={{ fontSize:'7px', color:'#a78bfa', letterSpacing:'0.1em', marginBottom:'4px' }}>🛰 PLANET LABS IMAGERY ({items.length})</div>
+      <div className="mono" style={{ fontSize:'7px', color:'#a78bfa', letterSpacing:'0.1em', marginBottom:'4px' }}>PLANET LABS IMAGERY ({items.length})</div>
       <div style={{ display:'flex', gap:'4px', overflowX:'auto', paddingBottom:'2px' }}>
         {items.slice(0, 8).map((item, i) => (
           <a key={i} href={item.url || 'https://www.planet.com'} target="_blank" rel="noopener"
@@ -117,13 +117,13 @@ function PlanetImageStrip({ alerts }) {
             <div style={{ width:'72px', height:'48px', background:'rgba(167,139,250,0.12)', border:'1px solid rgba(167,139,250,0.35)', borderRadius:'2px', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', position:'relative' }}>
               {item.thumbnail
                 ? <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none'}} />
-                : <span style={{ fontSize:'20px' }}>🛰</span>}
+                : <span className="mono" style={{ fontSize:'10px', color:'var(--t4)' }}>IMG</span>}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'rgba(0,0,0,0.65)', padding:'1px 3px' }}>
                 <span className="mono" style={{ fontSize:'6px', color:'#a78bfa' }}>{(item.region||'Earth').slice(0,12)}</span>
               </div>
             </div>
             <div className="mono" style={{ fontSize:'6px', color:'var(--t3)', lineHeight:1.2, marginTop:'2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-              {(item.title||'').replace(/🛰 Planet[^:]*: /,'').slice(0,22)}
+              {(item.title||'').replace(/Planet[^:]*: /,'').slice(0,22)}
             </div>
           </a>
         ))}
@@ -159,8 +159,8 @@ function AlertsPane({ alerts, loading }) {
         {loading && !alerts.length && <div style={{ padding:'20px', textAlign:'center', color:'var(--t4)', fontSize:'11px' }}>Fetching alerts…</div>}
         {!loading && !shown.length && (
           <div style={{ padding:'20px', textAlign:'center' }}>
-            <div style={{ fontSize:'20px', marginBottom:'6px' }}>✅</div>
-            <div style={{ fontSize:'11px', color:'var(--t3)' }}>No active alerts</div>
+            <div className="mono" style={{ fontSize:'10px', color:'var(--t4)', letterSpacing:'0.08em', marginBottom:'4px' }}>[ALL CLEAR]</div>
+            <div style={{ fontSize:'11px', color:'var(--t3)' }}>No active alerts recorded</div>
             <div style={{ fontSize:'9px', color:'var(--t4)', marginTop:'4px' }}>Oref · USNI · NWS · GDACS · GPSJam · BNO · Telegram · Wiki · NOTAM · BGP</div>
           </div>
         )}
@@ -399,7 +399,7 @@ function TelegramPane({ recent, archive, loading, lastFetch, channelStatus }) {
   )
 }
 
-const TABS = [{ id:'signal', label:'⚡ SIGNAL' }, { id:'alerts', label:'🚨 ALERTS' }, { id:'telegram', label:'📡 TELEGRAM' }, { id:'markets', label:'🎯 MARKETS' }]
+const TABS = [{ id:'signal', label:'SIGNAL' }, { id:'alerts', label:'ALERTS' }, { id:'telegram', label:'TELEGRAM' }, { id:'markets', label:'MARKETS' }]
 
 export default function LiveFeedSidebar({ articles = [] }) {
   const [tab, setTab] = useState('signal')

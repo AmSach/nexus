@@ -301,11 +301,11 @@ export default function VoxSimulator({articles}){
             {[
               [sim.beatsPolymarket,   'Polymarket  0.170'],
               [beatsSuperForecasters, 'Superforecasters 0.143'],
-              [sim.beatsTarget,       '★ Elite target < 0.080'],
+              [sim.beatsTarget,       'Elite target < 0.080'],
             ].map(([beats,label])=>(
               <div key={label} style={{display:'flex',alignItems:'center',gap:4,...mono7}}>
                 {beats?<CheckCircle size={9} color="#22c55e"/>:<XCircle size={9} color="#475569"/>}
-                <span style={{color:beats?'#22c55e':'var(--t4)',fontWeight:label.includes('★')?700:400}}>{label}</span>
+                <span style={{color:beats?'#22c55e':'var(--t4)',fontWeight:label.includes('Elite')?700:400}}>{label}</span>
               </div>
             ))}
           </div>
@@ -322,7 +322,7 @@ export default function VoxSimulator({articles}){
         {/* LEFT: MARKET LIST */}
         <div style={{width:295,flexShrink:0,borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
           <div style={{flexShrink:0,padding:'6px 9px',borderBottom:'1px solid rgba(255,255,255,0.05)',background:'rgba(45,212,191,0.03)'}}>
-            <div style={{...monoXs,color:'var(--t2)',fontWeight:700,marginBottom:3}}>📊 LIVE PREDICTION MARKETS</div>
+            <div style={{...monoXs,color:'var(--t2)',fontWeight:700,marginBottom:3}}>LIVE PREDICTION MARKETS</div>
             <div style={{...mono7,color:'var(--t4)',lineHeight:1.7}}>
               Real binary questions from Polymarket & Kalshi. VOX computes its own probability using 6 models and compares to the market price.{' '}
               <span style={{color:'#2dd4bf'}}>EDGE = VOX − Market</span>.
@@ -380,7 +380,7 @@ export default function VoxSimulator({articles}){
                   {selectedMarket.marketUrl&&<a href={selectedMarket.marketUrl} target="_blank" rel="noreferrer" style={{...mono7,color:'var(--accent)',textDecoration:'none'}}>→ Open market</a>}
                   <span style={{...mono7,color:'var(--t4)'}}>Dim: {selectedMarket.dimLabel}</span>
                   <span style={{...mono7,color:selectedMarket.liveNewsCount>0?'#22c55e':'var(--t4)'}}>
-                    📰 {selectedMarket.liveNewsCount||0} relevant articles
+                    [INTEL] {selectedMarket.liveNewsCount||0} relevant articles
                   </span>
                   <span style={{...mono7,color:'var(--t4)'}}>
                     Keywords: {(selectedMarket.questionKeywords||[]).join(', ')||'none detected'}
@@ -411,7 +411,7 @@ export default function VoxSimulator({articles}){
                 )}
                 {(selectedMarket.topRelArticles||[]).length===0&&(
                   <div style={{...mono7,color:'#f97316',marginTop:4,padding:'4px 6px',background:'rgba(249,115,22,0.06)',borderRadius:3,border:'1px solid rgba(249,115,22,0.2)'}}>
-                    ⚠ No specific news articles matched this question's keywords. Signal quality is reduced — forecast relies on broader context signals only. This is a known limitation when RSS feeds are unavailable.
+                    [NOTICE] No specific news articles matched this question's keywords. Signal quality is reduced — forecast relies on broader context signals only. This is a known limitation when RSS feeds are unavailable.
                   </div>
                 )}
                 {/* Model score quick summary */}

@@ -61,7 +61,7 @@ const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
 const monoXs = { fontFamily: 'JetBrains Mono', fontSize: 9 }
 
-export default function EconomicResearchTerminal({ activeSubTab: externalSubTab, onTabChange, onSelectChokepoint, articles = [] }) {
+function EconomicResearchTerminal({ activeSubTab: externalSubTab, onTabChange, onSelectChokepoint, articles = [] }) {
   const [subTab, setSubTab] = useState(externalSubTab || 'chokepoints')
   const [selectedChokeId, setSelectedChokeId] = useState('bab_el_mandeb')
   const [selectedScenarioId, setSelectedScenarioId] = useState('hormuz_blockade')
@@ -210,7 +210,7 @@ ${MARITIME_CHOKEPOINTS.map(c => `### ${c.name} [Threat Level: ${c.threatLevel} |
 ---
 
 ## 2. ACTIVE ALPHA PLAYBOOKS & EVIDENCE LEDGER (DECISION-RELEVANT PRAGMATISM)
-${[...ALPHA_TRADE_PLAYBOOKS, ...adaptiveConflicts].map(p => `### ${p.title} (${p.isAdaptive ? '⚡ LIVE ADAPTIVE DISCOVERY | ' : ''}Horizon: ${p.targetHorizon} | Sharpe: ${p.expectedSharpeRatio} | Conviction: ${p.conviction})
+${[...ALPHA_TRADE_PLAYBOOKS, ...adaptiveConflicts].map(p => `### ${p.title} (${p.isAdaptive ? '[LIVE ADAPTIVE DISCOVERY] | ' : ''}Horizon: ${p.targetHorizon} | Sharpe: ${p.expectedSharpeRatio} | Conviction: ${p.conviction})
 - **[FACT]**: ${p.epistemology.fact}
 - **[DERIVED]**: ${p.epistemology.derived}
 - **[ASSUMPTION]**: ${p.epistemology.assumption}
@@ -257,7 +257,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
       <div style={{ flexShrink: 0, padding: '7px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(15,23,42,0.7)', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ ...mono, color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <Sparkles size={12} /> MACRO RESEARCH DESK
+            <Activity size={12} /> MACRO RESEARCH DESK
           </span>
           <span style={{ color: 'var(--border)' }}>/</span>
           <span style={{ ...monoSm, color: 'var(--t1)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -295,7 +295,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
             title="Scan all live incoming RSS & GDELT articles for newly emerged flashpoints"
           >
             <RefreshCw size={10} className={isScanning ? 'spin' : ''} />
-            {isScanning ? 'Scanning…' : '⚡ Live Scan'}
+            {isScanning ? 'Scanning…' : 'Run Live Scan'}
           </button>
 
           <button
@@ -459,7 +459,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {selectedChokepoint.primaryThreats.map((t, idx) => (
                     <span key={idx} style={{ ...monoXs, padding: '3px 8px', borderRadius: 3, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-                      ⚠ {t}
+                      <span style={{ opacity: 0.6, marginRight: 5 }}>●</span>{t}
                     </span>
                   ))}
                 </div>
@@ -524,8 +524,8 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                 <div style={{ ...monoSm, color: 'var(--t1)', lineHeight: 1.5, marginBottom: 8 }}>
                   {selectedChokepoint.actionableDirective}
                 </div>
-                <div style={{ ...monoXs, color: '#f97316', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span>🛑 QUANTITATIVE KILL GATE:</span> {selectedChokepoint.decisionGate}
+                <div style={{ ...monoXs, color: '#f97316', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#ef4444', fontWeight: 700 }}>[QUANTITATIVE KILL GATE]</span> {selectedChokepoint.decisionGate}
                 </div>
               </div>
             </div>
@@ -553,7 +553,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                   </span>
                 </div>
                 <div style={{ ...monoSm, color: 'var(--t3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>Institutional baselines & <strong>⚡ Live Adaptive Conflict Discovery</strong> (NLP Extraction & Econometric Transmission).</span>
+                  <span>Institutional baselines & <strong>[LIVE ADAPTIVE DISCOVERY]</strong> (NLP Extraction & Econometric Transmission).</span>
                 </div>
               </div>
 
@@ -577,7 +577,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                   title="Re-scan all incoming news articles and OSINT points for newly emerging conflicts"
                 >
                   <RefreshCw size={11} className={isScanning ? 'spin' : ''} />
-                  {isScanning ? 'Scanning Live Feeds…' : '⚡ Re-Scan Live Feeds'}
+                  {isScanning ? 'Scanning Live Feeds…' : 'Re-Scan Live Feeds'}
                 </button>
 
                 <button
@@ -641,7 +641,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                     fontWeight: playbookFilter === 'adaptive' ? 700 : 400
                   }}
                 >
-                  ⚡ LIVE ADAPTIVE ({adaptiveConflicts.length})
+                  LIVE ADAPTIVE ({adaptiveConflicts.length})
                 </button>
                 <button
                   onClick={() => setPlaybookFilter('baseline')}
@@ -656,7 +656,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                     fontWeight: playbookFilter === 'baseline' ? 700 : 400
                   }}
                 >
-                  🏛 INSTITUTIONAL BASELINES ({ALPHA_TRADE_PLAYBOOKS.length})
+                  INSTITUTIONAL BASELINES ({ALPHA_TRADE_PLAYBOOKS.length})
                 </button>
               </div>
 
@@ -704,10 +704,10 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                   <div style={{ ...monoXs, color: 'var(--t4)', marginBottom: 6 }}>OR CLICK A LIVE FLASHPOINT PRESET:</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {[
-                      { label: '🇸🇩 Sudan RSF Drones Strike Port Sudan Fuel Depot', region: 'Africa', headline: 'Sudan RSF drones strike Port Sudan fuel storage facility and export dock' },
-                      { label: '🌊 Baltic Undersea Power Cable Cut near Gotland', region: 'Europe', headline: 'Subsea high-voltage power cable severed in central Baltic Sea near Gotland' },
-                      { label: '⛏ Atacama Lithium Mine Sabotage & Blockade', region: 'Latin America', headline: 'Violent protests and road blockades halt lithium brine processing in Atacama desert' },
-                      { label: '🚢 Malacca Strait GPS Spoofing Tanker Grounding', region: 'Southeast Asia', headline: 'Mass electronic warfare GPS spoofing causes commercial tanker grounding in Malacca Strait' }
+                      { label: 'Sudan: RSF Drones Strike Port Sudan Fuel Depot', region: 'Africa', headline: 'Sudan RSF drones strike Port Sudan fuel storage facility and export dock' },
+                      { label: 'Baltic Sea: Undersea Power Cable Cut near Gotland', region: 'Europe', headline: 'Subsea high-voltage power cable severed in central Baltic Sea near Gotland' },
+                      { label: 'Atacama: Lithium Extraction Blockade & Sabotage', region: 'Latin America', headline: 'Violent protests and road blockades halt lithium brine processing in Atacama desert' },
+                      { label: 'Malacca Strait: GPS Spoofing Commercial Tanker Grounding', region: 'Southeast Asia', headline: 'Mass electronic warfare GPS spoofing causes commercial tanker grounding in Malacca Strait' }
                     ].map((preset, idx) => (
                       <button
                         key={idx}
@@ -814,7 +814,7 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                         cursor: 'pointer'
                       }}
                     >
-                      ⚡ Synthesize Macro Playbook
+                      Synthesize Macro Playbook
                     </button>
                     <button
                       type="button"
@@ -862,11 +862,11 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                           {isAdaptive ? (
                             <span style={{ ...monoXs, padding: '2px 7px', borderRadius: 3, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(245,158,11,0.4)' }}>
                               <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f59e0b' }} />
-                              ⚡ LIVE ADAPTIVE DISCOVERY
+                              [LIVE ADAPTIVE DISCOVERY]
                             </span>
                           ) : (
                             <span style={{ ...monoXs, padding: '2px 7px', borderRadius: 3, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', fontWeight: 600, border: '1px solid rgba(56,189,248,0.3)' }}>
-                              🏛 INSTITUTIONAL BASELINE
+                              [INSTITUTIONAL BASELINE]
                             </span>
                           )}
 
@@ -990,13 +990,17 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
                       <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 4, padding: '8px' }}>
                         <div style={{ ...monoXs, color: '#4ade80', fontWeight: 700, marginBottom: 4 }}>LONG LEG (OUTPERFORM)</div>
                         {p.longLeg.map((l, i) => (
-                          <div key={i} style={{ ...monoSm, color: 'var(--t1)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>▲ {l}</div>
+                          <div key={i} style={{ ...monoSm, color: 'var(--t1)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>
+                            <span style={{ color: '#22c55e', fontWeight: 700, marginRight: 6 }}>[LONG]</span>{l}
+                          </div>
                         ))}
                       </div>
                       <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4, padding: '8px' }}>
                         <div style={{ ...monoXs, color: '#f87171', fontWeight: 700, marginBottom: 4 }}>SHORT LEG (UNDERPERFORM)</div>
                         {p.shortLeg.map((s, i) => (
-                          <div key={i} style={{ ...monoSm, color: 'var(--t1)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>▼ {s}</div>
+                          <div key={i} style={{ ...monoSm, color: 'var(--t1)', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.4 }}>
+                            <span style={{ color: '#ef4444', fontWeight: 700, marginRight: 6 }}>[SHORT]</span>{s}
+                          </div>
                         ))}
                       </div>
                       <div style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '8px' }}>
@@ -1285,3 +1289,6 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
     </div>
   )
 }
+
+const MemoizedEconomicResearchTerminal = React.memo(EconomicResearchTerminal)
+export default MemoizedEconomicResearchTerminal

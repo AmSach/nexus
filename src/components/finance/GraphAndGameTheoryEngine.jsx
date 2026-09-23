@@ -16,13 +16,11 @@ import {
   TrendingUp,
   AlertTriangle,
   Layers,
-  Sparkles,
   RefreshCw,
   Sliders,
   Compass,
   CheckCircle,
-  HelpCircle,
-  Maximize2
+  FileText
 } from 'lucide-react'
 
 const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
@@ -31,37 +29,37 @@ const monoXs = { fontFamily: 'JetBrains Mono', fontSize: 9 }
 
 // ── 1. GRAPH THEORY CAUSAL NETWORK DEFINITIONS ──────────────────────────────
 const GRAPH_NODES = [
-  // Kinetic Flashpoints
-  { id: 'flash_yemen', label: 'Houthi Strike Hub', category: 'flashpoint', domain: 'Kinetic Flashpoint', x: 80, y: 120, severity: 'CRITICAL', score: 92, color: '#ef4444', desc: 'Anti-ship ballistic missile and drone launch sites in western Yemen.' },
-  { id: 'flash_ukraine', label: 'Black Sea Theater', category: 'flashpoint', domain: 'Kinetic Flashpoint', x: 80, y: 270, severity: 'CRITICAL', score: 88, color: '#ef4444', desc: 'AFU drone attacks vs Russian Black Sea fleet & export terminals.' },
-  { id: 'flash_taiwan', label: 'PLA Eastern Theater', category: 'flashpoint', domain: 'Kinetic Flashpoint', x: 80, y: 420, severity: 'HIGH', score: 78, color: '#f97316', desc: 'PLA naval air encirclement exercises around Taiwan Strait ADIZ.' },
-  { id: 'flash_iran', label: 'IRGC Naval Base', category: 'flashpoint', domain: 'Kinetic Flashpoint', x: 80, y: 560, severity: 'HIGH', score: 75, color: '#f97316', desc: 'IRGC fast-attack missile craft and mine deployment facilities.' },
+  // Kinetic Flashpoints (Col 0)
+  { id: 'flash_yemen', label: 'Houthi Strike Hub', category: 'flashpoint', domain: 'Kinetic Flashpoint', theaters: ['red_sea'], metric: 'ASBM & Drone Launches', score: 92, color: '#ef4444', desc: 'Anti-ship ballistic missile and drone launch sites in western Yemen targeting merchant shipping.' },
+  { id: 'flash_ukraine', label: 'Black Sea Theater', category: 'flashpoint', domain: 'Kinetic Flashpoint', theaters: ['black_sea'], metric: 'Naval Drone Blockade', score: 88, color: '#ef4444', desc: 'AFU maritime drone strikes against Russian Black Sea fleet & deepwater export corridors.' },
+  { id: 'flash_taiwan', label: 'PLA Eastern Theater', category: 'flashpoint', domain: 'Kinetic Flashpoint', theaters: ['taiwan'], metric: 'ADIZ Encirclement Drills', score: 78, color: '#f97316', desc: 'PLA naval air encirclement exercises around Taiwan Strait ADIZ testing quarantine parameters.' },
+  { id: 'flash_iran', label: 'IRGC Naval Base', category: 'flashpoint', domain: 'Kinetic Flashpoint', theaters: ['hormuz'], metric: 'Fast-Attack Mine Craft', score: 75, color: '#f97316', desc: 'IRGC fast-attack missile craft and sea-mine deployment facilities controlling the Hormuz bottleneck.' },
 
-  // Strategic Maritime Chokepoints
-  { id: 'choke_bab', label: 'Bab el-Mandeb Strait', category: 'chokepoint', domain: 'Maritime Chokepoint', x: 280, y: 150, severity: 'CRITICAL', score: 94, color: '#ef4444', desc: '20km maritime artery linking Indian Ocean to Suez Canal (12% global trade).' },
-  { id: 'choke_blacksea', label: 'Bosphorus & Danube', category: 'chokepoint', domain: 'Maritime Chokepoint', x: 280, y: 290, severity: 'HIGH', score: 80, color: '#f97316', desc: 'Access to Ukrainian and Russian grain & ammonia export corridors.' },
-  { id: 'choke_taiwan', label: 'Taiwan Strait Channel', category: 'chokepoint', domain: 'Maritime Chokepoint', x: 280, y: 420, severity: 'HIGH', score: 82, color: '#f97316', desc: 'World busiest container corridor; 48% of global container fleet passes through.' },
-  { id: 'choke_hormuz', label: 'Strait of Hormuz', category: 'chokepoint', domain: 'Maritime Chokepoint', x: 280, y: 560, severity: 'ELEVATED', score: 70, color: '#eab308', desc: '21M bpd crude transit passage (20% of world petroleum liquids).' },
+  // Strategic Maritime Chokepoints (Col 1)
+  { id: 'choke_bab', label: 'Bab el-Mandeb Strait', category: 'chokepoint', domain: 'Maritime Chokepoint', theaters: ['red_sea'], metric: 'Traffic -65% Cape Reroute', score: 94, color: '#ef4444', desc: '20km maritime artery linking Indian Ocean to Suez Canal (12% global maritime trade).' },
+  { id: 'choke_blacksea', label: 'Bosphorus & Danube', category: 'chokepoint', domain: 'Maritime Chokepoint', theaters: ['black_sea'], metric: 'Grain Corridor Interdiction', score: 80, color: '#f97316', desc: 'Access to Ukrainian and Russian grain, ammonia, and bulk fertilizer export corridors.' },
+  { id: 'choke_taiwan', label: 'Taiwan Strait Channel', category: 'chokepoint', domain: 'Maritime Chokepoint', theaters: ['taiwan'], metric: '48% Container Fleet', score: 82, color: '#f97316', desc: 'Busiest global container passage; 48% of the world container ship fleet transits this corridor.' },
+  { id: 'choke_hormuz', label: 'Strait of Hormuz', category: 'chokepoint', domain: 'Maritime Chokepoint', theaters: ['hormuz'], metric: '21M bpd Crude Transit', score: 70, color: '#eab308', desc: '21M bpd crude transit passage representing 20% of global petroleum liquids consumption.' },
 
-  // Critical Physical Infrastructure
-  { id: 'infra_suez', label: 'Suez Canal Convoys', category: 'infrastructure', domain: 'Critical Infrastructure', x: 480, y: 120, severity: 'HIGH', score: 85, color: '#38bdf8', desc: 'Egyptian maritime artery; traffic dropped 65% due to Cape diversions.' },
-  { id: 'infra_odessa', label: 'Odessa Grain Silos', category: 'infrastructure', domain: 'Critical Infrastructure', x: 480, y: 250, severity: 'HIGH', score: 76, color: '#38bdf8', desc: 'Primary deep-water bulk agricultural loading terminals on Black Sea.' },
-  { id: 'infra_tsmc', label: 'TSMC Fabs (Hsinchu)', category: 'infrastructure', domain: 'Critical Infrastructure', x: 480, y: 390, severity: 'CRITICAL', score: 95, color: '#38bdf8', desc: '92% of global advanced sub-7nm leading-edge logic fabrication capacity.' },
-  { id: 'infra_raslaffan', label: 'Ras Laffan LNG Export', category: 'infrastructure', domain: 'Critical Infrastructure', x: 480, y: 530, severity: 'ELEVATED', score: 68, color: '#38bdf8', desc: 'World largest LNG export complex (QatarEnergy 77 MTPA).' },
+  // Critical Physical Infrastructure (Col 2)
+  { id: 'infra_suez', label: 'Suez Canal Convoys', category: 'infrastructure', domain: 'Critical Infrastructure', theaters: ['red_sea'], metric: 'Revenue -60% ($800M/mo)', score: 85, color: '#38bdf8', desc: 'Egyptian sovereign maritime artery; commercial vessel transits down 65% due to Cape diversions.' },
+  { id: 'infra_odessa', label: 'Odessa Grain Silos', category: 'infrastructure', domain: 'Critical Infrastructure', theaters: ['black_sea'], metric: 'Deepwater Bulk Loading', score: 76, color: '#38bdf8', desc: 'Primary deepwater agricultural loading terminals and grain elevators on the Black Sea coast.' },
+  { id: 'infra_tsmc', label: 'TSMC Fabs (Hsinchu)', category: 'infrastructure', domain: 'Critical Infrastructure', theaters: ['taiwan'], metric: '92% Sub-7nm Logic Wafers', score: 95, color: '#38bdf8', desc: 'Produces 92% of the world advanced sub-7nm leading-edge semiconductor fabrication output.' },
+  { id: 'infra_raslaffan', label: 'Ras Laffan LNG Export', category: 'infrastructure', domain: 'Critical Infrastructure', theaters: ['hormuz'], metric: 'QatarEnergy 77 MTPA', score: 68, color: '#38bdf8', desc: 'World largest single LNG export liquefaction complex (QatarEnergy 77 MTPA).' },
 
-  // Commodity Transmission Nodes
-  { id: 'comm_freight', label: 'Drewry Freight (WCI)', category: 'commodity', domain: 'Commodity & Logistics', x: 680, y: 100, severity: 'HIGH', score: 88, color: '#f59e0b', desc: 'Spot container freight index Shanghai-Rotterdam (+165% Cape delay surge).' },
-  { id: 'comm_brent', label: 'Brent Crude ($BZ)', category: 'commodity', domain: 'Commodity & Logistics', x: 680, y: 230, severity: 'HIGH', score: 82, color: '#f59e0b', desc: 'Global crude benchmark carrying geopolitical war-risk transit premium.' },
-  { id: 'comm_wheat', label: 'CBOT Wheat ($ZW)', category: 'commodity', domain: 'Commodity & Logistics', x: 680, y: 340, severity: 'HIGH', score: 75, color: '#f59e0b', desc: 'Global grain benchmark sensitive to Black Sea and Danube barge throughput.' },
-  { id: 'comm_chips', label: 'Semiconductor Lead-Time', category: 'commodity', domain: 'Commodity & Logistics', x: 680, y: 460, severity: 'CRITICAL', score: 94, color: '#f59e0b', desc: 'Wafer fabrication turnaround time (18-24 week baseline vulnerable to blockade).' },
-  { id: 'comm_gas', label: 'European TTF Gas Hub', category: 'commodity', domain: 'Commodity & Logistics', x: 680, y: 580, severity: 'HIGH', score: 78, color: '#f59e0b', desc: 'European benchmark natural gas price vulnerable to Hormuz/Red Sea LNG halts.' },
+  // Commodity Transmission Nodes (Col 3)
+  { id: 'comm_freight', label: 'Drewry Freight (WCI)', category: 'commodity', domain: 'Commodity & Logistics', theaters: ['red_sea', 'taiwan'], metric: '+165% Cape Surge', score: 88, color: '#f59e0b', desc: 'Spot container freight index Shanghai-Rotterdam reflecting ton-mile rerouting premiums.' },
+  { id: 'comm_brent', label: 'Brent Crude ($BZ)', category: 'commodity', domain: 'Commodity & Logistics', theaters: ['red_sea', 'hormuz'], metric: 'War-Risk Premium β=0.55', score: 82, color: '#f59e0b', desc: 'Global crude oil benchmark pricing geopolitical war-risk and maritime transit insurance surcharges.' },
+  { id: 'comm_wheat', label: 'CBOT Wheat ($ZW)', category: 'commodity', domain: 'Commodity & Logistics', theaters: ['black_sea'], metric: 'Supply Deficit β=0.70', score: 75, color: '#f59e0b', desc: 'Global grain benchmark highly sensitive to Black Sea port throughput and Danube shipping capacity.' },
+  { id: 'comm_chips', label: 'Semi Lead-Time', category: 'commodity', domain: 'Commodity & Logistics', theaters: ['taiwan'], metric: '+18-24w Delivery Surge', score: 94, color: '#f59e0b', desc: 'Wafer turnaround cycle time vulnerable to air/sea transport delays around the Taiwan Strait.' },
+  { id: 'comm_gas', label: 'European TTF Gas Hub', category: 'commodity', domain: 'Commodity & Logistics', theaters: ['hormuz'], metric: 'LNG Shortfall β=0.89', score: 78, color: '#f59e0b', desc: 'European benchmark natural gas spot contract vulnerable to Persian Gulf and Red Sea LNG disruptions.' },
 
-  // Asset Markets & Corporate Equities
-  { id: 'asset_tankers', label: 'Long Tankers (FRO/STNG)', category: 'asset', domain: 'Equity & Trade Expression', x: 890, y: 140, severity: 'BULLISH', score: 90, color: '#22c55e', desc: 'Beneficiary of Cape ton-mile expansion (+35% voyage distances).' },
-  { id: 'asset_airlines', label: 'Short Airlines (DAL/LHA)', category: 'asset', domain: 'Equity & Trade Expression', x: 890, y: 250, severity: 'BEARISH', score: 84, color: '#f87171', desc: 'Hit by jet fuel price spike (+18%) and middle-eastern airspace diversions.' },
-  { id: 'asset_agri', label: 'Long Fertilizer (MOS/CF)', category: 'asset', domain: 'Equity & Trade Expression', x: 890, y: 360, severity: 'BULLISH', score: 86, color: '#22c55e', desc: 'Producers gaining from Black Sea export disruption and high European gas input costs.' },
-  { id: 'asset_tech', label: 'Short Fabless Tech (AAPL/NVDA)', category: 'asset', domain: 'Equity & Trade Expression', x: 890, y: 470, severity: 'BEARISH', score: 88, color: '#f87171', desc: 'Single-source concentration vulnerability to TSMC supply interruption.' },
-  { id: 'asset_def', label: 'Long Defense (LMT/RHM)', category: 'asset', domain: 'Equity & Trade Expression', x: 890, y: 580, severity: 'BULLISH', score: 92, color: '#22c55e', desc: 'Global missile replenishment demand and NATO 2%+ GDP defense targets.' }
+  // Asset Markets & Corporate Equities (Col 4)
+  { id: 'asset_tankers', label: 'Long Tankers (FRO)', category: 'asset', domain: 'Equity & Trade Expression', theaters: ['red_sea', 'hormuz'], metric: 'Ton-Mile Margin Expansion', score: 90, color: '#22c55e', desc: 'Direct corporate beneficiary of Cape of Good Hope rerouting adding 35% to voyage distances.' },
+  { id: 'asset_airlines', label: 'Short Airlines (DAL)', category: 'asset', domain: 'Equity & Trade Expression', theaters: ['red_sea', 'hormuz'], metric: 'Fuel Margin Compression', score: 84, color: '#f87171', desc: 'Commercial carriers compressed by jet-A1 fuel spikes (+18%) and Middle East airspace detours.' },
+  { id: 'asset_agri', label: 'Long Fertilizer (MOS)', category: 'asset', domain: 'Equity & Trade Expression', theaters: ['black_sea'], metric: 'Pricing Power Margin', score: 86, color: '#22c55e', desc: 'Western nutrient producers gaining structural pricing power from Russian ammonia export curbs.' },
+  { id: 'asset_tech', label: 'Short Fabless Tech (AAPL)', category: 'asset', domain: 'Equity & Trade Expression', theaters: ['taiwan'], metric: 'Supply Chain Bottleneck', score: 88, color: '#f87171', desc: 'Single-source concentration vulnerability to Taiwanese semiconductor foundry output shocks.' },
+  { id: 'asset_def', label: 'Long Defense (LMT)', category: 'asset', domain: 'Equity & Trade Expression', theaters: ['red_sea', 'black_sea', 'taiwan'], metric: 'Missile Replenishment', score: 92, color: '#22c55e', desc: 'Munition replenishers gaining from naval surface interceptors and NATO member defense quota hikes.' }
 ]
 
 const GRAPH_EDGES = [
@@ -181,12 +179,32 @@ const EIGHT_LAWS = [
   { id: 8, name: 'Law 8: Causal Feedback Loops (Negative Working Capital Moat)', formula: 'CCC = DIO + DSO - DPO = -36 Days; Free_Cash_Float = +₹7,370/unit', desc: 'Volume increases credit terms, creating Day-1 liquid cash float that funds balance-sheet expansion.' }
 ]
 
-export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
-  const [activeView, setActiveView] = useState('graph') // 'graph' | 'gametheory' | 'eightlaws' | 'asymmetric'
+// ── COLUMN GEOMETRY SPECIFICATION (ZERO OVERLAP) ─────────────────────────────
+const COLUMNS = [
+  { key: 'flashpoint',     label: 'KINETIC FLASHPOINTS',     x: 110, color: '#ef4444' },
+  { key: 'chokepoint',      label: 'MARITIME CHOKEPOINTS',    x: 320, color: '#f97316' },
+  { key: 'infrastructure',  label: 'CRITICAL INFRASTRUCTURE', x: 530, color: '#38bdf8' },
+  { key: 'commodity',       label: 'COMMODITY SHOCKS',        x: 740, color: '#f59e0b' },
+  { key: 'asset',           label: 'EQUITY & ALPHA BASKETS',  x: 950, color: '#22c55e' }
+]
+
+const THEATERS = [
+  { id: 'all',       label: 'ALL MACRO PILLARS (22 NODES)' },
+  { id: 'red_sea',   label: 'RED SEA / SUEZ' },
+  { id: 'taiwan',    label: 'TAIWAN / SEMI' },
+  { id: 'hormuz',    label: 'PERSIAN GULF / HORMUZ' },
+  { id: 'black_sea', label: 'BLACK SEA / GRAIN' },
+  { id: 'adaptive',  label: 'LIVE ADAPTIVE FLASHPOINTS' }
+]
+
+function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [] }) {
+  const [activeView, setActiveView] = useState('graph') // 'graph' | 'gametheory' | 'eightlaws'
+  const [selectedTheater, setSelectedTheater] = useState('all')
+  const [selectedAdaptiveIdx, setSelectedAdaptiveIdx] = useState(0)
   const [selectedNodeId, setSelectedNodeId] = useState('choke_bab')
   const [selectedGameId, setSelectedGameId] = useState('red_sea_game')
   const [shockMultiplier, setShockMultiplier] = useState(1.0)
-  const [filterDomain, setFilterDomain] = useState('all')
+  const [filterCategory, setFilterCategory] = useState('all')
 
   // Responsive iPad/tablet detection
   const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200)
@@ -199,124 +217,180 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Dynamically compute nodes and edges from baseline + live adaptive conflicts
-  const { allNodes, allEdges } = useMemo(() => {
-    const nodes = [...GRAPH_NODES]
-    const edges = [...GRAPH_EDGES]
-    const seenNodeIds = new Set(nodes.map(n => n.id))
+  // ── DYNAMIC THEATER & CAUSAL GRAPH SYNTHESIS (ZERO OVERLAP GUARANTEED) ─────
+  const { allNodes, allEdges, maxColumnRows } = useMemo(() => {
+    let nodes = []
+    let edges = []
 
-    adaptiveConflicts.forEach((conflict, idx) => {
-      const cId = conflict.id || `novel_${idx}`
-      const flashId = `flash_${cId}`
+    if (selectedTheater === 'adaptive') {
+      // Synthesize clean 5-column causal transmission pipeline for selected adaptive conflict
+      if (adaptiveConflicts.length > 0) {
+        const safeIdx = Math.max(0, Math.min(selectedAdaptiveIdx, adaptiveConflicts.length - 1))
+        const c = adaptiveConflicts[safeIdx]
+        const cId = c.id || `ad_${safeIdx}`
 
-      if (!seenNodeIds.has(flashId)) {
-        seenNodeIds.add(flashId)
-        const yPos = 110 + ((idx * 85) % 490)
+        const flashId = `flash_ad_${cId}`
+        const chokeId = `choke_ad_${cId}`
+        const infraId = `infra_ad_${cId}`
+        const commId  = `comm_ad_${cId}`
+        const assetLongId  = `asset_long_${cId}`
+        const assetShortId = `asset_short_${cId}`
 
-        // 1. Kinetic Flashpoint Node
-        nodes.push({
-          id: flashId,
-          label: conflict.title || conflict.headline || 'Kinetic Incident',
-          category: 'flashpoint',
-          domain: 'Kinetic Flashpoint (Adaptive)',
-          x: 80,
-          y: yPos,
-          severity: conflict.severity || 'CRITICAL',
-          score: conflict.threatScore || 85,
-          color: conflict.severityColor || '#ef4444',
-          desc: conflict.summary || conflict.headline || 'Live OSINT kinetic telemetry flashpoint.'
-        })
-
-        // 2. Critical Infrastructure Node
-        const infraName = conflict.threatenedInfrastructure?.[0] || `${conflict.region || 'Regional'} Supply Corridor`
-        const infraId = `infra_${cId}`
-        if (!seenNodeIds.has(infraId)) {
-          seenNodeIds.add(infraId)
-          nodes.push({
+        nodes = [
+          {
+            id: flashId,
+            label: c.title || c.headline || 'Kinetic Incident',
+            category: 'flashpoint',
+            domain: 'Kinetic Flashpoint (Adaptive)',
+            x: 110,
+            y: 120,
+            severity: c.severity || 'CRITICAL',
+            score: c.threatScore || 88,
+            color: '#ef4444',
+            metric: c.severity || 'CRITICAL INCIDENT',
+            desc: c.headline || c.summary || 'Live OSINT kinetic telemetry incident.'
+          },
+          {
+            id: chokeId,
+            label: `${c.region || 'Regional'} Maritime Corridor`,
+            category: 'chokepoint',
+            domain: 'Strategic Corridor (Adaptive)',
+            x: 320,
+            y: 120,
+            severity: 'HIGH',
+            score: 85,
+            color: '#f97316',
+            metric: 'Transit Interdiction',
+            desc: `Key maritime and commercial transit corridor exposed to ${c.title}.`
+          },
+          {
             id: infraId,
-            label: infraName,
+            label: c.threatenedInfrastructure?.[0] || 'Primary Logistics Hub',
             category: 'infrastructure',
             domain: 'Critical Infrastructure (Adaptive)',
-            x: 480,
-            y: yPos + 15,
-            severity: conflict.severity || 'HIGH',
-            score: 82,
+            x: 530,
+            y: 120,
+            severity: 'CRITICAL',
+            score: 89,
             color: '#38bdf8',
-            desc: `Key physical asset vulnerable to ${conflict.title}`
-          })
-          edges.push({
-            source: flashId,
-            target: infraId,
-            weight: -0.85,
-            label: 'Capacity Interdiction',
-            beta: -0.85,
-            delayDays: 2
-          })
-        }
-
-        // 3. Commodity Shock Node
-        const commData = conflict.commodityTransmissions?.[0]
-        const commName = commData?.name || 'Energy & Freight Benchmark'
-        const commId = `comm_${cId}`
-        if (!seenNodeIds.has(commId)) {
-          seenNodeIds.add(commId)
-          nodes.push({
+            metric: 'Capacity Interdiction',
+            desc: `High-value physical asset vulnerable to operational interruption.`
+          },
+          {
             id: commId,
-            label: commName,
+            label: c.commodityTransmissions?.[0]?.name || 'Benchmark Price Shock',
             category: 'commodity',
-            domain: 'Commodity & Logistics (Adaptive)',
-            x: 680,
-            y: yPos,
+            domain: 'Commodity Transmission (Adaptive)',
+            x: 740,
+            y: 120,
             severity: 'HIGH',
             score: 86,
             color: '#f59e0b',
-            desc: commData?.note || `Estimated base shock: ${commData?.baseShock || '+12.0%'}`
-          })
-          edges.push({
-            source: infraId,
-            target: commId,
-            weight: commData?.beta || 0.65,
-            label: `Price Transmission (${commData?.baseShock || '+12%'})`,
-            beta: commData?.beta || 0.65,
-            delayDays: 5
-          })
-        }
-
-        // 4. Equity Long Basket Node
-        const longAsset = conflict.longLeg?.[0] || 'Long Macro Hedges'
-        const assetId = `asset_${cId}`
-        if (!seenNodeIds.has(assetId)) {
-          seenNodeIds.add(assetId)
-          nodes.push({
-            id: assetId,
-            label: `Long ${longAsset}`,
+            metric: c.commodityTransmissions?.[0]?.baseShock || '+14.5%',
+            desc: c.commodityTransmissions?.[0]?.note || 'Direct upstream price transmission.'
+          },
+          {
+            id: assetLongId,
+            label: `Long ${c.longLeg?.[0] || 'Strategic Hedges'}`,
             category: 'asset',
             domain: 'Equity & Trade Expression (Adaptive)',
-            x: 890,
-            y: yPos + 10,
+            x: 950,
+            y: 90,
             severity: 'BULLISH',
-            score: 88,
+            score: 92,
             color: '#22c55e',
-            desc: `Institutional beneficiary of ${conflict.title} transmission`
+            metric: 'Alpha Outperform',
+            desc: `Structural beneficiary of commodity and freight dislocations.`
+          }
+        ]
+
+        edges = [
+          { source: flashId, target: chokeId, weight: 0.90, label: 'Kinetic Shock Propagation', beta: 0.90, delayDays: 0 },
+          { source: chokeId, target: infraId, weight: -0.85, label: 'Capacity Interdiction', beta: -0.85, delayDays: 2 },
+          { source: infraId, target: commId, weight: 0.78, label: 'Supply Shortage Squeeze', beta: 0.78, delayDays: 5 },
+          { source: commId, target: assetLongId, weight: 0.82, label: 'Long Margin Expansion', beta: 0.82, delayDays: 9 }
+        ]
+
+        if (c.shortLeg?.[0]) {
+          nodes.push({
+            id: assetShortId,
+            label: `Short ${c.shortLeg[0]}`,
+            category: 'asset',
+            domain: 'Equity & Trade Expression (Adaptive)',
+            x: 950,
+            y: 180,
+            severity: 'BEARISH',
+            score: 84,
+            color: '#f87171',
+            metric: 'Input Margin Drag',
+            desc: `Exposed corporate equity suffering input inflation or supply rationing.`
           })
           edges.push({
             source: commId,
-            target: assetId,
-            weight: 0.80,
-            label: 'Alpha Capture',
-            beta: 0.80,
-            delayDays: 9
+            target: assetShortId,
+            weight: -0.74,
+            label: 'Cost Squeeze Compression',
+            beta: -0.74,
+            delayDays: 12
           })
         }
       }
-    })
+    } else {
+      // Filter baseline nodes by active theater
+      const rawNodes = selectedTheater === 'all'
+        ? GRAPH_NODES
+        : GRAPH_NODES.filter(n => n.theaters.includes(selectedTheater))
 
-    return { allNodes: nodes, allEdges: edges }
-  }, [adaptiveConflicts])
+      // Group nodes by column category and assign non-overlapping sequential Y coordinates
+      const nodesByCat = {
+        flashpoint: [],
+        chokepoint: [],
+        infrastructure: [],
+        commodity: [],
+        asset: []
+      }
+      rawNodes.forEach(n => {
+        if (nodesByCat[n.category]) nodesByCat[n.category].push({ ...n })
+      })
+
+      const isCompact = selectedTheater !== 'all'
+      const startY = isCompact ? 95 : 75
+      const rowPitch = isCompact ? 100 : 84
+
+      COLUMNS.forEach(col => {
+        const catNodes = nodesByCat[col.key] || []
+        catNodes.forEach((node, rowIdx) => {
+          node.x = col.x
+          node.y = startY + rowIdx * rowPitch
+          nodes.push(node)
+        })
+      })
+
+      // Resolve valid active edges where both source and target exist
+      const activeNodeIds = new Set(nodes.map(n => n.id))
+      edges = GRAPH_EDGES.filter(e => activeNodeIds.has(e.source) && activeNodeIds.has(e.target))
+    }
+
+    const counts = [0, 0, 0, 0, 0]
+    nodes.forEach(n => {
+      const idx = COLUMNS.findIndex(c => c.key === n.category)
+      if (idx !== -1) counts[idx]++
+    })
+    const maxRows = Math.max(...counts, 3)
+
+    return { allNodes: nodes, allEdges: edges, maxColumnRows: maxRows }
+  }, [selectedTheater, selectedAdaptiveIdx, adaptiveConflicts])
+
+  // Ensure valid selected node
+  useEffect(() => {
+    if (allNodes.length > 0 && !allNodes.some(n => n.id === selectedNodeId)) {
+      setSelectedNodeId(allNodes[0].id)
+    }
+  }, [allNodes, selectedNodeId])
 
   // Selected Node Data
   const selectedNode = useMemo(() => {
-    return allNodes.find(n => n.id === selectedNodeId) || allNodes[0]
+    return allNodes.find(n => n.id === selectedNodeId) || allNodes[0] || GRAPH_NODES[0]
   }, [selectedNodeId, allNodes])
 
   // Selected Game Data
@@ -326,15 +400,17 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
 
   // Graph Theory Centrality Metrics Calculation
   const nodeMetrics = useMemo(() => {
-    const inDegree = allEdges.filter(e => e.target === selectedNodeId).length
-    const outDegree = allEdges.filter(e => e.source === selectedNodeId).length
+    if (!selectedNode) return { inDegree: 0, outDegree: 0, totalDegree: 0, betweennessScore: 0.5, downstream: [], upstream: [] }
+
+    const inDegree = allEdges.filter(e => e.target === selectedNode.id).length
+    const outDegree = allEdges.filter(e => e.source === selectedNode.id).length
 
     // Calculate Betweenness Centrality Proxy
     const isBottleneck = selectedNode.category === 'chokepoint' || selectedNode.category === 'infrastructure'
     const betweennessScore = isBottleneck ? 0.94 : (selectedNode.category === 'flashpoint' ? 0.78 : 0.62)
 
     // Downstream Shock Path
-    const downstream = allEdges.filter(e => e.source === selectedNodeId).map(e => {
+    const downstream = allEdges.filter(e => e.source === selectedNode.id).map(e => {
       const targetNode = allNodes.find(n => n.id === e.target)
       const calculatedShock = (e.beta * shockMultiplier * 100).toFixed(1)
       return {
@@ -349,7 +425,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
     })
 
     // Upstream Cause Path
-    const upstream = allEdges.filter(e => e.target === selectedNodeId).map(e => {
+    const upstream = allEdges.filter(e => e.target === selectedNode.id).map(e => {
       const sourceNode = allNodes.find(n => n.id === e.source)
       return {
         source: sourceNode?.label || e.source,
@@ -367,12 +443,14 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
       downstream,
       upstream
     }
-  }, [selectedNodeId, shockMultiplier, selectedNode, allNodes, allEdges])
+  }, [selectedNode, shockMultiplier, allNodes, allEdges])
+
+  const svgCanvasHeight = Math.max(540, 75 + maxColumnRows * 86 + 40)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--void)' }}>
       {/* Engine Navigation Bar */}
-      <div style={{ flexShrink: 0, padding: '8px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(15,23,42,0.85)' }}>
+      <div style={{ flexShrink: 0, padding: '7px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(15,23,42,0.85)', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Share2 size={13} color="var(--accent)" />
           <span style={{ ...mono, fontSize: 13, fontWeight: 700, color: 'var(--t1)', letterSpacing: '0.05em' }}>
@@ -386,6 +464,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
         {/* View Switcher Pills */}
         <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.03)', padding: 3, borderRadius: 4, border: '1px solid var(--border)' }}>
           <button
+            type="button"
             onClick={() => setActiveView('graph')}
             style={{
               ...monoXs,
@@ -393,6 +472,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
               borderRadius: 3,
               border: 'none',
               cursor: 'pointer',
+              touchAction: 'manipulation',
               background: activeView === 'graph' ? 'var(--accent)' : 'transparent',
               color: activeView === 'graph' ? '#000' : 'var(--t3)',
               fontWeight: activeView === 'graph' ? 700 : 400,
@@ -404,6 +484,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
             <Share2 size={10} /> 1. Causal DAG Network
           </button>
           <button
+            type="button"
             onClick={() => setActiveView('gametheory')}
             style={{
               ...monoXs,
@@ -411,6 +492,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
               borderRadius: 3,
               border: 'none',
               cursor: 'pointer',
+              touchAction: 'manipulation',
               background: activeView === 'gametheory' ? '#f59e0b' : 'transparent',
               color: activeView === 'gametheory' ? '#000' : 'var(--t3)',
               fontWeight: activeView === 'gametheory' ? 700 : 400,
@@ -422,6 +504,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
             <Target size={10} /> 2. Nash Equilibrium & Payoffs
           </button>
           <button
+            type="button"
             onClick={() => setActiveView('eightlaws')}
             style={{
               ...monoXs,
@@ -429,6 +512,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
               borderRadius: 3,
               border: 'none',
               cursor: 'pointer',
+              touchAction: 'manipulation',
               background: activeView === 'eightlaws' ? '#38bdf8' : 'transparent',
               color: activeView === 'eightlaws' ? '#000' : 'var(--t3)',
               fontWeight: activeView === 'eightlaws' ? 700 : 400,
@@ -452,350 +536,434 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
             {isTablet && (
               <div style={{ display: 'flex', gap: 6, padding: '6px 12px', background: 'rgba(10,18,34,0.95)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                 <button
+                  type="button"
                   onClick={() => setTabletView('graph')}
                   style={{
                     ...monoSm,
                     flex: 1,
                     padding: '6px 10px',
                     borderRadius: 4,
-                    border: '1px solid var(--border)',
-                    background: tabletView === 'graph' ? 'var(--accent)' : 'transparent',
-                    color: tabletView === 'graph' ? '#000' : 'var(--t2)',
-                    fontWeight: 700,
+                    border: `1px solid ${tabletView === 'graph' ? 'var(--accent)' : 'var(--border)'}`,
+                    background: tabletView === 'graph' ? 'rgba(45,212,191,0.15)' : 'transparent',
+                    color: tabletView === 'graph' ? 'var(--accent)' : 'var(--t3)',
+                    cursor: 'pointer',
                     touchAction: 'manipulation',
-                    cursor: 'pointer'
+                    fontWeight: tabletView === 'graph' ? 700 : 400
                   }}
                 >
-                  📊 Network DAG Canvas
+                  Network DAG Canvas
                 </button>
                 <button
+                  type="button"
                   onClick={() => setTabletView('dossier')}
                   style={{
                     ...monoSm,
                     flex: 1,
                     padding: '6px 10px',
                     borderRadius: 4,
-                    border: '1px solid var(--border)',
-                    background: tabletView === 'dossier' ? 'var(--accent)' : 'transparent',
-                    color: tabletView === 'dossier' ? '#000' : 'var(--t2)',
-                    fontWeight: 700,
+                    border: `1px solid ${tabletView === 'dossier' ? 'var(--accent)' : 'var(--border)'}`,
+                    background: tabletView === 'dossier' ? 'rgba(45,212,191,0.15)' : 'transparent',
+                    color: tabletView === 'dossier' ? 'var(--accent)' : 'var(--t3)',
+                    cursor: 'pointer',
                     touchAction: 'manipulation',
-                    cursor: 'pointer'
+                    fontWeight: tabletView === 'dossier' ? 700 : 400
                   }}
                 >
-                  📋 Analytical Dossier ({selectedNode.label.length > 20 ? selectedNode.label.slice(0, 18) + '…' : selectedNode.label})
+                  Analytical Dossier ({selectedNode?.label?.length > 18 ? selectedNode.label.slice(0, 16) + '…' : (selectedNode?.label || '')})
                 </button>
               </div>
             )}
 
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-              {/* Left: SVG Interactive Network Graph */}
-              <div style={{ flex: 1, minWidth: 0, display: isTablet && tabletView === 'dossier' ? 'none' : 'flex', flexDirection: 'column', borderRight: isTablet ? 'none' : '1px solid var(--border)', background: '#030813', position: 'relative' }}>
-                {/* Controls bar over graph */}
-                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.4)', zIndex: 10, flexWrap: 'wrap', gap: 6 }}>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ ...monoXs, color: 'var(--t4)' }}>CLUSTER FILTER:</span>
-                    {['all', 'flashpoint', 'chokepoint', 'infrastructure', 'commodity', 'asset'].map(f => (
-                      <button
-                        key={f}
-                        onClick={() => setFilterDomain(f)}
-                        style={{
-                          ...monoXs,
-                          padding: '3px 7px',
-                          borderRadius: 2,
-                          border: 'none',
-                          cursor: 'pointer',
-                          touchAction: 'manipulation',
-                          background: filterDomain === f ? 'rgba(45,212,191,0.2)' : 'transparent',
-                          color: filterDomain === f ? 'var(--accent)' : 'var(--t4)',
-                          fontWeight: filterDomain === f ? 700 : 400
-                        }}
-                      >
-                        {f.toUpperCase()}
-                      </button>
+            {/* Strategic Geopolitical Theater Scope Toolbar */}
+            <div style={{ flexShrink: 0, padding: '6px 12px', background: 'rgba(15,23,42,0.95)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                <span style={{ ...monoXs, color: 'var(--t4)', fontWeight: 700, letterSpacing: '0.08em', marginRight: 4 }}>
+                  THEATER SCOPE:
+                </span>
+                {THEATERS.map(t => {
+                  const isSel = selectedTheater === t.id
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTheater(t.id)
+                        if (t.id === 'adaptive' && adaptiveConflicts.length === 0) {
+                          // keep safe
+                        }
+                      }}
+                      style={{
+                        ...monoXs,
+                        padding: '3px 8px',
+                        borderRadius: 3,
+                        border: `1px solid ${isSel ? 'var(--accent)' : 'rgba(255,255,255,0.08)'}`,
+                        background: isSel ? 'rgba(45,212,191,0.15)' : 'rgba(255,255,255,0.02)',
+                        color: isSel ? 'var(--accent)' : 'var(--t3)',
+                        fontWeight: isSel ? 700 : 500,
+                        cursor: 'pointer',
+                        touchAction: 'manipulation'
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  )
+                })}
+
+                {/* Adaptive Incident Dropdown (Only shown when Adaptive Theater is active) */}
+                {selectedTheater === 'adaptive' && adaptiveConflicts.length > 0 && (
+                  <select
+                    value={selectedAdaptiveIdx}
+                    onChange={e => setSelectedAdaptiveIdx(Number(e.target.value))}
+                    style={{
+                      ...monoXs,
+                      padding: '3px 8px',
+                      borderRadius: 3,
+                      background: '#0f172a',
+                      color: '#f59e0b',
+                      border: '1px solid rgba(245,158,11,0.4)',
+                      cursor: 'pointer',
+                      maxWidth: 240
+                    }}
+                  >
+                    {adaptiveConflicts.map((c, i) => (
+                      <option key={c.id || i} value={i}>
+                        {c.title ? (c.title.length > 32 ? c.title.slice(0, 30) + '…' : c.title) : `Incident #${i+1}`}
+                      </option>
                     ))}
-                  </div>
+                  </select>
+                )}
+              </div>
 
-                  {/* Shock Multiplier Slider */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>SHOCK AMPLIFIER:</span>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2.5"
-                      step="0.1"
-                      value={shockMultiplier}
-                      onChange={e => setShockMultiplier(parseFloat(e.target.value))}
-                      style={{ width: 80, accentColor: '#f59e0b', cursor: 'pointer', touchAction: 'manipulation' }}
-                    />
-                    <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 700, width: 35 }}>{shockMultiplier.toFixed(1)}x</span>
-                  </div>
-                </div>
+              {/* Shock Multiplier Slider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 600 }}>SHOCK AMPLIFIER:</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.5"
+                  step="0.1"
+                  value={shockMultiplier}
+                  onChange={e => setShockMultiplier(parseFloat(e.target.value))}
+                  style={{ width: 75, accentColor: '#f59e0b', cursor: 'pointer', touchAction: 'manipulation' }}
+                />
+                <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 700, width: 32 }}>{shockMultiplier.toFixed(1)}x</span>
+              </div>
+            </div>
 
-                {/* SVG Canvas with Horizontal Scroll on Tablet */}
-                <div style={{ flex: 1, position: 'relative', overflowX: 'auto', overflowY: 'auto' }}>
-                  <svg width={isTablet ? 1100 : '100%'} height="100%" viewBox="0 0 1000 660" style={{ display: 'block', minWidth: 800 }}>
-                    <defs>
-                      <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="rgba(239,68,68,0.7)" />
-                        <stop offset="50%" stopColor="rgba(245,158,11,0.6)" />
-                        <stop offset="100%" stopColor="rgba(34,197,94,0.7)" />
-                      </linearGradient>
-                      <marker id="arrow" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1 L 8 5 L 0 9 z" fill="rgba(45,212,191,0.7)" />
-                      </marker>
-                      <marker id="arrowActive" viewBox="0 0 10 10" refX="18" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b" />
-                      </marker>
-                    </defs>
+            {/* Split View Container: Left SVG Canvas, Right Analytical Dossier */}
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+              {/* Left: SVG Canvas with Smooth Touch Scrolling */}
+              <div style={{ flex: 1, position: 'relative', overflowX: 'auto', overflowY: 'auto', display: isTablet && tabletView === 'dossier' ? 'none' : 'block' }}>
+                <svg
+                  width={isTablet ? 1060 : '100%'}
+                  height={svgCanvasHeight}
+                  viewBox={`0 0 1060 ${svgCanvasHeight}`}
+                  style={{ display: 'block', minWidth: 880 }}
+                >
+                  <defs>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill="rgba(45,212,191,0.6)" />
+                    </marker>
+                    <marker id="arrowActive" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 1 L 9 5 L 0 9 z" fill="#f59e0b" />
+                    </marker>
+                  </defs>
 
-                    {/* Column Background Dividers */}
-                    {[
-                      { label: 'KINETIC FLASHPOINTS', x: 80 },
-                      { label: 'MARITIME CHOKEPOINTS', x: 280 },
-                      { label: 'CRITICAL INFRASTRUCTURE', x: 480 },
-                      { label: 'COMMODITY SHOCKS', x: 680 },
-                      { label: 'EQUITY & ALPHA BASKETS', x: 890 }
-                    ].map((col, i) => (
-                      <g key={i}>
-                        <line x1={col.x} y1={25} x2={col.x} y2={640} stroke="rgba(255,255,255,0.03)" strokeWidth={1} strokeDasharray="3,3" />
-                        <text x={col.x} y={18} fill="rgba(255,255,255,0.25)" fontSize={8} fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="bold">
-                          {col.label}
-                        </text>
-                      </g>
-                    ))}
+                  {/* Column Background Guide Lines */}
+                  {COLUMNS.map((col, i) => (
+                    <g key={i}>
+                      <line x1={col.x} y1={25} x2={col.x} y2={svgCanvasHeight - 15} stroke="rgba(255,255,255,0.03)" strokeWidth={1} strokeDasharray="3,3" />
+                      <text x={col.x} y={18} fill="rgba(255,255,255,0.3)" fontSize={8} fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="bold">
+                        {col.label}
+                      </text>
+                    </g>
+                  ))}
 
-                    {/* Directed Edges */}
-                    {allEdges.map((edge, idx) => {
-                      const s = allNodes.find(n => n.id === edge.source)
-                      const t = allNodes.find(n => n.id === edge.target)
-                      if (!s || !t) return null
+                  {/* Directed Cubic Bezier Edges */}
+                  {allEdges.map((edge, idx) => {
+                    const s = allNodes.find(n => n.id === edge.source)
+                    const t = allNodes.find(n => n.id === edge.target)
+                    if (!s || !t) return null
 
-                      const isConnected = edge.source === selectedNodeId || edge.target === selectedNodeId
-                      const strokeColor = isConnected ? '#f59e0b' : 'rgba(45,212,191,0.25)'
-                      const strokeWidth = isConnected ? 2.2 : 1.0
-                      const strokeOpacity = isConnected ? 0.95 : (filterDomain === 'all' ? 0.4 : 0.15)
+                    const isConnected = edge.source === selectedNodeId || edge.target === selectedNodeId
+                    const strokeColor = isConnected ? '#f59e0b' : 'rgba(45,212,191,0.22)'
+                    const strokeWidth = isConnected ? 2.2 : 1.1
+                    const strokeOpacity = isConnected ? 0.95 : (filterCategory === 'all' ? 0.4 : 0.12)
 
-                      // Cubic bezier curve for smooth causal flow
-                      const dx = t.x - s.x
-                      const pathD = `M ${s.x} ${s.y} C ${s.x + dx * 0.4} ${s.y}, ${t.x - dx * 0.4} ${t.y}, ${t.x} ${t.y}`
+                    // Connect from right port of source card (s.x + 80) to left port of target card (t.x - 80)
+                    const sPortX = s.x + 80
+                    const sPortY = s.y
+                    const tPortX = t.x - 80
+                    const tPortY = t.y
+                    const dx = tPortX - sPortX
+                    const pathD = `M ${sPortX} ${sPortY} C ${sPortX + dx * 0.45} ${sPortY}, ${tPortX - dx * 0.45} ${tPortY}, ${tPortX} ${tPortY}`
 
-                      return (
-                        <g key={idx}>
-                          <path
-                            d={pathD}
-                            fill="none"
-                            stroke={strokeColor}
-                            strokeWidth={strokeWidth}
-                            strokeOpacity={strokeOpacity}
-                            markerEnd={isConnected ? 'url(#arrowActive)' : 'url(#arrow)'}
-                          />
-                          {isConnected && (
-                            <text
-                              x={(s.x + t.x) / 2}
-                              y={(s.y + t.y) / 2 - 4}
-                              fill="#f59e0b"
-                              fontSize={8}
-                              fontFamily="JetBrains Mono"
-                              textAnchor="middle"
-                              fontWeight="bold"
-                            >
-                              β={edge.beta} ({edge.label})
+                    const midX = (sPortX + tPortX) / 2
+                    const midY = (sPortY + tPortY) / 2
+
+                    return (
+                      <g key={idx}>
+                        <path
+                          d={pathD}
+                          fill="none"
+                          stroke={strokeColor}
+                          strokeWidth={strokeWidth}
+                          strokeOpacity={strokeOpacity}
+                          markerEnd={isConnected ? 'url(#arrowActive)' : 'url(#arrow)'}
+                        />
+                        {/* Centered Transmission Pill */}
+                        {isConnected && (
+                          <g transform={`translate(${midX}, ${midY})`}>
+                            <rect x={-42} y={-9} width={84} height={17} rx={3} fill="#091426" stroke="#f59e0b" strokeWidth={1} />
+                            <text x={0} y={3} fill="#f59e0b" fontSize={7.5} fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="bold">
+                              β={edge.beta} ({edge.label.length > 12 ? edge.label.slice(0, 11) + '…' : edge.label})
                             </text>
-                          )}
-                        </g>
-                      )
-                    })}
+                          </g>
+                        )}
+                      </g>
+                    )
+                  })}
 
-                    {/* Graph Nodes */}
-                    {allNodes.map(node => {
-                      const isSelected = node.id === selectedNodeId
-                      const isVisible = filterDomain === 'all' || node.category === filterDomain
-                      const opacity = isVisible ? 1.0 : 0.2
+                  {/* Bounded Tactical Node Cards (Zero Overlap Guaranteed) */}
+                  {allNodes.map(node => {
+                    const isSelected = node.id === selectedNodeId
+                    const isConnected = allEdges.some(e =>
+                      (e.source === selectedNodeId && e.target === node.id) ||
+                      (e.target === selectedNodeId && e.source === node.id)
+                    )
+                    const isHighlighted = isSelected || isConnected
+                    const opacity = (filterCategory === 'all' || node.category === filterCategory)
+                      ? (isHighlighted ? 1.0 : (selectedNodeId ? 0.35 : 1.0))
+                      : 0.12
 
-                      return (
-                        <g
-                          key={node.id}
-                          transform={`translate(${node.x}, ${node.y})`}
-                          onClick={() => {
-                            setSelectedNodeId(node.id)
-                            if (isTablet) setTabletView('dossier')
+                    const colBadge = node.category.toUpperCase()
+                    const displayTitle = node.label.length > 20 ? node.label.slice(0, 19) + '…' : node.label
+                    const displayMetric = node.metric || (node.score ? `Score: ${node.score}/100` : '')
+
+                    return (
+                      <g
+                        key={node.id}
+                        transform={`translate(${node.x}, ${node.y})`}
+                        onClick={() => {
+                          setSelectedNodeId(node.id)
+                          if (isTablet) setTabletView('dossier')
+                        }}
+                        style={{ cursor: 'pointer', transition: 'opacity 0.2s ease', opacity, touchAction: 'manipulation' }}
+                      >
+                        {/* Expanded touch target for iPad (56px x 170px) */}
+                        <rect x={-85} y={-26} width={170} height={52} fill="transparent" />
+
+                        {/* Card Container Box */}
+                        <rect
+                          x={-80}
+                          y={-23}
+                          width={160}
+                          height={46}
+                          rx={4}
+                          fill="#091426"
+                          stroke={isSelected ? '#f59e0b' : (isHighlighted ? node.color : 'rgba(255,255,255,0.12)')}
+                          strokeWidth={isSelected ? 2.0 : 1.1}
+                          style={{
+                            filter: isSelected ? 'drop-shadow(0 0 6px rgba(245,158,11,0.45))' : 'none'
                           }}
-                          style={{ cursor: 'pointer', transition: 'all 0.2s ease', opacity, touchAction: 'manipulation' }}
+                        />
+
+                        {/* Category Tag Header Line */}
+                        <rect
+                          x={-74}
+                          y={-18}
+                          width={colBadge.length * 5.2 + 8}
+                          height={10}
+                          rx={2}
+                          fill={`${node.color}25`}
+                        />
+                        <text
+                          x={-70}
+                          y={-10}
+                          fill={node.color}
+                          fontSize={7}
+                          fontWeight="bold"
+                          fontFamily="JetBrains Mono"
                         >
-                          {/* Invisible expanded touch hitbox for iPad */}
-                          <circle r={28} fill="transparent" />
+                          {colBadge}
+                        </text>
 
-                          {/* Glow halo if selected */}
-                          {isSelected && (
-                            <circle r={22} fill="none" stroke="var(--accent)" strokeWidth={1.5} opacity={0.8}>
-                              <animate attributeName="r" values="18;24;18" dur="2s" repeatCount="indefinite" />
-                              <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" />
-                            </circle>
-                          )}
+                        {/* Score Tag on Far Right */}
+                        <text
+                          x={72}
+                          y={-10}
+                          fill="var(--t4)"
+                          fontSize={7.5}
+                          fontWeight="bold"
+                          fontFamily="JetBrains Mono"
+                          textAnchor="end"
+                        >
+                          {node.score ? `${node.score}` : ''}
+                        </text>
 
-                          {/* Node circle */}
-                          <circle
-                            r={isSelected ? 16 : 12}
-                            fill="#091426"
-                            stroke={isSelected ? 'var(--accent)' : node.color}
-                            strokeWidth={isSelected ? 2.5 : 1.5}
-                          />
+                        {/* Main Title Line */}
+                        <text
+                          x={-74}
+                          y={4}
+                          fill={isSelected ? '#f59e0b' : '#f8fafc'}
+                          fontSize={9.2}
+                          fontWeight="bold"
+                          fontFamily="JetBrains Mono"
+                        >
+                          {displayTitle}
+                        </text>
 
-                          {/* Node Center Dot */}
-                          <circle
-                            r={isSelected ? 5 : 3.5}
-                            fill={isSelected ? 'var(--accent)' : node.color}
-                          />
+                        {/* Subtitle / Metric Line */}
+                        <text
+                          x={-74}
+                          y={15}
+                          fill="var(--t3)"
+                          fontSize={7.8}
+                          fontFamily="JetBrains Mono"
+                        >
+                          {displayMetric}
+                        </text>
 
-                          {/* Node Label */}
-                          <text
-                            x={0}
-                            y={isSelected ? 26 : 22}
-                            fill={isSelected ? 'var(--accent)' : 'var(--t1)'}
-                            fontSize={isSelected ? 9.5 : 8.5}
-                            fontWeight={isSelected ? 700 : 500}
-                            fontFamily="JetBrains Mono"
-                            textAnchor="middle"
-                          >
-                            {node.label}
-                          </text>
-                        </g>
-                      )
-                    })}
-                  </svg>
-                </div>
+                        {/* Left Input Port */}
+                        <circle cx={-80} cy={0} r={3} fill="#091426" stroke={node.color} strokeWidth={1.5} />
+
+                        {/* Right Output Port */}
+                        <circle cx={80} cy={0} r={3} fill="#091426" stroke={node.color} strokeWidth={1.5} />
+                      </g>
+                    )
+                  })}
+                </svg>
 
                 {/* Legend bar */}
                 <div style={{ padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 14, ...monoXs, color: 'var(--t4)', background: 'rgba(0,0,0,0.5)', overflowX: 'auto' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} /> Kinetic Flashpoint</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f97316' }} /> Maritime Chokepoint</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38bdf8' }} /> Critical Infrastructure</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} /> Commodity Benchmark</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} /> Equity Alpha Basket</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#ef4444' }} /> Kinetic Flashpoint</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#f97316' }} /> Maritime Chokepoint</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#38bdf8' }} /> Critical Infrastructure</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#f59e0b' }} /> Commodity Benchmark</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#22c55e' }} /> Equity Alpha Basket</span>
                 </div>
               </div>
 
               {/* Right: Graph Theory Analytics & Downstream Shock Cascade */}
-              <div style={{ width: isTablet ? '100%' : 380, flexShrink: 0, overflowY: 'auto', padding: '14px', background: 'rgba(10,18,34,0.6)', display: isTablet && tabletView === 'graph' ? 'none' : 'block' }}>
-              {/* Selected Node Header */}
-              <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>{selectedNode.domain.toUpperCase()}</span>
-                  <span style={{ ...monoXs, padding: '1px 6px', borderRadius: 2, background: `${selectedNode.color}25`, color: selectedNode.color, fontWeight: 700 }}>
-                    {selectedNode.severity} {selectedNode.score}/100
-                  </span>
-                </div>
-                <h3 style={{ ...mono, fontSize: 15, fontWeight: 700, color: 'var(--t1)', margin: 0 }}>
-                  {selectedNode.label}
-                </h3>
-                <div style={{ ...monoSm, color: 'var(--t3)', marginTop: 4, lineHeight: 1.4 }}>
-                  {selectedNode.desc}
-                </div>
-              </div>
-
-              {/* Graph Theory Centrality Metrics */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ ...monoXs, color: 'var(--t4)', marginBottom: 6, fontWeight: 600 }}>
-                  GRAPH THEORY CENTRALITY METRICS
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                  <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4 }}>
-                    <div style={{ ...monoXs, color: 'var(--t4)' }}>DEGREE C_D</div>
-                    <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)', marginTop: 2 }}>
-                      {nodeMetrics.totalDegree} (In:{nodeMetrics.inDegree} Out:{nodeMetrics.outDegree})
-                    </div>
+              <div style={{ width: isTablet ? '100%' : 380, flexShrink: 0, overflowY: 'auto', padding: '14px', background: 'rgba(10,18,34,0.6)', borderLeft: '1px solid var(--border)', display: isTablet && tabletView === 'graph' ? 'none' : 'block' }}>
+                {/* Selected Node Header */}
+                <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>{selectedNode.domain?.toUpperCase() || 'NODE'}</span>
+                    <span style={{ ...monoXs, padding: '1px 6px', borderRadius: 2, background: `${selectedNode.color}25`, color: selectedNode.color, fontWeight: 700 }}>
+                      {selectedNode.severity} {selectedNode.score}/100
+                    </span>
                   </div>
-                  <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4 }}>
-                    <div style={{ ...monoXs, color: 'var(--t4)' }}>BETWEENNESS C_B</div>
-                    <div style={{ ...monoSm, fontWeight: 700, color: '#f59e0b', marginTop: 2 }}>
-                      {nodeMetrics.betweennessScore.toFixed(2)} / 1.00
-                    </div>
+                  <h3 style={{ ...mono, fontSize: 15, fontWeight: 700, color: 'var(--t1)', margin: 0 }}>
+                    {selectedNode.label}
+                  </h3>
+                  <div style={{ ...monoSm, color: 'var(--t3)', marginTop: 4, lineHeight: 1.4 }}>
+                    {selectedNode.desc}
                   </div>
-                  <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4 }}>
-                    <div style={{ ...monoXs, color: 'var(--t4)' }}>TOPOLOGY RISK</div>
-                    <div style={{ ...monoSm, fontWeight: 700, color: nodeMetrics.betweennessScore > 0.8 ? '#ef4444' : '#3b82f6', marginTop: 2 }}>
-                      {nodeMetrics.betweennessScore > 0.8 ? 'SYSTEMIC' : 'ISOLATED'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Downstream Shock Propagation Cascade */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ ...monoXs, color: '#4ade80', fontWeight: 700 }}>
-                    DOWNSTREAM SHOCK CASCADE (CAUSAL IMPACT)
-                  </span>
-                  <span style={{ ...monoXs, color: 'var(--t4)' }}>{nodeMetrics.downstream.length} Transmissions</span>
                 </div>
 
-                {nodeMetrics.downstream.length === 0 ? (
-                  <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: 4, ...monoXs, color: 'var(--t4)', textAlign: 'center' }}>
-                    End-node / Terminal portfolio expression. Zero outbound transmission edges.
+                {/* Graph Theory Centrality Metrics */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ ...monoXs, color: 'var(--t4)', marginBottom: 6, fontWeight: 600 }}>
+                    GRAPH THEORY CENTRALITY METRICS
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {nodeMetrics.downstream.map((ds, i) => (
-                      <div key={i} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 4 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ ...monoSm, fontWeight: 600, color: 'var(--t1)' }}>{ds.target}</span>
-                          <span style={{ ...monoSm, fontWeight: 700, color: ds.color }}>{ds.shockPct}</span>
-                        </div>
-                        <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 2 }}>
-                          {ds.label} · β={ds.beta} · Delay: +{ds.delayDays}d
-                        </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                    <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4 }}>
+                      <div style={{ ...monoXs, color: 'var(--t4)' }}>DEGREE C_D</div>
+                      <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)', marginTop: 2 }}>
+                        {nodeMetrics.totalDegree} (In:{nodeMetrics.inDegree} Out:{nodeMetrics.outDegree})
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Upstream Root Cause Vectors */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ ...monoXs, color: '#38bdf8', marginBottom: 6, fontWeight: 700 }}>
-                  UPSTREAM CAUSAL DRIVERS (INBOUND VECTORS)
-                </div>
-                {nodeMetrics.upstream.length === 0 ? (
-                  <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: 4, ...monoXs, color: 'var(--t4)', textAlign: 'center' }}>
-                    Root kinetic trigger. Zero upstream inbound dependencies.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {nodeMetrics.upstream.map((us, i) => (
-                      <div key={i} style={{ padding: '6px 10px', background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 4 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ ...monoSm, color: 'var(--t2)' }}>{us.source}</span>
-                          <span style={{ ...monoXs, color: 'var(--accent)', fontWeight: 600 }}>β={us.beta}</span>
-                        </div>
-                        <div style={{ ...monoXs, color: 'var(--t4)', marginTop: 2 }}>{us.label}</div>
+                    </div>
+                    <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4 }}>
+                      <div style={{ ...monoXs, color: 'var(--t4)' }}>BETWEENNESS C_B</div>
+                      <div style={{ ...monoSm, fontWeight: 700, color: '#f59e0b', marginTop: 2 }}>
+                        {nodeMetrics.betweennessScore.toFixed(2)} / 1.00
                       </div>
-                    ))}
+                    </div>
+                    <div style={{ padding: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 4 }}>
+                      <div style={{ ...monoXs, color: 'var(--t4)' }}>TOPOLOGY RISK</div>
+                      <div style={{ ...monoSm, fontWeight: 700, color: nodeMetrics.betweennessScore > 0.8 ? '#ef4444' : '#3b82f6', marginTop: 2 }}>
+                        {nodeMetrics.betweennessScore > 0.8 ? 'SYSTEMIC' : 'ISOLATED'}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Strategic Directive & Evidence Ledger */}
-              <div style={{ padding: '10px', background: 'rgba(45,212,191,0.05)', border: '1px solid rgba(45,212,191,0.25)', borderRadius: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, ...monoXs, color: 'var(--accent)', fontWeight: 700, marginBottom: 4 }}>
-                  <Shield size={12} /> ACTIONABLE NETWORK HEDGE DIRECTIVE
                 </div>
-                <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>
-                  Topological analysis identifies node betweenness critical path. In the downside case where transmission coefficient β deteriorates by 30%, portfolio Long/Short barbell maintains a Sharpe ratio &gt; 1.85, satisfying hurdle rate. Recommendation holds.
+
+                {/* Downstream Shock Propagation Cascade */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ ...monoXs, color: '#4ade80', fontWeight: 700 }}>
+                      DOWNSTREAM SHOCK CASCADE (CAUSAL IMPACT)
+                    </span>
+                    <span style={{ ...monoXs, color: 'var(--t4)' }}>{nodeMetrics.downstream.length} Transmissions</span>
+                  </div>
+
+                  {nodeMetrics.downstream.length === 0 ? (
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: 4, ...monoXs, color: 'var(--t4)', textAlign: 'center' }}>
+                      End-node / Terminal portfolio expression. Zero outbound transmission edges.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {nodeMetrics.downstream.map((ds, i) => (
+                        <div key={i} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ ...monoSm, fontWeight: 600, color: 'var(--t1)' }}>{ds.target}</span>
+                            <span style={{ ...monoSm, fontWeight: 700, color: ds.color }}>{ds.shockPct}</span>
+                          </div>
+                          <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 2 }}>
+                            {ds.label} · β={ds.beta} · Delay: +{ds.delayDays}d
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Upstream Root Cause Vectors */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ ...monoXs, color: '#38bdf8', marginBottom: 6, fontWeight: 700 }}>
+                    UPSTREAM CAUSAL DRIVERS (INBOUND VECTORS)
+                  </div>
+                  {nodeMetrics.upstream.length === 0 ? (
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: 4, ...monoXs, color: 'var(--t4)', textAlign: 'center' }}>
+                      Root-cause genesis node. Zero inbound upstream dependencies.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {nodeMetrics.upstream.map((us, i) => (
+                        <div key={i} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 4 }}>
+                          <div style={{ ...monoSm, fontWeight: 600, color: 'var(--t1)' }}>{us.source}</div>
+                          <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 2 }}>
+                            {us.label} · β={us.beta}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actionable Network Directive */}
+                <div style={{ padding: '10px', background: 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.25)', borderRadius: 4 }}>
+                  <div style={{ ...monoXs, color: 'var(--accent)', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Activity size={12} /> ACTIONABLE NETWORK HEDGE DIRECTIVE
+                  </div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.45 }}>
+                    Topological analysis identifies node betweenness bottlenecks directly transmitting beta across the causal path. In the downside case where transmission coefficient deteriorates by 30%, portfolio Long/Short basket expected Sharpe ratio remains &gt; 1.85, satisfying hurdle rate. Recommendation holds.
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-        {/* ── 2. GAME THEORY PAYOFF MATRICES & NASH EQUILIBRIUM ──────────────── */}
+        {/* ── 2. N-PERSON NON-ZERO-SUM GAME THEORY PAYOFF LAB ──────────────── */}
         {activeView === 'gametheory' && (
           <div style={{ height: '100%', overflowY: 'auto', padding: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            {/* Header & Scenario Selector */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
               <div>
                 <h2 style={{ ...mono, fontSize: 16, fontWeight: 700, color: 'var(--t1)', margin: 0 }}>
-                  N-PERSON NON-ZERO-SUM GAME THEORY ENGINE & PARETO-NASH EQUILIBRIA
+                  N-PERSON NON-ZERO-SUM GAME THEORY PAYOFF MATRICES
                 </h2>
                 <div style={{ ...monoSm, color: 'var(--t3)', marginTop: 4 }}>
                   Mathematical modeling of multi-stakeholder strategic payoffs where <strong>unilateral defection is provably sub-optimal (ΔU &lt; 0)</strong>.
@@ -807,6 +975,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
                 {GAME_THEORY_SCENARIOS.map(g => (
                   <button
                     key={g.id}
+                    type="button"
                     onClick={() => setSelectedGameId(g.id)}
                     style={{
                       ...monoXs,
@@ -816,7 +985,8 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
                       background: g.id === selectedGameId ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.02)',
                       color: g.id === selectedGameId ? '#f59e0b' : 'var(--t3)',
                       fontWeight: g.id === selectedGameId ? 700 : 400,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      touchAction: 'manipulation'
                     }}
                   >
                     {g.title.split(' ')[0]} {g.title.split(' ')[1]}
@@ -875,7 +1045,7 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
                         <div style={{ display: 'flex', gap: 6 }}>
                           {pm.isNash && (
                             <span style={{ ...monoXs, padding: '2px 8px', borderRadius: 3, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', fontWeight: 700, border: '1px solid #f59e0b' }}>
-                              ⚡ UNIQUE STRICT NASH EQUILIBRIUM (S*)
+                              UNIQUE STRICT NASH EQUILIBRIUM (S*)
                             </span>
                           )}
                           {pm.isPareto && (
@@ -955,7 +1125,11 @@ export default function GraphAndGameTheoryEngine({ adaptiveConflicts = [] }) {
             </div>
           </div>
         )}
+
       </div>
     </div>
   )
 }
+
+const GraphAndGameTheoryEngine = React.memo(GraphAndGameTheoryEngineComponent)
+export default GraphAndGameTheoryEngine
