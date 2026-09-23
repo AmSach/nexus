@@ -10,6 +10,7 @@ import { useGraphRAG } from '../../hooks/useGraphRAG'
 import { useSwarmIntelligence } from '../../hooks/useSwarmIntelligence'
 import { useGeoRiskAlgorithms } from '../../hooks/useGeoRiskAlgorithms'
 import { useStore } from '../../store'
+import { resolveGroqKey } from '../../utils/groqConfig'
 import { useSignalConvergenceV4 } from '../../hooks/useSignalConvergenceV4'
 import { useLiveAlerts } from '../../hooks/useLiveAlerts'
 import { useKalshi } from '../../hooks/useKalshi'
@@ -185,7 +186,7 @@ export default function VoxSimulator({articles}){
   const{quotes,analytics,fx}=useFinanceIntel()
   const[selectedQ,setSelectedQ]=useState(null)
   const { keys } = useStore()
-  const groqKey = import.meta.env.VITE_GROQ_KEY || keys?.groq || ''
+  const groqKey = resolveGroqKey(keys)
 
   const convergenceZones=useSignalConvergenceV4({
     articles:articles||[],satData,liveAlerts:alerts||[],tgRecent:[],
@@ -235,11 +236,11 @@ export default function VoxSimulator({articles}){
 
   // Auto-build graph when articles load (debounced by cache)
   React.useEffect(() => {
-    if (articles?.length >= 5 && keys?.groq) {
+    if (articles?.length >= 5 && groqKey) {
       const topQ = [...(poly||[]),...(kalshi||[])].sort((a,b)=>(b.volume||0)-(a.volume||0))[0]
       rag.buildGraph(articles, topQ?.question || topQ?.title || '')
     }
-  }, [articles?.length, keys?.groq]) // eslint-disable-line
+  }, [articles?.length, groqKey]) // eslint-disable-line
 
   const sim=useVoxSimulation({
     convergenceZones,liveAlerts:alerts||[],articles:articles||[],markets,
@@ -899,7 +900,7 @@ export default function VoxSimulator({articles}){
 
               {!rag.graph && !rag.building && (
                 <div style={{...mono7,color:'var(--t4)',padding:'8px 0',textAlign:'center'}}>
-                  {keys?.groq ? 'Waiting for articles to load…' : 'Add Groq key in Settings to enable swarm intelligence.'}
+                  {groqKey ? 'Waiting for articles to load…' : 'Add Groq / Grok key in Settings to enable swarm intelligence.'}
                 </div>
               )}
             </Section>

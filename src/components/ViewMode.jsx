@@ -24,6 +24,7 @@ import { useEmbeddings, CLUSTER_LABELS } from '../hooks/useEmbeddings'
 import { useIntelBriefing } from '../hooks/useIntelBriefing'
 import { setEmbeddingDelta } from '../hooks/useVoxSimulation'
 import { useSupabaseData } from '../hooks/useSupabase'
+import { resolveGroqKey } from '../utils/groqConfig'
 
 const S = { critical:'#ef4444', high:'#f97316', medium:'#eab308', low:'#2dd4bf' }
 const ICONS = {
@@ -547,7 +548,7 @@ export default function ViewMode({ articles = [] }) {
     convergence,
     clusteredArticles,
     acplStats: acpl.stats,
-    groqKey: _keys?.groq || '',
+    groqKey: resolveGroqKey(_keys),
     enabled: true,
   })
 

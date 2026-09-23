@@ -39,8 +39,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 const GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions'
-const LLM_MODEL = 'llama-3.1-8b-instant'   // fast + free tier — 8B is fine for classification
-const LLM_MODEL_M7 = 'llama-3.3-70b-versatile'  // 70B for actual probability estimation
+const LLM_MODEL = 'qwen/qwen3.8-27b'      // Qwen 3.8 27B fast inference
+const LLM_MODEL_M7 = 'qwen/qwen3.8-27b'   // Qwen 3.8 27B probability estimation
 
 const CACHE_KEY_CLASS   = 'nexus-vox-llm-class-v1'
 const CACHE_KEY_REL     = 'nexus-vox-llm-rel-v1'
@@ -68,7 +68,7 @@ function cacheSet(store, id, value) {
 
 // ── Groq fetch (non-streaming, JSON mode) ─────────────────────────────────────
 async function groqJSON(apiKey, systemPrompt, userPrompt, maxTokens = 300) {
-  const models = [LLM_MODEL, 'llama3-8b-8192', 'gemma2-9b-it']
+  const models = [LLM_MODEL, 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant']
   for (const model of models) {
     try {
       const r = await fetch(GROQ_URL, {
@@ -86,6 +86,7 @@ async function groqJSON(apiKey, systemPrompt, userPrompt, maxTokens = 300) {
         }),
         signal: AbortSignal.timeout(15000),
       })
+      if (r.status === 404) continue
       if (r.status === 429) { await new Promise(res => setTimeout(res, 2000)); continue }
       if (!r.ok) continue
       const d = await r.json()
@@ -97,7 +98,7 @@ async function groqJSON(apiKey, systemPrompt, userPrompt, maxTokens = 300) {
 }
 
 async function groqJSONHeavy(apiKey, systemPrompt, userPrompt, maxTokens = 200) {
-  const models = [LLM_MODEL_M7, 'llama-3.1-70b-versatile', LLM_MODEL]
+  const models = [LLM_MODEL_M7, 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile']
   for (const model of models) {
     try {
       const r = await fetch(GROQ_URL, {

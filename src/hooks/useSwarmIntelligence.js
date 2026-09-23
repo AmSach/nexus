@@ -19,9 +19,9 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useStore } from '../store'
+import { resolveGroqKey, GROQ_URL, PRIMARY_MODEL, GROQ_MODELS } from '../utils/groqConfig'
 
-const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions'
-const FAST_MODEL  = 'llama-3.1-8b-instant'
+const FAST_MODEL  = PRIMARY_MODEL
 const CACHE_KEY   = 'nexus-swarm-v2'
 const CACHE_TTL   = 15 * 60 * 1000
 
@@ -243,7 +243,7 @@ export function useSwarmIntelligence() {
     relSignal   = null,
   }) => {
     if (!archetypes?.length || !question) return null
-    const groqKey = keys?.groq
+    const groqKey = resolveGroqKey(keys)
 
     // Check summary cache
     const cache = cacheRead(CACHE_KEY)
@@ -272,26 +272,30 @@ export function useSwarmIntelligence() {
       // ── LLM Summarizer: 1 call, reads swarm output, writes summary ──────────
       let summary = null
       if (groqKey) {
-        try {
-          const r = await fetch(GROQ_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-            body: JSON.stringify({
-              model: FAST_MODEL,
-              messages: [
-                { role: 'system', content: 'You are an intelligence analyst. Be precise, brief, and reference the swarm data directly. 3-4 sentences max.' },
-                { role: 'user', content: SUMMARIZER_PROMPT(question, swarm, archetypes, graphEvents) },
-              ],
-              max_tokens: 280,
-              temperature: 0.2,
-              stream: false,
-            }),
-          })
-          if (r.ok) {
-            const d = await r.json()
-            summary = d.choices?.[0]?.message?.content?.trim() || null
-          }
-        } catch {}
+        for (const model of GROQ_MODELS) {
+          try {
+            const r = await fetch(GROQ_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+              body: JSON.stringify({
+                model,
+                messages: [
+                  { role: 'system', content: 'You are an intelligence analyst. Be precise, brief, and reference the swarm data directly. 3-4 sentences max.' },
+                  { role: 'user', content: SUMMARIZER_PROMPT(question, swarm, archetypes, graphEvents) },
+                ],
+                max_tokens: 350,
+                temperature: 0.2,
+                stream: false,
+              }),
+            })
+            if (r.status === 404) continue
+            if (r.ok) {
+              const d = await r.json()
+              summary = d.choices?.[0]?.message?.content?.trim() || null
+              if (summary) break
+            }
+          } catch {}
+        }
       }
 
       if (!summary) {

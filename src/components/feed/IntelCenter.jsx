@@ -739,7 +739,7 @@ function SituationPanel({ sit, articles, allArticles, onNotes }) {
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:sys },{ role:'user', content:user }], max_tokens: 4000, temperature: 0.1, stream: true }),
+        body: JSON.stringify({ model: 'qwen/qwen3.8-27b', messages: [{ role:'system', content:sys },{ role:'user', content:user }], max_tokens: 4000, temperature: 0.1, stream: true }),
       })
       if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message||`Groq ${r.status}`) }
       const reader = r.body.getReader(); const dec = new TextDecoder(); let full = ''

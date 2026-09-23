@@ -14,6 +14,7 @@
 import { useState, useCallback } from 'react'
 import { cacheRead, cacheWrite } from '../utils/cache'
 import { useStore } from '../store'
+import { resolveGroqKey, GROQ_MODELS } from '../utils/groqConfig'
 
 // Direct fetch for CORS-enabled APIs only
 async function directJSON(url, ms = 12000) {
@@ -186,7 +187,7 @@ async function synthesizeGroq(name, data, groqKey) {
   if(!sections.length) return null
 
   if (!groqKey || groqKey.trim().length < 10) return null
-  const _MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']
+  const _MODELS = GROQ_MODELS
   for (const _m of _MODELS) {
     try {
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -254,7 +255,7 @@ export function useEntityIntel() {
     if (!entityName?.trim()) return
     setLoading(true); setError(null); setResult(null); setSrcStatus({})
     const name    = entityName.trim()
-    const groqKey = keys.groq
+    const groqKey = resolveGroqKey(keys)
     const status  = {}
     const track   = (key, val) => { status[key]=val!=null&&(!Array.isArray(val)||val.length>0); setSrcStatus({...status}) }
 

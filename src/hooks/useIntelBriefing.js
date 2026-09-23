@@ -15,9 +15,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { GROQ_URL, PRIMARY_MODEL, GROQ_MODELS } from '../utils/groqConfig'
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL    = 'llama-3.3-70b-versatile'
+const MODEL    = PRIMARY_MODEL
 const MAX_CTX  = 100_000   // tokens to fill (model supports 128k)
 const MAX_OUT  = 4_096     // output tokens
 
@@ -237,25 +237,37 @@ FORMAT:
 [What data would change this assessment]`
 
     try {
-      const r = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-        signal: abortRef.current.signal,
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user',   content: userPrompt },
-          ],
-          max_tokens: MAX_OUT,
-          temperature: 0.15,
-          stream: true,
-        }),
-      })
+      let r = null
+      let lastErr = null
+      for (const m of GROQ_MODELS) {
+        try {
+          r = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+            signal: abortRef.current.signal,
+            body: JSON.stringify({
+              model: m,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user',   content: userPrompt },
+              ],
+              max_tokens: MAX_OUT,
+              temperature: 0.15,
+              stream: true,
+            }),
+          })
+          if (r.status === 404) continue
+          if (r.ok) break
+          const err = await r.json().catch(() => ({}))
+          lastErr = new Error(err.error?.message || `Groq ${r.status}`)
+        } catch (e) {
+          if (e.name === 'AbortError') throw e
+          lastErr = e
+        }
+      }
 
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}))
-        throw new Error(err.error?.message || `Groq ${r.status}`)
+      if (!r || !r.ok) {
+        throw lastErr || new Error('All Groq models failed')
       }
 
       const reader = r.body.getReader()

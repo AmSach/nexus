@@ -5,6 +5,7 @@
 // Source: /public/data/sdn_full.json (parsed from SDN_ENHANCED.XML)
 
 import { OFAC_SEED } from './sanctions_seed'
+import { GROQ_MODELS, GROQ_URL } from '../utils/groqConfig'
 
 function seedToEntries() {
   return (OFAC_SEED || []).map((row, i) => ({
@@ -252,35 +253,37 @@ Rules:
 - Be conservative: DIFFERENT unless there's clear evidence of connection.
 ONLY output the JSON array, nothing else.`
 
-  try {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 800,
-        temperature: 0.1,
-      }),
-      signal: AbortSignal.timeout(20000),
-    })
-    if (!r.ok) return []
-    const d = await r.json()
-    const text = d.choices?.[0]?.message?.content || ''
-    const clean = text.replace(/```json|```/g, '').trim()
-    const s = clean.indexOf('['), e = clean.lastIndexOf(']')
-    if (s === -1 || e === -1) return []
-    const parsed = JSON.parse(clean.slice(s, e + 1))
+  for (const model of GROQ_MODELS) {
+    try {
+      const r = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 800,
+          temperature: 0.1,
+        }),
+        signal: AbortSignal.timeout(20000),
+      })
+      if (r.status === 404) continue
+      if (!r.ok) continue
+      const d = await r.json()
+      const text = d.choices?.[0]?.message?.content || ''
+      const clean = text.replace(/```json|```/g, '').trim()
+      const s = clean.indexOf('['), e = clean.lastIndexOf(']')
+      if (s === -1 || e === -1) continue
+      const parsed = JSON.parse(clean.slice(s, e + 1))
 
-    // Map back to candidate IDs
-    return parsed.map(p => ({
-      id: toResolve[p.index - 1]?.id,
-      name: toResolve[p.index - 1]?.name,
-      verdict: p.verdict,
-      confidence: p.confidence,
-      reason: p.reason,
-    })).filter(r => r.id)
-  } catch {
-    return []
+      // Map back to candidate IDs
+      return parsed.map(p => ({
+        id: toResolve[p.index - 1]?.id,
+        name: toResolve[p.index - 1]?.name,
+        verdict: p.verdict,
+        confidence: p.confidence,
+        reason: p.reason,
+      })).filter(r => r.id)
+    } catch {}
   }
+  return []
 }

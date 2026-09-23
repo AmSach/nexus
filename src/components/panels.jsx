@@ -625,7 +625,7 @@ export function SettingsPanel() {
   }
 
   const FIELDS = [
-    { k:'groq',          label:'Groq API Key',          hint:'console.groq.com · FREE · AI briefings + entity resolution', ph:'gsk_…', url:'https://console.groq.com', group:'AI' },
+    { k:'groq',          label:'Groq / Grok API Key (Qwen 3.8)', hint:'console.groq.com · FREE · Powers Qwen 3.8 27B for Entity Graphs, RAG & Briefings (Keys start with gsk_)', ph:'gsk_…', url:'https://console.groq.com', group:'AI' },
     { k:'newsapi',       label:'NewsAPI Key',            hint:'newsapi.org · FREE · news search',                          ph:'abc…',  url:'https://newsapi.org',       group:'NEWS' },
     { k:'gnews',         label:'GNews Key',              hint:'gnews.io · FREE · global breaking news',                    ph:'abc…',  url:'https://gnews.io',          group:'NEWS' },
     { k:'newsdata',      label:'NewsData.io Key',        hint:'newsdata.io · FREE 200/day · full article content',         ph:'pub_…', url:'https://newsdata.io',       group:'NEWS' },

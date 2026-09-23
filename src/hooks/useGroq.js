@@ -1,14 +1,10 @@
 import { useState, useCallback } from 'react'
 import { useStore } from '../store'
-
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+import { resolveGroqKey, GROQ_URL, GROQ_MODELS, PRIMARY_MODEL } from '../utils/groqConfig'
 
 // Model fallback chain — tries each in order until one succeeds
-const MODELS = [
-  'llama-3.3-70b-versatile',        // Primary: best quality, 128K context
-  'llama-3.1-8b-instant',           // Fallback 1: fast 8B
-]
-const MODEL = MODELS[0]  // keep for backward compat
+const MODELS = GROQ_MODELS
+const MODEL = PRIMARY_MODEL
 
 // 128K context window — send everything. 8192 max output tokens.
 const SYS = `You are a senior intelligence analyst. Non-negotiable rules:
@@ -90,8 +86,8 @@ export function useGroq() {
   const { keys } = useStore()
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
-  const hasKey = !!(import.meta.env.VITE_GROQ_KEY || keys.groq)
-  const resolvedKey = import.meta.env.VITE_GROQ_KEY || keys.groq || ''
+  const resolvedKey = resolveGroqKey(keys)
+  const hasKey = !!resolvedKey
 
   const ask = useCallback(async (sys, prompt, onToken, maxTok) => {
     if (!resolvedKey) { setError('Add Groq key in Settings.'); return null }

@@ -22,7 +22,8 @@ export const useStore = create(
       // VITE_GROQ_KEY, VITE_NEWSAPI_KEY, VITE_GNEWS_KEY,
       // VITE_ALPHAVANTAGE_KEY, VITE_EXCHANGERATE_KEY, VITE_TWELVEDATA_KEY
       keys: {
-        groq:        '',
+        groq:        import.meta.env.VITE_GROQ_KEY || '',
+        grok:        import.meta.env.VITE_GROQ_KEY || '',
         newsapi:     '',
         gnews:       '',
         alphavantage:'',
@@ -64,7 +65,13 @@ export const useStore = create(
         dehashed_key:    '',
         wigle_key:       '',
       },
-      setKey: (k, v) => set(s => ({ keys: { ...s.keys, [k]: v } })),
+      setKey: (k, v) => set(s => ({
+        keys: {
+          ...s.keys,
+          [k]: v,
+          ...(k === 'groq' || k === 'grok' ? { groq: v, grok: v } : {})
+        }
+      })),
 
       // Saved articles
       saved: [],

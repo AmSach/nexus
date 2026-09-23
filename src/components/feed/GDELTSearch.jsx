@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
-const GROQ_MODELS_GDELT = ['llama-3.3-70b-versatile','llama-3.1-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it','llama3-70b-8192','llama3-8b-8192']
+const GROQ_MODELS_GDELT = ['qwen/qwen3.8-27b','openai/gpt-oss-120b','openai/gpt-oss-20b','allam-2-7b','llama-3.3-70b-versatile','llama-3.1-8b-instant']
 
 async function groqFetch(key, body) {
   let lastErr = null

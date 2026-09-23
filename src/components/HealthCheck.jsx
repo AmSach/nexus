@@ -159,13 +159,15 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'groq') {
-      const k = keys?.groq
-      if (!k) return { status:'info', detail:'No Groq key in Settings → add at console.groq.com (free)', ms:ms() }
+      const k = (keys?.groq || keys?.grok || import.meta.env.VITE_GROQ_KEY || '').trim()
+      if (!k) return { status:'info', detail:'No Groq / Grok key in Settings → add at console.groq.com (free)', ms:ms() }
       const r = await fetch('https://api.groq.com/openai/v1/models', { headers:{ 'Authorization':'Bearer '+k }, signal: AbortSignal.timeout(8000) })
       if (!r.ok) return { status:'error', detail:'HTTP '+r.status+' — check Groq key', ms:ms() }
       const d = await r.json()
-      const models = (d?.data||[]).map(m=>m.id).filter(id=>id.includes('llama')||id.includes('mixtral')).slice(0,2)
-      return { status:'ok', detail:'Groq online · '+models.join(', '), ms:ms() }
+      const allIds = (d?.data||[]).map(m=>m.id)
+      const hasQwen = allIds.some(id => id.includes('qwen'))
+      const models = allIds.filter(id=>id.includes('qwen')||id.includes('gpt-oss')||id.includes('llama')).slice(0,3)
+      return { status:'ok', detail:`Groq online ${hasQwen ? '(Qwen 3.8 active)' : ''} · `+models.join(', '), ms:ms() }
     }
 
     if (id === 'telegram') {
@@ -773,7 +775,7 @@ function CheckRow({ check, result, onRun }) {
   const clr = CLR[result?.status || 'pending']
   const icn = ICN[result?.status || 'pending']
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'5px 10px', borderBottom:'1px solid var(--border)' }}>
+    <div data-check-id={check.id} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'5px 10px', borderBottom:'1px solid var(--border)' }}>
       <span style={{ fontSize:'11px', minWidth:'14px', textAlign:'center' }}>{icn}</span>
       <span style={{ flex:1, fontSize:'10px', color:'var(--t2)', fontFamily:'Inter,sans-serif' }}>{check.name}</span>
       <span style={{ fontSize:'9px', color: clr, fontFamily:'JetBrains Mono,monospace', flex:1.5 }}>

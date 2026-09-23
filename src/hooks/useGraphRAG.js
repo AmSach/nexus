@@ -16,13 +16,12 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useStore } from '../store'
+import { resolveGroqKey, GROQ_URL, GROQ_MODELS, PRIMARY_MODEL } from '../utils/groqConfig'
 
-const GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions'
-const FAST_MODEL = 'llama-3.1-8b-instant'   // 30 RPM, good enough for extraction
 const CACHE_KEY  = 'nexus-graphrag-v2'
 const CACHE_TTL  = 20 * 60 * 1000  // 20 min
 const BATCH_SIZE = 4               // articles per Groq call
-const DELAY_MS   = 2500            // ms between batches
+const DELAY_MS   = 2000            // ms between batches
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -42,34 +41,56 @@ function cacheWrite(key, data) {
 }
 
 async function groqJSON(key, prompt, retries = 2) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const r = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-        body: JSON.stringify({
-          model: FAST_MODEL,
-          messages: [
-            { role: 'system', content: 'You are a knowledge graph extraction engine. Always respond ONLY with valid JSON. No markdown, no explanation, no preamble.' },
-            { role: 'user',   content: prompt },
-          ],
-          max_tokens:  1200,
-          temperature: 0.0,
-          stream:      false,
-        }),
-      })
-      if (r.status === 429) {
-        await sleep(6000 * (attempt + 1))  // back off on rate limit
-        continue
+  if (!key) return null
+  const models = GROQ_MODELS
+
+  for (const model of models) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const r = await fetch(GROQ_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: 'You are a knowledge graph extraction engine. Always respond ONLY with valid JSON. No markdown, no explanation, no preamble.' },
+              { role: 'user',   content: prompt },
+            ],
+            max_tokens:  1400,
+            temperature: 0.0,
+            stream:      false,
+          }),
+        })
+
+        // Model not supported on this endpoint/key — immediately move to next model
+        if (r.status === 404) {
+          break
+        }
+        if (r.status === 429) {
+          await sleep(5000 * (attempt + 1))  // back off on rate limit
+          continue
+        }
+        if (!r.ok) {
+          if (attempt === retries) break
+          await sleep(1500)
+          continue
+        }
+
+        const d = await r.json()
+        const text = d.choices?.[0]?.message?.content || ''
+        const cleaned = text.replace(/```json|```/g, '').trim()
+        
+        // Extract JSON substring if surrounded by chatter
+        const firstBrace = cleaned.indexOf('{')
+        const lastBrace  = cleaned.lastIndexOf('}')
+        if (firstBrace !== -1 && lastBrace !== -1) {
+          return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1))
+        }
+        return JSON.parse(cleaned)
+      } catch (e) {
+        if (attempt === retries) break
+        await sleep(1500)
       }
-      if (!r.ok) throw new Error(`Groq ${r.status}`)
-      const d = await r.json()
-      const text = d.choices?.[0]?.message?.content || ''
-      const cleaned = text.replace(/```json|```/g, '').trim()
-      return JSON.parse(cleaned)
-    } catch (e) {
-      if (attempt === retries) return null
-      await sleep(3000)
     }
   }
   return null
@@ -180,7 +201,7 @@ export function useGraphRAG() {
   const abortRef = useRef(false)
 
   const buildGraph = useCallback(async (articles, question = '') => {
-    const groqKey = keys?.groq
+    const groqKey = resolveGroqKey(keys)
     if (!groqKey || !articles?.length) return
 
     // Check cache — use article fingerprint to detect staleness
