@@ -1,6 +1,6 @@
 /**
  * historicalBenchmarks.js
- * Empirical Historical Calibration Engine Dataset for NEXUS Palantir-Grade Intelligence
+ * Empirical Historical Calibration Engine Dataset for NEXUS Enterprise Intelligence
  * Anchors the econometric and causal DAG engine against verified ground truth historical facts.
  * Isolates T_0 (Known Pre-Event Data) from T_1 (Derived Output) and benchmarks vs Verified Historical Facts.
  */

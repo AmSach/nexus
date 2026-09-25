@@ -1,7 +1,7 @@
 /**
  * useSignalConvergenceV4 — Cross-source convergence scoring
  * 
- * The core Palantir insight: a single signal is noise.
+ * The core intelligence insight: a single signal is noise.
  * The same signal confirmed by 3+ INDEPENDENT sources = actionable intelligence.
  * 
  * This computes:
@@ -10,8 +10,7 @@
  * 3. Temporal clustering (all signals in same 6h window = higher weight)
  * 4. Escalation detection (score rising over consecutive intervals)
  * 
- * Formula inspired by Dempster-Shafer evidence theory (what Palantir's
- * TITAN system used) but simplified to pure JavaScript.
+ * Formula inspired by Dempster-Shafer evidence theory simplified to pure JavaScript.
  */
 import { useMemo, useRef } from 'react'
 

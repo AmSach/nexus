@@ -816,7 +816,7 @@ export default function ViewMode({ articles = [] }) {
         </div>
       </div>
 
-      {/* ── NEXUS Convergence — 4-panel Palantir-style unified view ── */}
+      {/* ── NEXUS Convergence — 4-panel unified tactical view ── */}
       <div style={{ flex:1, overflow:'hidden', display:'flex', gap:0 }}>
 
         {/* PANEL LEFT (33%) — Event stream: conflict + intel + news auto-scroll */}

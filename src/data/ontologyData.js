@@ -1,6 +1,6 @@
 /**
  * ontologyData.js
- * Typed Semantic Ontology Objects for NEXUS Palantir-Grade Operational Intelligence
+ * Typed Semantic Ontology Objects for NEXUS Operational Intelligence
  * Defines physical vessels, facilities, chokepoints, corporate UBO networks, and critical supply chain BOM nodes.
  */
 

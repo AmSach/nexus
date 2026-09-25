@@ -1,13 +1,11 @@
 /**
- * usePatternOfLife — Gotham-style behavioral baseline + deviation detection
+ * usePatternOfLife — Advanced behavioral baseline + deviation detection
  * 
  * For each situation zone, maintains a rolling 7-day signal frequency baseline.
  * Alerts when current signal rate deviates >2σ from baseline.
- * This is pure statistics — no AI, no LLM, deterministic.
+ * This is pure statistics — deterministic econometric signal modeling.
  * 
- * Palantir Gotham's core: "Pattern of Life" analysis was fundamentally
- * this math applied to human movement + communication metadata.
- * We apply it to open-source signal streams.
+ * Pattern of Life analysis applied to open-source signal streams.
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { cacheRead, cacheWrite } from '../utils/cache'

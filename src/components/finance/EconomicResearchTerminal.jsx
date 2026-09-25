@@ -357,9 +357,9 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
               gap: 4,
               fontWeight: 700
             }}
-            title="Launch Palantir Dynamic Ontology & Execution Workbench"
+            title="Launch Dynamic Ontology & Operational Execution Desk"
           >
-            <Layers size={10} /> Palantir Ops
+            <Layers size={10} /> Ontology & Ops
           </button>
         </div>
       </div>

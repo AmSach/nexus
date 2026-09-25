@@ -16,7 +16,7 @@ import ViewMode from './components/ViewMode'
 import HealthCheck from './components/HealthCheck'
 import CIIDashboard from './components/feed/CIIDashboard'
 import VoxSimulator from './components/feed/VoxSimulator'
-import PalantirWorkbench from './components/ontology/PalantirWorkbench'
+import OntologyWorkbench from './components/ontology/OntologyWorkbench'
 
 class ErrBound extends React.Component {
   constructor(p) { super(p); this.state = { err: null } }
@@ -41,7 +41,7 @@ export default function App() {
       const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
       if (h && ['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox', 'ontology'].includes(h)) {
         setTab(h)
-      } else if (h && ['palantir', 'ops', 'benchmark', 'calibration'].includes(h)) {
+      } else if (h && ['ops', 'benchmark', 'calibration'].includes(h)) {
         setTab('ontology')
       } else if (h && ['econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) {
         setTab('finnews')
@@ -120,7 +120,7 @@ export default function App() {
             )}
             {visited.has('ontology') && (
               <div style={{ display: tab==='ontology' ? 'contents' : 'none' }}>
-                <ErrBound><PalantirWorkbench onBackToTerminal={() => setTab('finnews')} /></ErrBound>
+                <ErrBound><OntologyWorkbench onBackToTerminal={() => setTab('finnews')} /></ErrBound>
               </div>
             )}
 

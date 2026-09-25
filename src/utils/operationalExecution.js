@@ -1,6 +1,6 @@
 /**
  * operationalExecution.js
- * Decision Writeback & Action Engine for NEXUS Palantir-Grade Platform
+ * Decision Writeback & Action Engine for NEXUS Enterprise Platform
  * Generates institutional FIX/OMS order tickets, Supply Chain ERP purchase orders, and Lloyd's War Risk slips.
  */
 

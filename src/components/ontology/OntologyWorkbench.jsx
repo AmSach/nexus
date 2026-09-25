@@ -1,5 +1,5 @@
 /**
- * PalantirWorkbench.jsx
+ * OntologyWorkbench.jsx
  * Institutional Operations & Dynamic Semantic Ontology Workbench
  * Features:
  *  1. Dynamic Semantic Ontology & State Machine (Vessels, Infrastructure, UBO corporate trees)
@@ -49,7 +49,7 @@ const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
 const monoXs = { fontFamily: 'JetBrains Mono', fontSize: 9 }
 
-export default function PalantirWorkbench({ onBackToTerminal }) {
+export default function OntologyWorkbench({ onBackToTerminal }) {
   const [activeSubView, setActiveSubView] = useState('calibration') // 'ontology' | 'calibration' | 'telemetry' | 'execution'
   const [engineState, setEngineState] = useState(() => ontologyEngine.getOperationalSummary())
   const [selectedVesselId, setSelectedVesselId] = useState('ves_front_altair')
@@ -123,7 +123,7 @@ export default function PalantirWorkbench({ onBackToTerminal }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--void)', color: 'var(--t1)', overflow: 'hidden' }}>
-      {/* Top Palantir Header */}
+      {/* Top Operations Header */}
       <div style={{ flexShrink: 0, padding: '10px 16px', background: 'var(--base)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -132,9 +132,9 @@ export default function PalantirWorkbench({ onBackToTerminal }) {
             </div>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>NEXUS PALANTIR-GRADE WORKBENCH</span>
+                <span>NEXUS DYNAMIC ONTOLOGY & OPERATIONS DESK</span>
                 <span className="chip" style={{ background: 'rgba(45,212,191,0.15)', color: 'var(--accent)', border: '1px solid var(--accent)', fontSize: '9px', padding: '1px 6px' }}>
-                  AIP & GOTHAM OPERATIONAL TIER
+                  OPERATIONAL & TACTICAL INTELLIGENCE TIER
                 </span>
               </div>
               <div style={{ fontSize: '10px', color: 'var(--t3)', display: 'flex', alignItems: 'center', gap: '8px' }}>

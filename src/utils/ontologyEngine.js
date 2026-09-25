@@ -1,6 +1,6 @@
 /**
  * ontologyEngine.js
- * Stateful Semantic Ontology Engine & State Machine for NEXUS Palantir-Grade Intelligence
+ * Stateful Semantic Ontology Engine & State Machine for NEXUS Enterprise Intelligence
  * Manages object lifecycles, threat interdiction state machines, and real-time operational cascades.
  */
 

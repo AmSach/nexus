@@ -2,14 +2,14 @@
  * useIntelAlgorithms — Advanced intelligence math
  * 
  * Implements algorithms inspired by:
- * - Palantir Gotham: link analysis, entity scoring, temporal clustering
- * - Palantir Foundry: ontology-aware entity resolution
+ * - Enterprise Link Analysis: link analysis, entity scoring, temporal clustering
+ * - Dynamic Ontology: ontology-aware entity resolution
  * - DARPA XDATA: anomaly detection at scale
  * - NSA MARINA: metadata pattern analysis (applied to open data)
  * 
  * Algorithms:
  * 1. CUSUM (CUmulative SUM) — sequential change detection
- *    Classic control theory algorithm, used by Palantir for detecting when
+ *    Classic control theory algorithm for detecting when
  *    a situation is changing from baseline. No false positives from single spikes.
  * 
  * 2. Bayesian Evidence Network — multi-source probability combination
@@ -97,7 +97,7 @@ export function poissonClusterTest(timestamps, baselineRatePerHour) {
 // distance 1 (direct link) = 1.0 × weight
 // distance 2 (friend of friend) = 0.5 × weight
 // distance 3 = 0.25 × weight, etc.
-// This is the core algorithm behind Palantir Gotham's "guilt by association" scoring.
+// This is the core algorithm behind graph-theoretic association scoring.
 export function entityLinkScore(entityId, graph, threatActors, maxDepth = 4) {
   const visited = new Map()
   const queue = [{ id: entityId, depth: 0, weight: 1.0, path: [entityId] }]
@@ -157,7 +157,7 @@ export function narrativeVelocity(articles, windowHours = 6) {
 // ── 6. Geographic Influence Mapping ────────────────────────────────────────
 // For a set of events, compute geographic influence zones using kernel density.
 // Gives heat map weights without needing a tile server.
-// Used by Palantir Foundry for "hot zone" identification.
+// Used for hot-zone identification across geographic regions.
 export function kernelDensityEstimate(points, bandwidth = 200) {
   // Simplified: for each point, compute influence on a grid
   // Returns top hotspots with density scores

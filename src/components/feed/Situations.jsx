@@ -1359,7 +1359,7 @@ function SignalRow({ article, expanded, onToggle }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INTEL DASHBOARD — Palantir-style breakdown panels
+// INTEL DASHBOARD — Institutional breakdown panels
 // ─────────────────────────────────────────────────────────────────────────────
 function IntelDashboard({ entities, tags, regions, sources, vel, sev, threatColor }) {
   const totalSigs = sev.critical + sev.high + sev.medium + sev.low
