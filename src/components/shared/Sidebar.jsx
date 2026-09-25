@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useStore } from '../../store'
 import { CATEGORIES, REGIONS } from '../../data/constants'
-import { Activity, Rss, GitBranch, DollarSign, Bookmark, Settings, AlertTriangle, Map, Search, Tv2, Cpu } from 'lucide-react'
+import { Activity, Rss, GitBranch, DollarSign, Bookmark, Settings, AlertTriangle, Map, Search, Tv2, Cpu, Layers } from 'lucide-react'
 
 const TABS = [
   { id: 'feed',       label: 'Feed',       Icon: Rss          },
@@ -10,6 +10,7 @@ const TABS = [
   { id: 'board',      label: 'Board',      Icon: GitBranch    },
   { id: 'map',        label: 'Map',        Icon: Map          },
   { id: 'finnews',    label: 'Finance & Alpha', Icon: DollarSign },
+  { id: 'ontology',   label: 'Ontology & Ops', Icon: Layers   },
   { id: 'vox',        label: 'VOX Sim',    Icon: Cpu          },
   { id: 'saved',      label: 'Saved',      Icon: Bookmark     },
   { id: 'health',     label: 'Health',     Icon: Activity     },

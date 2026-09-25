@@ -16,6 +16,7 @@ import ViewMode from './components/ViewMode'
 import HealthCheck from './components/HealthCheck'
 import CIIDashboard from './components/feed/CIIDashboard'
 import VoxSimulator from './components/feed/VoxSimulator'
+import PalantirWorkbench from './components/ontology/PalantirWorkbench'
 
 class ErrBound extends React.Component {
   constructor(p) { super(p); this.state = { err: null } }
@@ -34,12 +35,14 @@ class ErrBound extends React.Component {
 export default function App() {
   const { tab, setTab, collapsed } = useStore()
 
-  // Hash-based deep linking (e.g. #map, #board, #health, #vox)
+  // Hash-based deep linking (e.g. #map, #board, #health, #vox, #ontology)
   React.useEffect(() => {
     const syncFromHash = () => {
       const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
-      if (h && ['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox'].includes(h)) {
+      if (h && ['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox', 'ontology'].includes(h)) {
         setTab(h)
+      } else if (h && ['palantir', 'ops', 'benchmark', 'calibration'].includes(h)) {
+        setTab('ontology')
       } else if (h && ['econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) {
         setTab('finnews')
       }
@@ -114,6 +117,11 @@ export default function App() {
             )}
             {visited.has('health') && (
               <div style={{ display: tab==='health' ? 'contents' : 'none' }}><ErrBound><HealthCheck /></ErrBound></div>
+            )}
+            {visited.has('ontology') && (
+              <div style={{ display: tab==='ontology' ? 'contents' : 'none' }}>
+                <ErrBound><PalantirWorkbench onBackToTerminal={() => setTab('finnews')} /></ErrBound>
+              </div>
             )}
 
             {/* Ultra-heavy compute tabs: unmounted immediately when leaving tab to free 100% CPU/GPU */}

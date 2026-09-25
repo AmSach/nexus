@@ -339,6 +339,28 @@ ${selectedScenario.recommendedHedges.map(h => `  * ${h}`).join('\n')}
           >
             <FileText size={10} /> Export Memo
           </button>
+
+          <button
+            onClick={() => { window.location.hash = 'ontology' }}
+            style={{
+              ...monoXs,
+              minHeight: 28,
+              touchAction: 'manipulation',
+              padding: '3px 9px',
+              borderRadius: 3,
+              border: '1px solid var(--accent)',
+              background: 'rgba(45,212,191,0.15)',
+              color: 'var(--accent)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontWeight: 700
+            }}
+            title="Launch Palantir Dynamic Ontology & Execution Workbench"
+          >
+            <Layers size={10} /> Palantir Ops
+          </button>
         </div>
       </div>
 
