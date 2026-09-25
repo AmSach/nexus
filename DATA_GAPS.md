@@ -1,7 +1,7 @@
-# NEXUS DATA GAPS vs PALANTIR GOTHAM
+# NEXUS DATA GAPS vs INSTITUTIONAL C2 PLATFORMS
 # What we need, why, volume, and how to get it
 
-## WHAT PALANTIR HAS THAT WE DON'T
+## WHAT INSTITUTIONAL PLATFORMS HAVE THAT WE DON'T
 
 ### TIER 1 — Critical Gaps (kills forecasting accuracy)
 

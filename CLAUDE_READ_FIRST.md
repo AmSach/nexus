@@ -9,7 +9,7 @@ WHAT THIS IS
 Open-source OSINT platform aggregating 200+ free data sources into a
 terminal-style dashboard with a 3D globe, live intelligence feeds,
 prediction markets, entity graph, and statistical forecasting engine.
-Built to compete with Palantir Gotham/Foundry using only public APIs.
+Built as an elite institutional-grade decision intelligence engine using only public APIs.
 
 Stack: React 18 + Vite + Zustand + Three.js | Deployed: Vercel Hobby
 Owner: communicates directly, tests in production, wants zero regressions.
@@ -96,7 +96,7 @@ Data is never lost on tab switch.
   Feed          → LiveFeed.jsx + LiveFeedSidebar.jsx
                   Columns: SIGNAL / ALERTS / TELEGRAM / MARKETS
                   GDELT Search embedded.
-  Monitor       → ViewMode.jsx — 4-panel Palantir-style convergence:
+  Monitor       → ViewMode.jsx — 4-panel unified convergence:
                   LEFT: Intel stream (tabbed: all/conflict/disaster/signal/movement/finance/news/telegram)
                   CENTER-LEFT: Telegram live (51 channels, 2-min refresh)
                   CENTER-RIGHT: Satellite imagery + FCI + convergence alerts
@@ -213,7 +213,7 @@ Advanced Algorithms (useIntelAlgorithms.js)
     Handles correlated sources (2 newspapers ≠ 2 independent signals).
   Poisson Clustering: detects coordinated timing (p < 0.05 = coordinated).
   Entity Link Scoring: BFS graph proximity to threat actors with decay.
-    This is Palantir Gotham's "guilt by association" core.
+    This is institutional graph-theoretic association scoring.
   Narrative Velocity: exponential topic growth = influence operation signal.
   Kernel Density Estimation: geographic hotzones without tile server.
 
