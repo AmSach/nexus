@@ -35,7 +35,8 @@ import {
   Database,
   ArrowRight,
   Zap,
-  Globe
+  Globe,
+  Terminal
 } from 'lucide-react'
 import { ontologyEngine } from '../../utils/ontologyEngine'
 import { HISTORICAL_BENCHMARKS } from '../../data/historicalBenchmarks'
@@ -44,6 +45,7 @@ import {
   generateSupplyChainInterventionPO,
   calculateWarRiskUnderwritingQuote
 } from '../../utils/operationalExecution'
+import LongContextLogChat from './LongContextLogChat'
 
 const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
@@ -225,7 +227,8 @@ export default function OntologyWorkbench({ onBackToTerminal }) {
           { id: 'calibration', label: '1. Empirical Fact Calibration (Backtest)', Icon: CheckCircle, highlight: true },
           { id: 'ontology', label: '2. Dynamic Ontology & State Machine', Icon: Database },
           { id: 'telemetry', label: '3. Hard Telemetry & AIS Operations', Icon: Radio },
-          { id: 'execution', label: '4. Decision Writeback & Execution', Icon: Target }
+          { id: 'execution', label: '4. Decision Writeback & Execution', Icon: Target },
+          { id: 'logchat', label: '5. Long-Context Log Interrogation (Qwen 3.8)', Icon: Terminal, highlight: true }
         ].map(tab => {
           const active = activeSubView === tab.id
           const Icon = tab.Icon
@@ -973,6 +976,13 @@ export default function OntologyWorkbench({ onBackToTerminal }) {
               <span>{copiedText === 'lloyds' ? 'BINDING SLIP COPIED TO CLIPBOARD' : 'GENERATE & BIND LLOYD\'S WAR RISK POLICY SLIP'}</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* SUB-VIEW 5: LONG-CONTEXT LOG & INTEL INTERROGATION (QWEN 3.8 / GROQ LPU) */}
+      {activeSubView === 'logchat' && (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <LongContextLogChat />
         </div>
       )}
     </div>
