@@ -21,7 +21,7 @@ import {
   Layers,
   AlertCircle
 } from 'lucide-react'
-import { resolveGroqKey, PRIMARY_MODEL, GROQ_URL } from '../../utils/groqConfig'
+import { resolveGroqKey, PRIMARY_MODEL, GROQ_MODELS, GROQ_URL } from '../../utils/groqConfig'
 import { useStore } from '../../store'
 
 const DEFAULT_LOG_CONTEXT = `[CLASSIFIED // REL TO NATO/ALLIES // EYES ONLY]
@@ -214,7 +214,7 @@ export default function LongContextLogChat() {
       const apiPayload = [
         {
           role: 'system',
-          content: `You are NEXUS-LEAD, an elite senior maritime intelligence analyst and sanctions forensic investigator. Answer with rigorous precision, citing specific timestamps, records, coordinates, amounts, and entities from the provided operational log.\n\n=== CLASSIFIED LOG DOSSIER ===\n${logText}`
+          content: `You are NEXUS-LEAD, an elite senior maritime intelligence analyst and sanctions forensic investigator.\n- When answering formal operational inquiries, answer with rigorous precision citing specific timestamps, records, coordinates, and financial figures from the log.\n- When the operator asks a conversational or high-level question (e.g. asking to explain in easy/plain terms or asking what this is), answer plainly and conversationally in simple language first without bureaucratic jargon, explaining what the incident log and the dashboard represent.\n\n=== CLASSIFIED LOG DOSSIER ===\n${logText}`
         },
         ...updatedMessages
           .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -222,29 +222,56 @@ export default function LongContextLogChat() {
           .map(m => ({ role: m.role, content: m.content }))
       ]
 
-      const response = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: PRIMARY_MODEL,
-          messages: apiPayload,
-          temperature: 0.1,
-          max_tokens: 450
-        })
-      })
+      let finalData = null
+      let usedModel = PRIMARY_MODEL
+      let lastErr = null
 
-      const data = await response.json()
-      const latency = Date.now() - startTime
+      // Resilient fallback chain across GROQ_MODELS (Qwen 3.8 -> GPT-OSS 20B -> GPT-OSS 120B -> Allam)
+      for (const candidateModel of GROQ_MODELS) {
+        try {
+          const response = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: candidateModel,
+              messages: apiPayload,
+              temperature: 0.15,
+              max_tokens: 350
+            })
+          })
 
-      if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status}`)
+          const data = await response.json()
+          if (response.ok && data.choices?.[0]?.message?.content) {
+            finalData = data
+            usedModel = candidateModel
+            break
+          }
+
+          const errMsg = data.error?.message || `HTTP ${response.status}`
+          console.warn(`[Groq Fallback] ${candidateModel} failed (${errMsg}). Trying next model in chain...`)
+          lastErr = new Error(errMsg)
+          await new Promise(r => setTimeout(r, 300))
+        } catch (mErr) {
+          lastErr = mErr
+        }
       }
 
-      const answer = data.choices?.[0]?.message?.content || 'No response generated.'
-      const usage = data.usage || {}
+      if (!finalData) {
+        let cleanErr = lastErr?.message || 'Rate limit reached across all models.'
+        const waitMatch = cleanErr.match(/Please try again in ([0-9.]+)s/i)
+        if (waitMatch) {
+          const secs = Math.ceil(parseFloat(waitMatch[1]))
+          cleanErr = `Token quota temporarily throttled by API tier. Please wait ~${secs}s for bucket reset and try again.`
+        }
+        throw new Error(cleanErr)
+      }
+
+      const latency = Date.now() - startTime
+      const answer = finalData.choices?.[0]?.message?.content || 'No response generated.'
+      const usage = finalData.usage || {}
 
       setMessages(prev => [
         ...prev,
@@ -252,7 +279,8 @@ export default function LongContextLogChat() {
           role: 'assistant',
           content: answer,
           meta: {
-            model: PRIMARY_MODEL,
+            model: usedModel,
+            isFallback: usedModel !== PRIMARY_MODEL,
             latencyMs: latency,
             tokensIn: usage.prompt_tokens || 0,
             tokensOut: usage.completion_tokens || 0,
@@ -464,6 +492,33 @@ export default function LongContextLogChat() {
                       </button>
                     </div>
                   )}
+
+                  {!isUser && msg.meta && msg.meta.isError && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        onClick={() => {
+                          const lastUser = [...messages].reverse().find(m => m.role === 'user')
+                          if (lastUser) handleSubmit(lastUser.content)
+                        }}
+                        style={{
+                          background: 'rgba(45,212,191,0.15)',
+                          border: '1px solid var(--accent)',
+                          color: 'var(--accent)',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <RotateCcw size={11} />
+                        <span>Retry Query</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -473,13 +528,6 @@ export default function LongContextLogChat() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontSize: '11px', fontFamily: 'JetBrains Mono', padding: '10px' }}>
               <Sparkles size={14} className="animate-spin" />
               <span>Interrogating operational log with Qwen 3.8 on Groq LPU...</span>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontSize: '11px' }}>
-              <AlertCircle size={14} />
-              <span>{error}</span>
             </div>
           )}
 
