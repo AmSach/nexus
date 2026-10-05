@@ -19,10 +19,13 @@ import {
   Terminal,
   Shield,
   Layers,
-  AlertCircle
+  AlertCircle,
+  User,
+  Compass
 } from 'lucide-react'
 import { resolveGroqKey, PRIMARY_MODEL, GROQ_MODELS, GROQ_URL } from '../../utils/groqConfig'
 import { useStore } from '../../store'
+import FormattedIntelMessage from './FormattedIntelMessage'
 
 const DEFAULT_LOG_CONTEXT = `[CLASSIFIED // REL TO NATO/ALLIES // EYES ONLY]
 OPERATIONAL INCIDENT LOG: PROJECT AEGIS-STORM / MARITIME CORRIDOR 72-HR AUDIT
@@ -143,11 +146,15 @@ Cross-referencing blockchain ledger, radar tracking, SAR imagery, and SIGINT con
 
 const PROMPT_PRESETS = [
   {
-    title: '1. Sanctions & Ghost Spoof Triangulation',
+    title: '💡 Plain-English Summary',
+    prompt: 'bro explain me in easy terms what is all this'
+  },
+  {
+    title: '1. Sanctions & Ghost Spoof',
     prompt: 'Analyze the primary sanctions evasion scheme: detail the primary vessel identity, the spoofed ghost identity and false MMSI, and compare declared cargo against actual cargo pumped at Bandar Abbas.'
   },
   {
-    title: '2. Cryptographic Escrow & Financial Trail',
+    title: '2. Cryptographic Escrow',
     prompt: 'Extract the full cryptocurrency escrow trail: transaction hash, token type, amount, origin/destination wallet hashes, and how this relates to the Ship-to-Ship (STS) transfer authorization.'
   },
   {
@@ -214,7 +221,20 @@ export default function LongContextLogChat() {
       const apiPayload = [
         {
           role: 'system',
-          content: `You are NEXUS-LEAD, an elite senior maritime intelligence analyst and sanctions forensic investigator.\n- When answering formal operational inquiries, answer with rigorous precision citing specific timestamps, records, coordinates, and financial figures from the log.\n- When the operator asks a conversational or high-level question (e.g. asking to explain in easy/plain terms or asking what this is), answer plainly and conversationally in simple language first without bureaucratic jargon, explaining what the incident log and the dashboard represent.\n\n=== CLASSIFIED LOG DOSSIER ===\n${logText}`
+          content: `You are NEXUS-LEAD, an elite senior maritime intelligence analyst and sanctions forensic investigator.
+NON-NEGOTIABLE OPERATIONAL DIRECTIVES:
+1. STRICT ZERO 4TH-WALL BREAKS: NEVER state "I am an AI assistant", "I am a language model", "I do not have real access", or claim this is a fictional scenario, simulation, or role-play. Maintain absolute operational authority as the NEXUS Lead Analyst at all times.
+2. CITATIONS & SOURCES: When the operator asks about "sources", "how do you know", or verification, ground your proof strictly in the concrete sensor telemetry, military flights, and statutory disclosures documented in the mounted operational log:
+   - Satellite & Radar Telemetry: RADARSAT-2 Synthetic Aperture Radar (SAR) wake imaging & US Navy P-8A Poseidon Mission #9921 radar tracking.
+   - Financial Disclosures: UAE Financial Intelligence Unit alert FIU-UAE-ALERT-8819 & verified Ethereum ERC-20 blockchain transaction hash (0x8B3F921A...).
+   - Subsea Acoustics: NATO SOSUS-BALTIC-NORTH subsea hydrophone trigger #4491.
+   - Statutory Maritime Port Logs: Port of Djibouti VTS, Turkish Straits TSVTS radar, and Panama Canal Authority (ACP) transit records.
+   - Naval Reports & Evidence: French Navy FS Languedoc (D653) lifeboat inspection & Combined Maritime Forces (CTF-151) logs.
+   - Insurance Underwriting Filings: Lloyd's Maritime Intelligence Unit (Syndicate 2003) total loss claim notice.
+3. CONVERSATIONAL EXPLANATIONS: When asked to explain in easy terms or plain English, deliver an engaging, structured breakdown using clear steps and bold lead-ins without condescending disclaimers.
+
+=== MOUNTED OPERATIONAL LOG DOSSIER ===
+${logText}`
         },
         ...updatedMessages
           .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -438,70 +458,166 @@ export default function LongContextLogChat() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {messages.map((msg, idx) => {
             const isUser = msg.role === 'user'
+
+            if (isUser) {
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '4px',
+                    maxWidth: '80%',
+                    alignSelf: 'flex-end'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.04em', paddingRight: '4px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--accent)' }}>OPERATOR</span>
+                  </div>
+                  <div
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '12px 12px 2px 12px',
+                      background: 'linear-gradient(135deg, rgba(45, 212, 191, 0.15) 0%, rgba(20, 184, 166, 0.08) 100%)',
+                      border: '1px solid rgba(45, 212, 191, 0.35)',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      lineHeight: 1.5,
+                      fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+                      boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div
                 key={idx}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: isUser ? 'flex-end' : 'flex-start',
-                  gap: '4px'
+                  alignItems: 'flex-start',
+                  gap: '6px',
+                  maxWidth: '96%',
+                  width: '100%'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: 'var(--t3)', padding: '0 4px' }}>
-                  <span style={{ fontWeight: 600 }}>{isUser ? 'OPERATOR' : 'NEXUS INTEL LEAD (QWEN 3.8)'}</span>
-                  {msg.meta?.latencyMs > 0 && (
-                    <>
-                      <span>•</span>
-                      <span style={{ fontFamily: 'JetBrains Mono', color: 'var(--accent)' }}>
-                        {msg.meta.latencyMs}ms ({msg.meta.speed} tok/s)
-                      </span>
-                    </>
-                  )}
-                </div>
-
                 <div
                   style={{
-                    maxWidth: '88%',
-                    padding: '12px 16px',
-                    borderRadius: '6px',
-                    background: isUser ? 'rgba(45,212,191,0.08)' : 'var(--panel)',
-                    border: isUser ? '1px solid rgba(45,212,191,0.3)' : '1px solid var(--border)',
-                    color: isUser ? 'var(--accent)' : 'var(--t1)',
-                    fontSize: '12px',
-                    lineHeight: 1.55,
-                    fontFamily: isUser ? 'Inter, sans-serif' : 'JetBrains Mono, monospace',
-                    whiteSpace: 'pre-wrap',
-                    position: 'relative'
+                    width: '100%',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'linear-gradient(180deg, rgba(16, 24, 40, 0.9) 0%, rgba(11, 18, 32, 0.95) 100%)',
+                    boxShadow: '0 4px 24px -2px rgba(0, 0, 0, 0.5)',
+                    overflow: 'hidden'
                   }}
                 >
-                  {msg.content}
+                  {/* Card Header */}
+                  <div
+                    style={{
+                      padding: '9px 14px',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '22px', height: '22px', borderRadius: '5px', background: 'rgba(45, 212, 191, 0.12)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                        <Shield size={13} />
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.04em', color: '#f8fafc' }}>
+                        NEXUS INTEL LEAD
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontSize: '9px',
+                          padding: '1px 6px',
+                          borderRadius: '3px',
+                          background: msg.meta?.isFallback ? 'rgba(234, 179, 8, 0.15)' : 'rgba(45, 212, 191, 0.12)',
+                          border: `1px solid ${msg.meta?.isFallback ? 'rgba(234, 179, 8, 0.4)' : 'rgba(45, 212, 191, 0.3)'}`,
+                          color: msg.meta?.isFallback ? '#facc15' : 'var(--accent)'
+                        }}
+                      >
+                        {msg.meta?.model || PRIMARY_MODEL}
+                      </span>
+                    </div>
 
-                  {!isUser && msg.meta && !msg.meta.isError && (
-                    <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', color: 'var(--t3)', fontFamily: 'JetBrains Mono' }}>
+                    {msg.meta?.latencyMs > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}>
+                        <span style={{ color: 'var(--t3)' }}>LATENCY:</span>
+                        <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{msg.meta.latencyMs}ms</span>
+                        <span style={{ color: 'var(--t3)' }}>•</span>
+                        <span style={{ color: 'var(--t2)' }}>{msg.meta.speed} tok/s</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Body content with FormattedIntelMessage */}
+                  <div style={{ padding: '16px 18px' }}>
+                    <FormattedIntelMessage content={msg.content} />
+                  </div>
+
+                  {/* Telemetry and Action Footer */}
+                  {!msg.meta?.isError && (
+                    <div
+                      style={{
+                        padding: '8px 14px',
+                        background: 'rgba(0, 0, 0, 0.25)',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '10px',
+                        color: 'var(--t3)',
+                        fontFamily: 'JetBrains Mono, monospace'
+                      }}
+                    >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span>Tokens: In={msg.meta.tokensIn} | Out={msg.meta.tokensOut}</span>
-                        <span>Model: {msg.meta.model}</span>
+                        <span>TOKENS: IN={msg.meta?.tokensIn || 0} • OUT={msg.meta?.tokensOut || 0}</span>
                       </div>
                       <button
                         onClick={() => handleCopy(msg.content, idx)}
-                        style={{ background: 'none', border: 'none', color: 'var(--t3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px' }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          color: 'var(--t2)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '10px',
+                          padding: '3px 8px',
+                          borderRadius: '3px',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.color = 'var(--t2)' }}
                       >
                         {copiedIndex === idx ? <Check size={11} color="#34d399" /> : <Copy size={11} />}
-                        <span>{copiedIndex === idx ? 'COPIED' : 'COPY'}</span>
+                        <span>{copiedIndex === idx ? 'COPIED TO CLIPBOARD' : 'COPY BRIEFING'}</span>
                       </button>
                     </div>
                   )}
 
-                  {!isUser && msg.meta && msg.meta.isError && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {msg.meta?.isError && (
+                    <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.08)', borderTop: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', color: '#f87171' }}>Analysis execution paused.</span>
                       <button
                         onClick={() => {
                           const lastUser = [...messages].reverse().find(m => m.role === 'user')
                           if (lastUser) handleSubmit(lastUser.content)
                         }}
                         style={{
-                          background: 'rgba(45,212,191,0.15)',
+                          background: 'rgba(45, 212, 191, 0.15)',
                           border: '1px solid var(--accent)',
                           color: 'var(--accent)',
                           padding: '4px 10px',
