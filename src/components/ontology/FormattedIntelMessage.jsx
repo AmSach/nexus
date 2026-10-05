@@ -21,12 +21,52 @@ import {
   Compass
 } from 'lucide-react'
 
-// Helper to render inline formatting: bold, italic, inline code
+// Helper to format plain text and highlight record/sensor citations
+function formatPlainSpans(str, baseKey) {
+  if (!str) return null
+  const recRegex = /\b(Record\s+\d+|RECORD\s+\d+|MMSI:\s*\d+|IMO:\s*\d+)\b/g
+  const parts = []
+  let lastIdx = 0
+  let m
+  let subKey = 0
+
+  while ((m = recRegex.exec(str)) !== null) {
+    if (m.index > lastIdx) {
+      parts.push(<span key={`${baseKey}-${subKey++}`}>{str.slice(lastIdx, m.index)}</span>)
+    }
+    parts.push(
+      <span
+        key={`${baseKey}-${subKey++}`}
+        style={{
+          fontFamily: 'JetBrains Mono, monospace',
+          color: 'var(--accent)',
+          background: 'rgba(45, 212, 191, 0.12)',
+          border: '1px solid rgba(45, 212, 191, 0.28)',
+          padding: '1px 5px',
+          borderRadius: '4px',
+          fontSize: '11px',
+          fontWeight: 700,
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {m[1]}
+      </span>
+    )
+    lastIdx = m.index + m[0].length
+  }
+
+  if (lastIdx < str.length) {
+    parts.push(<span key={`${baseKey}-${subKey++}`}>{str.slice(lastIdx)}</span>)
+  }
+
+  return parts
+}
+
+// Helper to render inline formatting: bold, italic, inline code, and record pills
 function renderInline(text) {
   if (!text) return null
 
   // Tokenize bold, italic, code
-  // Regex matches **bold**, *italic*, `code`
   const parts = []
   let remaining = text
   let keyIndex = 0
@@ -54,7 +94,7 @@ function renderInline(text) {
     }
 
     if (!earliest) {
-      parts.push(<span key={keyIndex++}>{remaining}</span>)
+      parts.push(...formatPlainSpans(remaining, keyIndex++))
       break
     }
 
@@ -64,7 +104,7 @@ function renderInline(text) {
     const rest = match[3]
 
     if (prefix) {
-      parts.push(<span key={keyIndex++}>{prefix}</span>)
+      parts.push(...formatPlainSpans(prefix, keyIndex++))
     }
 
     if (matchType === 'bold') {
@@ -193,16 +233,203 @@ function getBadgeStyle(label) {
   }
 }
 
+// Helper to parse and render Markdown tables with high-end executive styling
+function renderTableBlock(block, bIdx) {
+  const rows = (block.rawRows || []).filter(r => r.trim() !== '')
+  if (rows.length < 2) return null
+
+  const parseRow = (rowStr) => {
+    // Strip leading/trailing pipe
+    const trimmed = rowStr.replace(/^\|/, '').replace(/\|$/, '')
+    return trimmed.split('|').map(c => c.trim())
+  }
+
+  const headerCells = parseRow(rows[0])
+  const colCount = Math.max(headerCells.length, 1)
+
+  // Check if second row is separator row (|---|---|)
+  let dataStartIndex = 1
+  if (rows[1] && rows[1].includes('---')) {
+    dataStartIndex = 2
+  }
+
+  // Parse all raw rows into cells, and if any row was concatenated, chunk by colCount
+  const dataRows = []
+  for (let r = dataStartIndex; r < rows.length; r++) {
+    const rawCells = parseRow(rows[r])
+    if (rawCells.length <= colCount) {
+      const padded = [...rawCells]
+      while (padded.length < colCount) {
+        padded.push('')
+      }
+      dataRows.push(padded)
+    } else {
+      // Chunk into rows of colCount
+      for (let c = 0; c < rawCells.length; c += colCount) {
+        const chunk = rawCells.slice(c, c + colCount)
+        if (chunk.some(cell => cell.trim() !== '')) {
+          while (chunk.length < colCount) {
+            chunk.push('')
+          }
+          dataRows.push(chunk)
+        }
+      }
+    }
+  }
+
+  return (
+    <div
+      key={bIdx}
+      style={{
+        margin: '16px 0',
+        borderRadius: '10px',
+        border: '1px solid rgba(45, 212, 191, 0.22)',
+        background: 'linear-gradient(180deg, rgba(13, 20, 36, 0.96) 0%, rgba(9, 14, 26, 0.98) 100%)',
+        boxShadow: '0 6px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        overflow: 'hidden'
+      }}
+    >
+      <div style={{ overflowX: 'auto', width: '100%' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            textAlign: 'left',
+            fontSize: '12px',
+            fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif"
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 2,
+                background: 'rgba(15, 23, 42, 0.98)',
+                backdropFilter: 'blur(8px)',
+                borderBottom: '1px solid rgba(45, 212, 191, 0.3)'
+              }}
+            >
+              {headerCells.map((h, hIdx) => (
+                <th
+                  key={hIdx}
+                  style={{
+                    padding: '11px 14px',
+                    fontWeight: 800,
+                    fontSize: '10.5px',
+                    color: hIdx === 0 ? 'var(--accent)' : '#f8fafc',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                    borderRight: hIdx === colCount - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.05)'
+                  }}
+                >
+                  {renderInline(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataRows.map((row, rIdx) => (
+              <tr
+                key={rIdx}
+                style={{
+                  borderBottom: rIdx === dataRows.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.06)',
+                  background: rIdx % 2 === 1 ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
+                  transition: 'background 0.15s ease'
+                }}
+              >
+                {row.map((cell, cIdx) => {
+                  const cellLines = cell ? cell.split(/<br\s*\/?>/i) : ['']
+                  const isFirstCol = cIdx === 0
+                  const isNumeric = /^\d+$/.test(cell.trim())
+
+                  return (
+                    <td
+                      key={cIdx}
+                      style={{
+                        padding: '11px 14px',
+                        color: isFirstCol ? 'var(--accent)' : 'var(--t1)',
+                        fontWeight: isFirstCol ? 700 : 400,
+                        fontFamily: isFirstCol ? 'JetBrains Mono, monospace' : 'inherit',
+                        lineHeight: 1.55,
+                        verticalAlign: 'top',
+                        borderRight: cIdx === colCount - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.04)'
+                      }}
+                    >
+                      {isFirstCol && isNumeric ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '5px',
+                            background: 'rgba(45, 212, 191, 0.12)',
+                            border: '1px solid rgba(45, 212, 191, 0.3)',
+                            color: 'var(--accent)',
+                            fontSize: '11px',
+                            fontWeight: 800
+                          }}
+                        >
+                          {cell.trim().padStart(2, '0')}
+                        </span>
+                      ) : (
+                        cellLines.map((linePart, lpIdx) => (
+                          <React.Fragment key={lpIdx}>
+                            {lpIdx > 0 && <div style={{ height: '6px' }} />}
+                            {renderInline(linePart.trim())}
+                          </React.Fragment>
+                        ))
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function FormattedIntelMessage({ content }) {
   if (!content) return null
 
-  // Split content into blocks by double newline or heading boundaries
-  const lines = content.split('\n')
+  // Pre-process content to fix markdown tables where rows were concatenated without newlines
+  const preprocessed = (content || '')
+    // Fix separator row glued to row 1: e.g. |---|---|| 1 | or |---|---| | 1 |
+    .replace(/(-{2,}\|)\s*\|/g, '$1\n|')
+    // Fix rows joined by || or | | followed by row index or label: e.g. | | 2 | or || 2 |
+    .replace(/\|\s*\|\s*(\d+)\s*\|/g, '|\n| $1 |')
+
+  // Split content into blocks by newline or heading boundaries
+  const lines = preprocessed.split('\n')
   const blocks = []
   let currentBlock = null
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trimEnd()
+
+    // Detect Table Row (starts with | or contains multiple | characters)
+    const isTableRow = line.trim().startsWith('|') && (line.trim().endsWith('|') || line.includes('|'))
+    if (isTableRow) {
+      if (currentBlock && currentBlock.type === 'table') {
+        currentBlock.rawRows.push(line.trim())
+      } else {
+        if (currentBlock) blocks.push(currentBlock)
+        currentBlock = {
+          type: 'table',
+          rawRows: [line.trim()]
+        }
+      }
+      continue
+    } else if (currentBlock && currentBlock.type === 'table') {
+      blocks.push(currentBlock)
+      currentBlock = null
+    }
 
     // Detect Heading 1, 2, 3
     const headingMatch = line.match(/^(#{1,3})\s+(.*)$/)
@@ -593,6 +820,11 @@ export default function FormattedIntelMessage({ content }) {
               {renderInline(text)}
             </p>
           )
+        }
+
+        // 5. DATA TABLES
+        if (block.type === 'table') {
+          return renderTableBlock(block, bIdx)
         }
 
         return null

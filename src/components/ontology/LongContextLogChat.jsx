@@ -150,6 +150,10 @@ const PROMPT_PRESETS = [
     prompt: 'bro explain me in easy terms what is all this'
   },
   {
+    title: '📊 Threat Matrix Table',
+    prompt: 'List all illegal, evasive, and suspicious activities identified across the log dossier in a structured comparison table with columns: #, Illicit Activity, How Executed, Evidence, and Violation.'
+  },
+  {
     title: '1. Sanctions & Ghost Spoof',
     prompt: 'Analyze the primary sanctions evasion scheme: detail the primary vessel identity, the spoofed ghost identity and false MMSI, and compare declared cargo against actual cargo pumped at Bandar Abbas.'
   },
@@ -232,6 +236,7 @@ NON-NEGOTIABLE OPERATIONAL DIRECTIVES:
    - Naval Reports & Evidence: French Navy FS Languedoc (D653) lifeboat inspection & Combined Maritime Forces (CTF-151) logs.
    - Insurance Underwriting Filings: Lloyd's Maritime Intelligence Unit (Syndicate 2003) total loss claim notice.
 3. CONVERSATIONAL EXPLANATIONS: When asked to explain in easy terms or plain English, deliver an engaging, structured breakdown using clear steps and bold lead-ins without condescending disclaimers.
+4. TABULAR DATA FORMATTING: When presenting inventories, comparisons, or multi-field records, ALWAYS output standard Markdown tables with explicit line breaks between rows (| Column 1 | Column 2 | ... | \n|---|---|...| \n| 1 | Value | ... |). Never concatenate table rows onto a single line.
 
 === MOUNTED OPERATIONAL LOG DOSSIER ===
 ${logText}`
@@ -259,7 +264,7 @@ ${logText}`
               model: candidateModel,
               messages: apiPayload,
               temperature: 0.15,
-              max_tokens: 350
+              max_tokens: 950
             })
           })
 
