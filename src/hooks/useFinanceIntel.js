@@ -366,32 +366,7 @@ export async function fetchMultiQuote(symbols, { avKey = '', tdKey = '' } = {}) 
     }
   } catch {}
 
-  // Browser-direct Stooq fallback (CORS-safe) — last resort
-  const quotes = {}
-  const STOOQ_MAP = {
-    '^VIX':'^vix', '^TNX':'^tnx', '^IRX':'^irx', '^GSPC':'^spx', '^DJI':'^dji', '^IXIC':'^ndx'
-  }
-  const stooqSym = s => {
-    if (STOOQ_MAP[s]) return STOOQ_MAP[s]
-    if (s.startsWith('^')) return s.toLowerCase()
-    if (s.endsWith('=F')) return s.replace('=F','').toLowerCase()+'.f'
-    if (s.endsWith('=X')) return s.replace('=X','').toLowerCase()+'.x'
-    return s.toLowerCase()+'.us'
-  }
-  await Promise.allSettled(symbols.slice(0, 20).map(async sym => {
-    try {
-      const r = await fetch(`https://stooq.com/q/l/?s=${stooqSym(sym)}&f=sd2t2ohlcv&h&e=json`, { signal: AbortSignal.timeout(5000) })
-      if (r.ok) {
-        const d = await r.json()
-        const q = d?.symbols?.[0]
-        if (q?.Close && q.Close !== 'N/D') {
-          const close = +q.Close, open = +q.Open || close
-          quotes[sym] = { price: close, prev: open, open, high: +q.High||close, low: +q.Low||close, volume: +q.Volume||0, changePercent: open ? ((close-open)/open*100) : 0, name: sym }
-        }
-      }
-    } catch {}
-  }))
-  return quotes
+  return {}
 }
 export async function fetchOHLCV(symbol,range='1y') {
   try{const r=await fetch(`/api/fred?mode=history&symbol=${encodeURIComponent(symbol)}&range=${range}`,{signal:AbortSignal.timeout(20000)});if(!r.ok)return null;return await r.json()}catch{return null}
@@ -621,41 +596,6 @@ export function useFinanceIntel() {
           Object.assign(allQuotes, r.value)
         }
       })
-
-      // ── 4. Direct Stooq browser fallback for anything still missing ────────
-      // Stooq is CORS-safe from browser. Good for equities + futures.
-      const STOOQ_MAP = {
-        '^VIX':'^vix','^TNX':'^tnx','^IRX':'^irx','^TYX':'^tyx',
-        '^GSPC':'^spx','^DJI':'^dji','^IXIC':'^ndx','^RUT':'^rut',
-      }
-      const stooqSym = s => {
-        if(STOOQ_MAP[s]) return STOOQ_MAP[s]
-        if(s.startsWith('^')) return s.toLowerCase()
-        if(s.endsWith('=F')) return s.replace('=F','').toLowerCase()+'.f'
-        if(s.endsWith('=X')) return s.replace('=X','').toLowerCase()+'.x'
-        return s.toLowerCase()+'.us'
-      }
-      const stillMissing = [...PRIORITY_SYMS,...EXTENDED_SYMS].filter(s=>!allQuotes[s])
-      if(stillMissing.length > 0){
-        // Batch request: limit to single priority chunk to avoid connection blocking
-        const priorityMissing = stillMissing.slice(0, 10)
-        if (priorityMissing.length > 0) {
-          try {
-            const batch = priorityMissing.map(stooqSym).join(',')
-            const r = await fetch(`https://stooq.com/q/l/?s=${batch}&f=sd2t2ohlcv&h&e=json`,{signal:AbortSignal.timeout(3000)})
-            if (r.ok) {
-              const d = await r.json()
-              ;(d?.symbols||[]).forEach((q,i) => {
-                if(!q?.Close || q.Close==='N/D') return
-                const orig = priorityMissing[i]
-                if(!orig || allQuotes[orig]) return
-                const close=+q.Close, open=+q.Open||close
-                allQuotes[orig]={price:close,prev:open,open,high:+q.High||close,low:+q.Low||close,volume:+q.Volume||0,changePercent:open?((close-open)/open*100):0,name:orig}
-              })
-            }
-          } catch {}
-        }
-      }
 
       // ── 5. Build FX quotes from FX rates (fill =X symbols from rates object) ─
       const fxData = fxResult.status==='fulfilled' ? fxResult.value : null

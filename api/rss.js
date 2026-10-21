@@ -121,7 +121,7 @@ export default async function handler(req, res) {
         },
         redirect: 'follow', signal: AbortSignal.timeout(15000),
       })
-      if (!r.ok) return res.status(r.status).json({ error: 'Telegram ' + r.status, posts: [] })
+      if (!r.ok) return res.status(200).json({ status: 'warn', error: 'Telegram ' + r.status, posts: [] })
       const html = await r.text()
       // Extract discrete message blocks to accurately pair text with its photo attachment
       const msgBlocks = [...html.matchAll(/<div[^>]*class="[^"]*tgme_widget_message\b[^"]*"[^>]*data-post="([^"]+)"([\s\S]*?)(?=<div[^>]*class="[^"]*tgme_widget_message\b|$)/gi)]
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ status: 'ok', handle, posts: posts.slice(0, parseInt(cnt)), count: posts.length })
     } catch (e) {
-      return res.status(500).json({ error: e.message, posts: [] })
+      return res.status(200).json({ status: 'warn', error: e.message, posts: [] })
     }
   }
 

@@ -43,8 +43,14 @@ export default function App() {
         setTab(h)
       } else if (h && ['ops', 'benchmark', 'calibration'].includes(h)) {
         setTab('ontology')
-      } else if (h && ['econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) {
+      } else if (h && ['finance', 'econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) {
         setTab('finnews')
+      } else if (h && ['monitor'].includes(h)) {
+        setTab('situations')
+      } else if (h && ['intel'].includes(h)) {
+        setTab('search')
+      } else if (h && ['globe'].includes(h)) {
+        setTab('view')
       }
     }
     syncFromHash()

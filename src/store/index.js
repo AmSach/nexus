@@ -8,8 +8,12 @@ export const useStore = create(
       tab: (() => {
         if (typeof window === 'undefined') return 'feed'
         const h = window.location.hash.replace(/^#\/?/, '').toLowerCase()
-        if (['feed', 'situations', 'board', 'map', 'finnews', 'search', 'view', 'saved', 'settings', 'health', 'vox'].includes(h)) return h
-        if (['econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) return 'finnews'
+        if (['feed', 'situations', 'board', 'map', 'finnews', 'ontology', 'search', 'view', 'saved', 'settings', 'health', 'vox'].includes(h)) return h
+        if (['finance', 'econ', 'chokepoints', 'alpha', 'stress', 'macro', 'correlations'].includes(h)) return 'finnews'
+        if (['ops', 'benchmark', 'calibration'].includes(h)) return 'ontology'
+        if (['monitor'].includes(h)) return 'situations'
+        if (['intel'].includes(h)) return 'search'
+        if (['globe'].includes(h)) return 'view'
         return 'feed'
       })(),
       setTab: t => set({ tab: t }),

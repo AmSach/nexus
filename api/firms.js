@@ -98,7 +98,7 @@ export default async function handler(req, res) {
     return
   }
 
-  const apiKey = req.query.key || process.env.FIRMS_KEY || ''
+  const apiKey = req.query.key || process.env.FIRMS_KEY || '08be3187f8c1526e0fd30249ee2c3374'
   const days = Math.min(Math.max(parseInt(req.query.days || '1', 10), 1), 3)
   const todayStr = new Date().toISOString().slice(0, 10)
 
