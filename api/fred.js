@@ -9,7 +9,10 @@ const DEFAULT_SERIES = [
   { id: 'UNRATE', label: 'Civilian Unemployment Rate', unit: '%', value: 4.1, changePct: 0.0, date: 'Live' },
   { id: 'DCOILBRENTEU', label: 'Crude Oil Brent Spot', unit: '$/bbl', value: 74.5, changePct: 1.25, date: 'Live' },
   { id: 'BAMLH0A0HYM2', label: 'US High Yield Option-Adjusted Spread', unit: 'bps', value: 312, changePct: -14, date: 'Live' },
-  { id: 'DTWEXBGS', label: 'Nominal Broad US Dollar Index', unit: 'idx', value: 122.4, changePct: 0.18, date: 'Live' }
+  { id: 'DTWEXBGS', label: 'Nominal Broad US Dollar Index', unit: 'idx', value: 122.4, changePct: 0.18, date: 'Live' },
+  { id: 'UMCSENT', label: 'Consumer Sentiment Index (U of Mich)', unit: 'idx', value: 68.9, changePct: -1.2, date: 'Live' },
+  { id: 'PSAVERT', label: 'Personal Saving Rate', unit: '%', value: 4.6, changePct: 0.2, date: 'Live' },
+  { id: 'RSAFS', label: 'Retail and Food Services Sales', unit: '$M', value: 705000, changePct: 0.4, date: 'Live' }
 ]
 
 const DEFENSE_SEEDS = [
@@ -217,7 +220,10 @@ export default async function handler(req, res) {
         { id: 'UNRATE', label: 'US Civilian Unemployment Rate', unit: '%' },
         { id: 'DCOILBRENTEU', label: 'Crude Oil Brent Spot', unit: '$/bbl' },
         { id: 'BAMLH0A0HYM2', label: 'US High Yield Option-Adjusted Spread', unit: 'bps' },
-        { id: 'DTWEXBGS', label: 'Nominal Broad US Dollar Index', unit: 'idx' }
+        { id: 'DTWEXBGS', label: 'Nominal Broad US Dollar Index', unit: 'idx' },
+        { id: 'UMCSENT', label: 'Consumer Sentiment Index (U of Mich)', unit: 'idx' },
+        { id: 'PSAVERT', label: 'Personal Saving Rate', unit: '%' },
+        { id: 'RSAFS', label: 'Retail and Food Services Sales', unit: '$M' }
       ]
 
       const results = await Promise.allSettled(

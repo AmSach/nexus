@@ -15,7 +15,7 @@ export function generateFixOrderTicket({
   broker = 'GOLDMAN_SACHS_EXEC',
   clOrdID = `ORD_${Date.now()}`
 }) {
-  const now = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+  const now = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14)
   const delimiter = '\x01' // Standard SOH delimiter represented as pipe in display
   
   const fixTags = [

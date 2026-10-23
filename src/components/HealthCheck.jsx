@@ -112,29 +112,27 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'ucdp') {
-      // UCDP - try direct first (has CORS headers), fallback message if blocked
       try {
-        const r = await fetch('https://ucdpapi.pcr.uu.se/api/gedevents/25.1?pagesize=1&page=1', { signal: AbortSignal.timeout(10000) })
-        if (!r.ok) return { status:'warn', detail:'HTTP '+r.status+' — UCDP may be temporarily down', ms:ms() }
+        const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(10000) })
+        if (!r.ok) return { status:'warn', detail:'HTTP '+r.status+' — satellite endpoint warning', ms:ms() }
         const d = await r.json()
-        const n = d?.Result?.length||0
-        return { status: n>=0?'ok':'warn', detail: 'UCDP responding, '+d?.TotalCount+' total conflict events', ms:ms() }
+        const n = (d?.ucdpFull || d?.conflictEvents || []).length
+        return { status: n > 0 ? 'ok' : 'warn', detail: 'UCDP verified via serverless — '+n+' conflict events', ms:ms() }
       } catch(e) {
-        return { status:'warn', detail:'UCDP unreachable from browser (CORS) — works via server-side useACLED hook', ms:ms() }
+        return { status:'warn', detail:'UCDP serverless check: '+e.message, ms:ms() }
       }
     }
 
     if (id === 'reliefweb') {
-      const r = await fetch('https://api.reliefweb.int/v1/reports?appname=nexus-intel&limit=1', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ query: { value: 'conflict' }, limit: 1 }),
-        signal: AbortSignal.timeout(10000)
-      })
-      if (!r.ok) return { status:'warn', detail:'HTTP '+r.status+' — ReliefWeb may require POST', ms:ms() }
-      const d = await r.json()
-      const n = d?.data?.length||0
-      return { status:'ok', detail: n+' reports (POST API)', ms:ms() }
+      try {
+        const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(10000) })
+        if (!r.ok) return { status:'warn', detail:'HTTP '+r.status+' — satellite endpoint warning', ms:ms() }
+        const d = await r.json()
+        const n = (d?.reliefweb || []).length
+        return { status: 'ok', detail: 'ReliefWeb verified via serverless — '+n+' reports', ms:ms() }
+      } catch(e) {
+        return { status:'warn', detail:'ReliefWeb check: '+e.message, ms:ms() }
+      }
     }
 
     if (id === 'documentcloud') {
@@ -423,7 +421,7 @@ async function runCheck(id, keys) {
       // Fire 3 test queries in parallel to verify GDELT parallelism
       const testQueries = ['war conflict airstrike', 'election coup protest', 'nuclear missile Iran']
       const results = await Promise.allSettled(testQueries.map(q =>
-        fetch('https://api.gdeltproject.org/api/v2/doc/doc?query=' + encodeURIComponent(q) + '%20transliterate:english&mode=artlist&maxrecords=10&sort=DateDesc&format=json', { signal: AbortSignal.timeout(10000) })
+        fetch('/api/gdelt?q=' + encodeURIComponent(q) + '&maxrecords=10', { signal: AbortSignal.timeout(10000) })
           .then(r => r.json()).then(d => d?.articles?.length||0).catch(()=>0)
       ))
       const counts = results.map(r => r.status==='fulfilled' ? r.value : 0)
@@ -547,17 +545,15 @@ async function runCheck(id, keys) {
     }
 
     if (id === 'acled') {
-      // ACLED: use UCDP as proxy indicator since they cover same conflict data
-      // ACLED public endpoint is slow (15s+) and requires OAuth now
       try {
-        const r = await fetch('https://ucdpapi.pcr.uu.se/api/gedevents/25.1?pagesize=3&page=1', { signal: AbortSignal.timeout(12000) })
+        const r = await fetch('/api/satellite', { signal: AbortSignal.timeout(10000) })
         if (r.ok) {
           const d = await r.json()
-          const n = d?.TotalCount||0
-          return { status:'ok', detail: 'UCDP (ACLED alternative): '+n+' total georeferenced conflict events', ms:ms() }
+          const n = (d?.conflictEvents || d?.ucdpFull || []).length
+          return { status:'ok', detail: 'UCDP/Conflict (ACLED replacement): '+n+' georeferenced events', ms:ms() }
         }
       } catch {}
-      return { status:'info', detail:'Conflict data: UCDP+GDELT Events used as ACLED replacement (free, no OAuth needed)', ms:ms() }
+      return { status:'info', detail:'Conflict data: UCDP+GDELT Events used as ACLED replacement', ms:ms() }
     }
 
     if (id === 'adsb') {

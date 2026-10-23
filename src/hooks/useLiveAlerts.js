@@ -34,7 +34,7 @@ function useLiveAlertsLegacy() {
     setLoading(true)
     try {
       // Primary: use our server-side /api/alerts endpoint (no CORS)
-      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(15000) })
+      const r = await fetch('/api/alerts', { signal: AbortSignal.timeout(25000) })
       if (r.ok) {
         const data = await r.json()
         const all = (data.alerts || []).sort((a,b) => (SORD[a.severity]||3)-(SORD[b.severity]||3))
@@ -44,35 +44,6 @@ function useLiveAlertsLegacy() {
         cacheWrite('alerts', all, 200)
         setLoading(false)
         return
-      }
-    } catch {}
-
-    // Fallback: NWS is native CORS, try directly
-    try {
-      const r = await fetch('https://api.weather.gov/alerts/active?status=actual&severity=Extreme,Severe&urgency=Immediate,Expected&limit=20', {
-        signal: AbortSignal.timeout(10000),
-        headers: { Accept: 'application/geo+json' }
-      })
-      if (r.ok) {
-        const d = await r.json()
-        const nws = (d?.features || []).slice(0,12).map(f => {
-          const p = f.properties || {}
-          return {
-            id: 'nws-'+(p.id||Math.random().toString(36).slice(2)),
-            type:'weather', icon:'⛈️',
-            title: (p.event||'Weather Alert')+' — '+(p.areaDesc||'').slice(0,50),
-            detail: (p.headline||'').slice(0,200),
-            severity: p.severity==='Extreme'?'critical':'high',
-            source:'NWS', url:p.web,
-            ts: p.sent||new Date().toISOString(), region:'N. America'
-          }
-        })
-        if (nws.length) {
-          setAlerts(nws)
-          setCounts({ nws: nws.length })
-          setLastFetch(new Date())
-          cacheWrite('alerts', nws, 200)
-        }
       }
     } catch {}
 

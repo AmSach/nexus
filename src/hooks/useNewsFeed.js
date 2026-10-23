@@ -44,10 +44,8 @@ export function getEnvKeys() {
 }
 
 const PROXIES = [
-  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
   u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
   u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  u => `https://thingproxy.freeboard.io/fetch/${u}`,
 ]
 
 // ── RSS parser ────────────────────────────────────────────────────────────────
@@ -173,17 +171,7 @@ async function fetchFeed(feed) {
     }
   } catch {}
 
-  // Single fast CORS proxy fallback with 4s timeout (no cascading 32s delay!)
-  try {
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(feed.url)}`
-    const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) })
-    if (!r.ok) return []
-    const j = await r.json().catch(() => null)
-    const rawContent = j?.contents || j?.body || j?.data || ''
-    if (rawContent && rawContent.length > 100 && !rawContent.trim().startsWith('<html')) {
-      return parseXML(rawContent, feed.src, feed.cat)
-    }
-  } catch {}
+  // If /api/rss serverless endpoint returns empty, gracefully return [] to avoid noisy 403 errors
   return []
 }
 

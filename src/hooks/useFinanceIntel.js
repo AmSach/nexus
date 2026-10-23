@@ -409,62 +409,49 @@ export async function fetchAdultEconIndicators() {
     methodology:       'Counter-cyclical adult platform proxy via FRED macro correlates (Berenberg/Goldman methodology)',
   }
 
-  // Batch FRED calls (series that correlate with adult platform traffic spikes)
-  const FRED_KEY = import.meta.env.VITE_FRED_KEY || ''
-  const series = ['UMCSENT', 'PSAVERT', 'UNRATE', 'RSAFS']
-
+  // Fetch macro correlates via internal /api/fred serverless endpoint
   try {
-    const results = await Promise.allSettled(series.map(s =>
-      fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=${s}&api_key=${FRED_KEY}&limit=3&sort_order=desc&file_type=json`, { signal: AbortSignal.timeout(8000) })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => ({ series: s, value: +(d?.observations?.[0]?.value) || null, prev: +(d?.observations?.[1]?.value) || null }))
-        .catch(() => ({ series: s, value: null, prev: null }))
-    ))
-
-    const vals = {}
-    results.forEach(r => { if (r.status === 'fulfilled' && r.value) vals[r.value.series] = r.value })
-
-    // Consumer Sentiment: UMCSENT ~60-100 range. Below 70 = stress. Invert to [0-1]
-    if (vals.UMCSENT?.value) {
-      indicators.consumerStress = Math.max(0, Math.min(1, (100 - vals.UMCSENT.value) / 55))
-    }
-    // Savings Rate: above 6% = cautious consumers. Scale [0-1]
-    if (vals.PSAVERT?.value) {
-      indicators.savingsRate = Math.max(0, Math.min(1, vals.PSAVERT.value / 18))
-    }
-    // Unemployment
-    if (vals.UNRATE?.value) {
-      indicators.unemploymentRate = vals.UNRATE.value
-    }
-    // Retail Sales growth
-    if (vals.RSAFS?.value && vals.RSAFS?.prev) {
-      indicators.retailSalesGrowth = ((vals.RSAFS.value - vals.RSAFS.prev) / vals.RSAFS.prev) * 100
-    }
-
-    // Composite signal: weighted average of stress indicators
-    // High consumer stress → high adult platform traffic (counter-cyclical)
-    const stressSignals = [
-      indicators.consumerStress,
-      indicators.savingsRate,
-      vals.UNRATE?.value ? Math.max(0, Math.min(1, (vals.UNRATE.value - 3.5) / 7)) : null,
-    ].filter(v => v !== null)
-
-    if (stressSignals.length > 0) {
-      indicators.signal = stressSignals.reduce((s, v) => s + v, 0) / stressSignals.length
-      indicators.label = indicators.signal > 0.65 ? 'RECESSION' : indicators.signal > 0.45 ? 'STRESS' : indicators.signal > 0.25 ? 'NEUTRAL' : 'EXPANSION'
-    }
-
-    indicators.lastUpdated = new Date().toISOString()
-  } catch {}
-
-  // Try Pornhub Insights public API (no auth, public data used by financial media)
-  try {
-    const r = await fetch('https://www.pornhub.com/insights/api/traffic', { signal: AbortSignal.timeout(5000) })
+    const r = await fetch('/api/fred', { signal: AbortSignal.timeout(6000) })
     if (r.ok) {
       const d = await r.json()
-      indicators.trafficIndex = d?.index || d?.traffic_index || null
+      const list = Array.isArray(d?.data) ? d.data : []
+      const vals = {}
+      list.forEach(item => {
+        vals[item.id] = { series: item.id, value: item.value, prev: item.prev || item.value }
+      })
+
+      // Consumer Sentiment: UMCSENT ~60-100 range. Below 70 = stress. Invert to [0-1]
+      if (vals.UMCSENT?.value) {
+        indicators.consumerStress = Math.max(0, Math.min(1, (100 - vals.UMCSENT.value) / 55))
+      }
+      // Savings Rate: above 6% = cautious consumers. Scale [0-1]
+      if (vals.PSAVERT?.value) {
+        indicators.savingsRate = Math.max(0, Math.min(1, vals.PSAVERT.value / 18))
+      }
+      // Unemployment
+      if (vals.UNRATE?.value) {
+        indicators.unemploymentRate = vals.UNRATE.value
+      }
+      // Retail Sales growth
+      if (vals.RSAFS?.value && vals.RSAFS?.prev) {
+        indicators.retailSalesGrowth = ((vals.RSAFS.value - vals.RSAFS.prev) / vals.RSAFS.prev) * 100
+      }
+
+      // Composite signal: weighted average of stress indicators
+      const stressSignals = [
+        indicators.consumerStress,
+        indicators.savingsRate,
+        vals.UNRATE?.value ? Math.max(0, Math.min(1, (vals.UNRATE.value - 3.5) / 7)) : null,
+      ].filter(v => v !== null)
+
+      if (stressSignals.length > 0) {
+        indicators.signal = stressSignals.reduce((s, v) => s + v, 0) / stressSignals.length
+        indicators.label = indicators.signal > 0.65 ? 'RECESSION' : indicators.signal > 0.45 ? 'STRESS' : indicators.signal > 0.25 ? 'NEUTRAL' : 'EXPANSION'
+      }
+
+      indicators.lastUpdated = new Date().toISOString()
     }
-  } catch {}  // silently fail — this is supplementary
+  } catch {}
 
   return indicators
 }
@@ -473,12 +460,7 @@ export async function fetchCryptoMarkets() {
   try{const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,ripple,tether,binancecoin,cardano,dogecoin,avalanche-2,polkadot&order=market_cap_desc&per_page=10&sparkline=true&price_change_percentage=1h,24h,7d,30d',{signal:AbortSignal.timeout(12000)});if(!r.ok)return[];return await r.json()}catch{return[]}
 }
 export async function fetchFXRates() {
-  // Try exchangerate.host first
-  try {
-    const r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=EUR,GBP,JPY,CNY,RUB,TRY,INR,BRL,KRW,UAH,ILS,IRR,PKR,SGD,AUD,CHF,CAD,MXN,ZAR,SAR', { signal: AbortSignal.timeout(8000) })
-    if (r.ok) { const d = await r.json(); if (d?.rates && Object.keys(d.rates).length > 0) return d }
-  } catch {}
-  // Fallback: open.er-api.com (free, no key, CORS-safe)
+  // Primary: open.er-api.com (free, no key, CORS-safe)
   try {
     const r = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(8000) })
     if (r.ok) { const d = await r.json(); return { base: 'USD', rates: d.rates || {} } }

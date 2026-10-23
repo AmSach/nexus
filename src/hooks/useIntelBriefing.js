@@ -257,6 +257,10 @@ FORMAT:
             }),
           })
           if (r.status === 404) continue
+          if (r.status === 429) {
+            lastErr = new Error('Groq rate limited (429)')
+            break
+          }
           if (r.ok) break
           const err = await r.json().catch(() => ({}))
           lastErr = new Error(err.error?.message || `Groq ${r.status}`)

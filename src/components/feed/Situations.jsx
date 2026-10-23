@@ -66,7 +66,11 @@ async function groqStream(key, systemPrompt, userPrompt, onToken) {
         signal: AbortSignal.timeout(60000),
       })
       if (r.ok) break
-      if (r.status === 429 || r.status === 503 || r.status === 404 || r.status === 500) {
+      if (r.status === 429) {
+        lastErr = new Error('Groq rate limited (429)')
+        break
+      }
+      if (r.status === 503 || r.status === 404 || r.status === 500) {
         await new Promise(res => setTimeout(res, 800)); lastErr = new Error(`Groq ${r.status}`); continue
       }
       throw new Error(`Groq ${r.status}`)
