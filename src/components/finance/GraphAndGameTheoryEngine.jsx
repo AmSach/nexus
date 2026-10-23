@@ -20,9 +20,26 @@ import {
   Sliders,
   Compass,
   CheckCircle,
-  FileText
+  FileText,
+  Clock,
+  Anchor,
+  Scale,
+  Users,
+  AlertOctagon,
+  Percent,
+  TrendingDown,
+  ChevronRight,
+  BarChart3,
+  Database
 } from 'lucide-react'
 import { addCustomConflict } from '../../utils/adaptiveConflictEngine'
+import {
+  ASYMMETRIC_CHAOS_CHAINS,
+  GRANGER_LEAD_LAG_REGIME_DATA,
+  OSTROM_COMMONS_MODELS,
+  ADVERSARIAL_LEVEL_K_DATA,
+  DUPONT_FLOAT_MODELS
+} from '../../data/economicCorrelations'
 
 const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
@@ -206,6 +223,30 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
   const [selectedGameId, setSelectedGameId] = useState('red_sea_game')
   const [shockMultiplier, setShockMultiplier] = useState(1.0)
   const [filterCategory, setFilterCategory] = useState('all')
+
+  // Advanced Market Knowledge & Chaos Engine State
+  const [selectedChaosChainId, setSelectedChaosChainId] = useState('chain_baltic_cracks')
+  const [chaosShockScale, setChaosShockScale] = useState(1.0)
+  const [leadLagDayScrub, setLeadLagDayScrub] = useState(14)
+  const [selectedOstromModelId, setSelectedOstromModelId] = useState('shadow_tanker_commons')
+  const [selectedLevelKId, setSelectedLevelKId] = useState('warfare_red_sea')
+  const [selectedDupontId, setSelectedDupontId] = useState('dupont_automotive')
+
+  const activeChaosChain = useMemo(() => {
+    return ASYMMETRIC_CHAOS_CHAINS.find(c => c.id === selectedChaosChainId) || ASYMMETRIC_CHAOS_CHAINS[0]
+  }, [selectedChaosChainId])
+
+  const activeOstromModel = useMemo(() => {
+    return OSTROM_COMMONS_MODELS.find(m => m.id === selectedOstromModelId) || OSTROM_COMMONS_MODELS[0]
+  }, [selectedOstromModelId])
+
+  const activeLevelK = useMemo(() => {
+    return ADVERSARIAL_LEVEL_K_DATA.find(k => k.id === selectedLevelKId) || ADVERSARIAL_LEVEL_K_DATA[0]
+  }, [selectedLevelKId])
+
+  const activeDupont = useMemo(() => {
+    return DUPONT_FLOAT_MODELS.find(d => d.id === selectedDupontId) || DUPONT_FLOAT_MODELS[0]
+  }, [selectedDupontId])
 
   // Responsive iPad/tablet detection
   const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200)
@@ -642,13 +683,13 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
         </div>
 
         {/* View Switcher Pills */}
-        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.03)', padding: 3, borderRadius: 4, border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.03)', padding: 3, borderRadius: 4, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setActiveView('graph')}
             style={{
               ...monoXs,
-              padding: '3px 10px',
+              padding: '3px 8px',
               borderRadius: 3,
               border: 'none',
               cursor: 'pointer',
@@ -661,14 +702,14 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
               gap: 4
             }}
           >
-            <Share2 size={10} /> 1. Causal DAG Network
+            <Share2 size={10} /> 1. Causal DAG
           </button>
           <button
             type="button"
             onClick={() => setActiveView('gametheory')}
             style={{
               ...monoXs,
-              padding: '3px 10px',
+              padding: '3px 8px',
               borderRadius: 3,
               border: 'none',
               cursor: 'pointer',
@@ -681,14 +722,14 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
               gap: 4
             }}
           >
-            <Target size={10} /> 2. Nash Equilibrium & Payoffs
+            <Target size={10} /> 2. Nash Payoffs
           </button>
           <button
             type="button"
             onClick={() => setActiveView('eightlaws')}
             style={{
               ...monoXs,
-              padding: '3px 10px',
+              padding: '3px 8px',
               borderRadius: 3,
               border: 'none',
               cursor: 'pointer',
@@ -701,7 +742,107 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
               gap: 4
             }}
           >
-            <Layers size={10} /> 3. The 8 Relation Laws
+            <Layers size={10} /> 3. 8 Relation Laws
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('asymmetric_chaos')}
+            style={{
+              ...monoXs,
+              padding: '3px 8px',
+              borderRadius: 3,
+              border: 'none',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              background: activeView === 'asymmetric_chaos' ? '#ec4899' : 'transparent',
+              color: activeView === 'asymmetric_chaos' ? '#fff' : 'var(--t3)',
+              fontWeight: activeView === 'asymmetric_chaos' ? 700 : 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <Zap size={10} /> 4. Asymmetric Chaos
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('lead_lag')}
+            style={{
+              ...monoXs,
+              padding: '3px 8px',
+              borderRadius: 3,
+              border: 'none',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              background: activeView === 'lead_lag' ? '#a855f7' : 'transparent',
+              color: activeView === 'lead_lag' ? '#fff' : 'var(--t3)',
+              fontWeight: activeView === 'lead_lag' ? 700 : 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <Clock size={10} /> 5. Granger Lead-Lag
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('ostrom_commons')}
+            style={{
+              ...monoXs,
+              padding: '3px 8px',
+              borderRadius: 3,
+              border: 'none',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              background: activeView === 'ostrom_commons' ? '#10b981' : 'transparent',
+              color: activeView === 'ostrom_commons' ? '#000' : 'var(--t3)',
+              fontWeight: activeView === 'ostrom_commons' ? 700 : 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <Scale size={10} /> 6. Ostrom Commons
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('levelk_warfare')}
+            style={{
+              ...monoXs,
+              padding: '3px 8px',
+              borderRadius: 3,
+              border: 'none',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              background: activeView === 'levelk_warfare' ? '#ef4444' : 'transparent',
+              color: activeView === 'levelk_warfare' ? '#fff' : 'var(--t3)',
+              fontWeight: activeView === 'levelk_warfare' ? 700 : 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <AlertOctagon size={10} /> 7. Level-K Warfare
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('dupont_float')}
+            style={{
+              ...monoXs,
+              padding: '3px 8px',
+              borderRadius: 3,
+              border: 'none',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              background: activeView === 'dupont_float' ? '#06b6d4' : 'transparent',
+              color: activeView === 'dupont_float' ? '#000' : 'var(--t3)',
+              fontWeight: activeView === 'dupont_float' ? 700 : 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <Percent size={10} /> 8. DuPont & Float
           </button>
         </div>
       </div>
@@ -1414,6 +1555,702 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 4. ASYMMETRIC MULTI-HOP CHAOS SPILLOVER VIEW ────────────────────────── */}
+        {activeView === 'asymmetric_chaos' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Top Controls & Selector */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {ASYMMETRIC_CHAOS_CHAINS.map(chain => (
+                  <button
+                    key={chain.id}
+                    type="button"
+                    onClick={() => setSelectedChaosChainId(chain.id)}
+                    style={{
+                      ...monoXs,
+                      padding: '4px 10px',
+                      borderRadius: 4,
+                      border: selectedChaosChainId === chain.id ? '1px solid #ec4899' : '1px solid var(--border)',
+                      background: selectedChaosChainId === chain.id ? 'rgba(236,72,153,0.15)' : 'rgba(255,255,255,0.02)',
+                      color: selectedChaosChainId === chain.id ? '#f472b6' : 'var(--t2)',
+                      cursor: 'pointer',
+                      fontWeight: selectedChaosChainId === chain.id ? 700 : 400
+                    }}
+                  >
+                    {chain.name.split(':')[0]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Interactive Shock Multiplier Slider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                <span style={{ ...monoXs, color: 'var(--t3)' }}>SHOCK SCALE:</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.5"
+                  step="0.1"
+                  value={chaosShockScale}
+                  onChange={e => setChaosShockScale(parseFloat(e.target.value))}
+                  style={{ width: 90, accentColor: '#ec4899', cursor: 'pointer' }}
+                />
+                <span style={{ ...monoXs, fontWeight: 700, color: '#ec4899', minWidth: 32 }}>
+                  {chaosShockScale.toFixed(1)}x
+                </span>
+                <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: chaosShockScale > 1.2 ? 'rgba(239,68,68,0.2)' : 'rgba(45,212,191,0.2)', color: chaosShockScale > 1.2 ? '#f87171' : 'var(--accent)', fontWeight: 600 }}>
+                  {chaosShockScale > 1.2 ? 'SEVERE' : 'BASELINE'}
+                </span>
+              </div>
+            </div>
+
+            {/* Chain Header Banner */}
+            <div style={{ background: 'rgba(236,72,153,0.05)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: 6, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: '#ec4899', color: '#fff', fontWeight: 700 }}>
+                      5-HOP ASYMMETRIC TRANSMISSION
+                    </span>
+                    <span style={{ ...monoXs, color: '#ec4899', fontWeight: 600 }}>
+                      {activeChaosChain.threatCategory}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>
+                    {activeChaosChain.name}
+                  </h3>
+                  <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 2 }}>
+                    {activeChaosChain.subtitle}
+                  </div>
+                </div>
+              </div>
+
+              {/* Empirical Proof Quote */}
+              <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 4, borderLeft: '3px solid #f59e0b', ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                <span style={{ color: '#f59e0b', fontWeight: 700 }}>HISTORICAL EMPIRICAL VALIDATION: </span>
+                {activeChaosChain.historicalProof}
+              </div>
+            </div>
+
+            {/* 5-Hop Horizontal Pipeline Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+              {activeChaosChain.hops.map((hop, idx) => (
+                <div
+                  key={hop.hop}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: 12,
+                    background: idx === 0 ? 'rgba(239,68,68,0.04)' : idx === 4 ? 'rgba(34,197,94,0.04)' : 'rgba(255,255,255,0.015)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    position: 'relative'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: idx === 0 ? 'rgba(239,68,68,0.2)' : idx === 4 ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)', color: idx === 0 ? '#ef4444' : idx === 4 ? '#22c55e' : 'var(--t2)', fontWeight: 700 }}>
+                        HOP {hop.hop}
+                      </span>
+                      <span style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>
+                        {hop.type.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)', marginBottom: 6, lineHeight: 1.3 }}>
+                      {hop.title}
+                    </div>
+
+                    <div style={{ padding: '6px 8px', background: 'rgba(0,0,0,0.25)', borderRadius: 3, ...monoXs, color: '#f59e0b', marginBottom: 6 }}>
+                      <div style={{ color: 'var(--t3)', fontSize: 8, marginBottom: 2 }}>OBSERVED METRIC</div>
+                      <div style={{ fontWeight: 600 }}>{hop.metric}</div>
+                    </div>
+
+                    <div style={{ padding: '6px 8px', background: 'rgba(0,0,0,0.4)', borderRadius: 3, ...monoXs, color: 'var(--accent)', fontStyle: 'italic', marginBottom: 6, overflowX: 'auto' }}>
+                      {hop.formula}
+                    </div>
+
+                    <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>
+                      {hop.implication}
+                    </div>
+                  </div>
+
+                  <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                    SRC: {hop.source}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Evidence Ledger Quad Matrix */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 14, background: 'rgba(255,255,255,0.01)' }}>
+              <div style={{ ...monoXs, fontWeight: 700, color: 'var(--t1)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FileText size={12} color="var(--accent)" /> THE EVIDENCE LEDGER PROTOCOL (EPISTEMOLOGICAL AUDIT)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 }}>
+                <div style={{ borderLeft: '3px solid #22c55e', padding: '8px 10px', background: 'rgba(34,197,94,0.04)', borderRadius: '0 4px 4px 0' }}>
+                  <div style={{ ...monoXs, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>[FACT] DIRECTLY SOURCED</div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>{activeChaosChain.evidenceLedger.fact}</div>
+                </div>
+                <div style={{ borderLeft: '3px solid #38bdf8', padding: '8px 10px', background: 'rgba(56,189,248,0.04)', borderRadius: '0 4px 4px 0' }}>
+                  <div style={{ ...monoXs, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>[DERIVED] MATHEMATICALLY COMPUTED</div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>{activeChaosChain.evidenceLedger.derived}</div>
+                </div>
+                <div style={{ borderLeft: '3px solid #f59e0b', padding: '8px 10px', background: 'rgba(245,158,11,0.04)', borderRadius: '0 4px 4px 0' }}>
+                  <div style={{ ...monoXs, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>[ASSUMPTION] BOUNDED HYPOTHESIS</div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>{activeChaosChain.evidenceLedger.assumption}</div>
+                </div>
+                <div style={{ borderLeft: '3px solid #ec4899', padding: '8px 10px', background: 'rgba(236,72,153,0.04)', borderRadius: '0 4px 4px 0' }}>
+                  <div style={{ ...monoXs, fontWeight: 700, color: '#ec4899', marginBottom: 4 }}>[RECOMMENDATION] DECISION DIRECTIVE</div>
+                  <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>{activeChaosChain.evidenceLedger.recommendation}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. GRANGER LEAD-LAG REGIME MATRIX VIEW ────────────────────────────── */}
+        {activeView === 'lead_lag' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Scrubber Bar & Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: '#a855f7', color: '#fff', fontWeight: 700 }}>
+                    ECONOMETRIC CAUSALITY
+                  </span>
+                  <span style={{ ...monoXs, color: 'var(--t3)' }}>
+                    {'F-STAT > 15 | P-VAL < 0.001'}
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>
+                  Granger Temporal Lead-Lag Matrix & Arbitrage Horizons
+                </h3>
+              </div>
+
+              {/* Scrubber */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(0,0,0,0.3)', padding: '6px 12px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                <Clock size={12} color="#a855f7" />
+                <span style={{ ...monoXs, color: 'var(--t3)' }}>DAY SCRUB (T+D):</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="30"
+                  step="1"
+                  value={leadLagDayScrub}
+                  onChange={e => setLeadLagDayScrub(parseInt(e.target.value, 10))}
+                  style={{ width: 110, accentColor: '#a855f7', cursor: 'pointer' }}
+                />
+                <span style={{ ...monoXs, fontWeight: 700, color: '#a855f7', minWidth: 42 }}>
+                  T + {leadLagDayScrub}d
+                </span>
+              </div>
+            </div>
+
+            {/* 6 Granger Models Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+              {GRANGER_LEAD_LAG_REGIME_DATA.map(model => {
+                const isUnderArbitrageWindow = leadLagDayScrub < model.leadTimeDays
+                const isExactConvergence = leadLagDayScrub === model.leadTimeDays
+                const daysRemaining = model.leadTimeDays - leadLagDayScrub
+
+                return (
+                  <div
+                    key={model.id}
+                    style={{
+                      border: isUnderArbitrageWindow ? '1px solid rgba(168,85,247,0.4)' : '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: 14,
+                      background: isUnderArbitrageWindow ? 'rgba(168,85,247,0.03)' : 'rgba(255,255,255,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8
+                    }}
+                  >
+                    {/* Status Pill */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: isUnderArbitrageWindow ? 'rgba(236,72,153,0.2)' : isExactConvergence ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.05)', color: isUnderArbitrageWindow ? '#f472b6' : isExactConvergence ? '#f59e0b' : 'var(--t3)', fontWeight: 700 }}>
+                        {isUnderArbitrageWindow ? `ACTIVE ARBITRAGE (${daysRemaining}d BLINDSPOT)` : isExactConvergence ? 'CONVERGENCE DAY' : 'POST-REPRICED'}
+                      </span>
+                      <span style={{ ...monoXs, fontWeight: 700, color: '#a855f7' }}>
+                        LEAD: {model.leadTimeDays} DAYS
+                      </span>
+                    </div>
+
+                    {/* Driver -> Receiver */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 10px', background: 'rgba(0,0,0,0.25)', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ ...monoXs, color: '#22c55e', fontWeight: 700 }}>LEADING DRIVER:</span>
+                        <span style={{ ...monoXs, color: 'var(--t1)' }}>{model.driver}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ ...monoXs, color: '#f59e0b', fontWeight: 700 }}>RECEIVER ASSET:</span>
+                        <span style={{ ...monoXs, color: 'var(--t1)' }}>{model.receiver}</span>
+                      </div>
+                    </div>
+
+                    {/* Timeline Progress Bar */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs, color: 'var(--t3)', marginBottom: 2 }}>
+                        <span>T+0 Signal Fired</span>
+                        <span>T+{model.leadTimeDays}d Full Market Repricing</span>
+                      </div>
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${Math.min(100, (leadLagDayScrub / model.leadTimeDays) * 100)}%`,
+                            background: isUnderArbitrageWindow ? 'linear-gradient(90deg, #a855f7, #ec4899)' : '#22c55e',
+                            borderRadius: 3
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Econometric Scorecard */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, padding: '6px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: 3, textAlign: 'center' }}>
+                      <div>
+                        <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>F-STAT</div>
+                        <div style={{ ...monoXs, fontWeight: 700, color: 'var(--t1)' }}>{model.fStatistic}</div>
+                      </div>
+                      <div>
+                        <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>P-VALUE</div>
+                        <div style={{ ...monoXs, fontWeight: 700, color: '#22c55e' }}>{model.pValue}</div>
+                      </div>
+                      <div>
+                        <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>R² FIT</div>
+                        <div style={{ ...monoXs, fontWeight: 700, color: 'var(--accent)' }}>{(model.rSquared * 100).toFixed(0)}%</div>
+                      </div>
+                      <div>
+                        <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>REGIME</div>
+                        <div style={{ ...monoXs, fontWeight: 700, color: model.regime === 'COUPLED' ? '#38bdf8' : '#f59e0b' }}>{model.regime}</div>
+                      </div>
+                    </div>
+
+                    {/* Mechanism & Precedent */}
+                    <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>
+                      <span style={{ color: 'var(--t3)' }}>TRANSMISSION: </span>{model.mechanism}
+                    </div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', lineHeight: 1.3, fontStyle: 'italic', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 4 }}>
+                      PROOF: {model.empiricalBenchmark}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. ELINOR OSTROM RESOURCE COMMONS GOVERNANCE VIEW ───────────────────── */}
+        {activeView === 'ostrom_commons' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Top Selector & Rule 12 Pill */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {OSTROM_COMMONS_MODELS.map(model => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => setSelectedOstromModelId(model.id)}
+                    style={{
+                      ...monoXs,
+                      padding: '4px 10px',
+                      borderRadius: 4,
+                      border: selectedOstromModelId === model.id ? '1px solid #10b981' : '1px solid var(--border)',
+                      background: selectedOstromModelId === model.id ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.02)',
+                      color: selectedOstromModelId === model.id ? '#34d399' : 'var(--t2)',
+                      cursor: 'pointer',
+                      fontWeight: selectedOstromModelId === model.id ? 700 : 400
+                    }}
+                  >
+                    {model.name.split('(')[0]}
+                  </button>
+                ))}
+              </div>
+
+              <span style={{ ...monoXs, padding: '3px 8px', borderRadius: 4, background: 'rgba(16,185,129,0.15)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 700 }}>
+                RULE 12: OSTROM 8 GOVERNANCE PRINCIPLES
+              </span>
+            </div>
+
+            {/* Diagnostic Banner */}
+            <div style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 6, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>
+                    {activeOstromModel.name}
+                  </h3>
+                  <div style={{ ...monoXs, color: '#34d399', fontWeight: 600, marginTop: 2 }}>
+                    RESOURCE POOL: {activeOstromModel.resourcePool}
+                  </div>
+                </div>
+
+                {/* Depletion Meter */}
+                <div style={{ minWidth: 200 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs, marginBottom: 2 }}>
+                    <span style={{ color: 'var(--t3)' }}>COMMONS EXPLOITATION:</span>
+                    <span style={{ fontWeight: 700, color: activeOstromModel.currentDepletionPct > 70 ? '#ef4444' : '#f59e0b' }}>
+                      {activeOstromModel.currentDepletionPct}%
+                    </span>
+                  </div>
+                  <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${activeOstromModel.currentDepletionPct}%`,
+                        background: activeOstromModel.currentDepletionPct > 70 ? '#ef4444' : '#f59e0b',
+                        borderRadius: 3
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5, marginBottom: 8 }}>
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>OPEN-ACCESS COLLAPSE THREAT: </span>
+                {activeOstromModel.openAccessThreat}
+              </div>
+
+              <div style={{ ...monoXs, color: 'var(--t3)', fontStyle: 'italic' }}>
+                THRESHOLD: {activeOstromModel.depletionThresholdUnits}
+              </div>
+            </div>
+
+            {/* Ostrom 8 Governance Principles Scorecard */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+              {activeOstromModel.ostromScorecard.map((item, idx) => {
+                const isCritical = item.score <= 3
+                const isStrong = item.score >= 7
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: 10,
+                      background: 'rgba(255,255,255,0.015)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ ...monoXs, fontWeight: 700, color: 'var(--t1)' }}>
+                        {item.principle}
+                      </span>
+                      <span style={{ ...monoXs, padding: '1px 6px', borderRadius: 2, background: isCritical ? 'rgba(239,68,68,0.2)' : isStrong ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)', color: isCritical ? '#f87171' : isStrong ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>
+                        {item.score}/10 {item.status}
+                      </span>
+                    </div>
+
+                    <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.4 }}>
+                      {item.diagnosis}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Defection Kill Gate & Asymmetric Moat */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+              <div style={{ borderLeft: '3px solid #ef4444', padding: '10px 14px', background: 'rgba(239,68,68,0.04)', borderRadius: '0 6px 6px 0' }}>
+                <div style={{ ...monoXs, fontWeight: 700, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <AlertTriangle size={12} /> QUANTITATIVE DEFECTION KILL-GATE
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                  {activeOstromModel.defectionKillGate}
+                </div>
+              </div>
+
+              <div style={{ borderLeft: '3px solid #10b981', padding: '10px 14px', background: 'rgba(16,185,129,0.04)', borderRadius: '0 6px 6px 0' }}>
+                <div style={{ ...monoXs, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Shield size={12} /> ASYMMETRIC INSTITUTIONAL MOAT
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                  {activeOstromModel.asymmetricMoat}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 7. ADVERSARIAL LEVEL-K COMPETITOR WARFARE ENGINE VIEW ──────────────── */}
+        {activeView === 'levelk_warfare' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Top Selector & Rule 13 Pill */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {ADVERSARIAL_LEVEL_K_DATA.map(warfare => (
+                  <button
+                    key={warfare.id}
+                    type="button"
+                    onClick={() => setSelectedLevelKId(warfare.id)}
+                    style={{
+                      ...monoXs,
+                      padding: '4px 10px',
+                      borderRadius: 4,
+                      border: selectedLevelKId === warfare.id ? '1px solid #f59e0b' : '1px solid var(--border)',
+                      background: selectedLevelKId === warfare.id ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.02)',
+                      color: selectedLevelKId === warfare.id ? '#fbbf24' : 'var(--t2)',
+                      cursor: 'pointer',
+                      fontWeight: selectedLevelKId === warfare.id ? 700 : 400
+                    }}
+                  >
+                    {warfare.scenario.split(' ')[0]} {warfare.scenario.split(' ')[1]}
+                  </button>
+                ))}
+              </div>
+
+              <span style={{ ...monoXs, padding: '3px 8px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)', fontWeight: 700 }}>
+                RULE 13: THE ZERO-BLINDSPOT LAW & LEVEL-K ARBITRAGE
+              </span>
+            </div>
+
+            {/* Scenario Header */}
+            <div style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--t1)' }}>
+                  {activeLevelK.scenario}
+                </h3>
+                <span style={{ ...monoXs, padding: '2px 8px', borderRadius: 3, background: '#22c55e', color: '#000', fontWeight: 700 }}>
+                  EXPECTED ALPHA: {activeLevelK.expectedAlphaDelta}
+                </span>
+              </div>
+              <div style={{ ...monoXs, color: 'var(--t3)', fontStyle: 'italic' }}>
+                HISTORICAL BENCHMARK EVIDENCE: {activeLevelK.proofEvidence}
+              </div>
+            </div>
+
+            {/* 3-Step Adversarial Competitor Matrix */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
+              {/* Step 1: Herd Consensus */}
+              <div style={{ border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: 14, background: 'rgba(245,158,11,0.02)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Users size={14} color="#f59e0b" />
+                  <span style={{ ...monoXs, fontWeight: 700, color: '#f59e0b' }}>
+                    STEP 1: LEVEL-1 HERD CONSENSUS (80% OF FUNDS)
+                  </span>
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                  {activeLevelK.herdTrade}
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8, fontStyle: 'italic', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                  Predictable linear thinking adopted by standard algorithmic and hedge fund models.
+                </div>
+              </div>
+
+              {/* Step 2: Herd Structural Collapse */}
+              <div style={{ border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: 14, background: 'rgba(239,68,68,0.03)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertOctagon size={14} color="#ef4444" />
+                  <span style={{ ...monoXs, fontWeight: 700, color: '#ef4444' }}>
+                    STEP 2: MATHEMATICAL COLLAPSE & FAILURE MODE
+                  </span>
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                  {activeLevelK.herdFailureMode}
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8, fontStyle: 'italic', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                  Where the consensus trade disintegrates due to physical bottlenecks and unit economic traps.
+                </div>
+              </div>
+
+              {/* Step 3: Dominant Counter-Flank */}
+              <div style={{ border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, padding: 14, background: 'rgba(34,197,94,0.03)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Target size={14} color="#22c55e" />
+                  <span style={{ ...monoXs, fontWeight: 700, color: '#22c55e' }}>
+                    STEP 3: NEXUS LEVEL-2 DOMINANT COUNTER-FLANK
+                  </span>
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                  {activeLevelK.asymmetricCounterFlank}
+                </div>
+                <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8, fontStyle: 'italic', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                  Extracts maximum asymmetric capital surplus directly from the herd's predictable liquidation.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 8. DUPONT 3-TIER ROE & WORKING CAPITAL FLOAT ENGINE VIEW ─────────────── */}
+        {activeView === 'dupont_float' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Top Selector Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {DUPONT_FLOAT_MODELS.map(model => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => setSelectedDupontId(model.id)}
+                    style={{
+                      ...monoXs,
+                      padding: '4px 10px',
+                      borderRadius: 4,
+                      border: selectedDupontId === model.id ? '1px solid #38bdf8' : '1px solid var(--border)',
+                      background: selectedDupontId === model.id ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.02)',
+                      color: selectedDupontId === model.id ? '#38bdf8' : 'var(--t2)',
+                      cursor: 'pointer',
+                      fontWeight: selectedDupontId === model.id ? 700 : 400
+                    }}
+                  >
+                    {model.sector.split('(')[0]}
+                  </button>
+                ))}
+              </div>
+
+              <span style={{ ...monoXs, padding: '3px 8px', borderRadius: 4, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', fontWeight: 700 }}>
+                DUPONT 3-TIER ROE & CASH CONVERSION CYCLE (CCC) FLOAT
+              </span>
+            </div>
+
+            {/* Header Description */}
+            <div style={{ background: 'rgba(56,189,248,0.04)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 6, padding: '12px 16px' }}>
+              <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)' }}>
+                {activeDupont.sector} — Benchmark Entity: {activeDupont.company}
+              </div>
+              <div style={{ ...monoXs, color: 'var(--t3)', marginTop: 2 }}>
+                ROE = Net Margin (%) × Asset Turnover (x) × Equity Multiplier | CCC = DIO + DSO - DPO
+              </div>
+            </div>
+
+            {/* Side-by-Side Comparison: Baseline vs Chokepoint Shocked */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+              {/* Baseline Unperturbed Card */}
+              <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 14, background: 'rgba(255,255,255,0.015)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: 'rgba(45,212,191,0.15)', color: 'var(--accent)', fontWeight: 700 }}>
+                    BASELINE (UNPERTURBED NORMAL STATE)
+                  </span>
+                  <span style={{ ...monoSm, fontWeight: 700, color: '#22c55e' }}>
+                    {activeDupont.baseline.roePct}% ROE
+                  </span>
+                </div>
+
+                {/* 3-Tier DuPont Tree */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, padding: '10px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: 4, marginBottom: 12, textAlign: 'center' }}>
+                  <div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>NET MARGIN</div>
+                    <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)' }}>{activeDupont.baseline.netMarginPct}%</div>
+                  </div>
+                  <div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>TURNOVER</div>
+                    <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)' }}>{activeDupont.baseline.assetTurnover}x</div>
+                  </div>
+                  <div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>LEVERAGE</div>
+                    <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)' }}>{activeDupont.baseline.equityMultiplier}x</div>
+                  </div>
+                </div>
+
+                {/* Working Capital Float Metrics */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Days Inventory Outstanding (DIO):</span>
+                    <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{activeDupont.baseline.dioDays} days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Days Sales Outstanding (DSO):</span>
+                    <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{activeDupont.baseline.dsoDays} days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Days Payables Outstanding (DPO):</span>
+                    <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{activeDupont.baseline.dpoDays} days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6 }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Cash Conversion Cycle (CCC):</span>
+                    <span style={{ color: activeDupont.baseline.cccDays < 0 ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>
+                      {activeDupont.baseline.cccDays} days {activeDupont.baseline.cccDays < 0 ? '(NEGATIVE FLOAT)' : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Daily Working Capital Free Float:</span>
+                    <span style={{ color: activeDupont.baseline.dailyFreeFloatUSD > 0 ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
+                      {activeDupont.baseline.dailyFreeFloatUSD > 0 ? '+' : ''}${(activeDupont.baseline.dailyFreeFloatUSD / 1e6).toFixed(1)}M / day
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chokepoint Shocked Card */}
+              <div style={{ border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: 14, background: 'rgba(239,68,68,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ ...monoXs, padding: '2px 6px', borderRadius: 2, background: 'rgba(239,68,68,0.2)', color: '#ef4444', fontWeight: 700 }}>
+                    CHOKEPOINT SHOCKED STATE
+                  </span>
+                  <span style={{ ...monoSm, fontWeight: 700, color: activeDupont.chokepointShocked.roePct > activeDupont.baseline.roePct ? '#22c55e' : '#ef4444' }}>
+                    {activeDupont.chokepointShocked.roePct}% ROE ({activeDupont.chokepointShocked.roePct > activeDupont.baseline.roePct ? '+' : ''}{(activeDupont.chokepointShocked.roePct - activeDupont.baseline.roePct).toFixed(1)}%)
+                  </span>
+                </div>
+
+                {/* 3-Tier DuPont Tree Shocked */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, padding: '10px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: 4, marginBottom: 12, textAlign: 'center' }}>
+                  <div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>NET MARGIN</div>
+                    <div style={{ ...monoSm, fontWeight: 700, color: activeDupont.chokepointShocked.netMarginPct > activeDupont.baseline.netMarginPct ? '#22c55e' : '#ef4444' }}>
+                      {activeDupont.chokepointShocked.netMarginPct}%
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>TURNOVER</div>
+                    <div style={{ ...monoSm, fontWeight: 700, color: activeDupont.chokepointShocked.assetTurnover > activeDupont.baseline.assetTurnover ? '#22c55e' : '#ef4444' }}>
+                      {activeDupont.chokepointShocked.assetTurnover}x
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ ...monoXs, color: 'var(--t3)', fontSize: 8 }}>LEVERAGE</div>
+                    <div style={{ ...monoSm, fontWeight: 700, color: 'var(--t1)' }}>
+                      {activeDupont.chokepointShocked.equityMultiplier}x
+                    </div>
+                  </div>
+                </div>
+
+                {/* Working Capital Float Metrics Shocked */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Days Inventory Outstanding (DIO):</span>
+                    <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{activeDupont.chokepointShocked.dioDays} days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Days Sales Outstanding (DSO):</span>
+                    <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{activeDupont.chokepointShocked.dsoDays} days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Days Payables Outstanding (DPO):</span>
+                    <span style={{ color: 'var(--t1)', fontWeight: 600 }}>{activeDupont.chokepointShocked.dpoDays} days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6 }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Cash Conversion Cycle (CCC):</span>
+                    <span style={{ color: activeDupont.chokepointShocked.cccDays < 0 ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
+                      {activeDupont.chokepointShocked.cccDays} days {activeDupont.chokepointShocked.cccDays < 0 ? '(NEGATIVE FLOAT)' : '(CASH DRAIN)'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', ...monoXs }}>
+                    <span style={{ color: 'var(--t3)' }}>Daily Working Capital Free Float:</span>
+                    <span style={{ color: activeDupont.chokepointShocked.dailyFreeFloatUSD > 0 ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
+                      {activeDupont.chokepointShocked.dailyFreeFloatUSD > 0 ? '+' : ''}${(activeDupont.chokepointShocked.dailyFreeFloatUSD / 1e6).toFixed(1)}M / day
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Decision Directives Box */}
+            <div style={{ borderLeft: '3px solid #38bdf8', padding: '12px 14px', background: 'rgba(56,189,248,0.03)', borderRadius: '0 6px 6px 0' }}>
+              <div style={{ ...monoXs, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>
+                EXECUTIVE CFO & TREASURY ALLOCATION DIRECTIVES
+              </div>
+              <div style={{ ...monoXs, color: 'var(--t2)', lineHeight: 1.5 }}>
+                {activeDupont.decisionDirectives}
+              </div>
             </div>
           </div>
         )}
