@@ -30,7 +30,8 @@ import {
   TrendingDown,
   ChevronRight,
   BarChart3,
-  Database
+  Database,
+  BookOpen
 } from 'lucide-react'
 import { addCustomConflict } from '../../utils/adaptiveConflictEngine'
 import {
@@ -40,6 +41,7 @@ import {
   ADVERSARIAL_LEVEL_K_DATA,
   DUPONT_FLOAT_MODELS
 } from '../../data/economicCorrelations'
+import IntuitiveFieldManual from './IntuitiveFieldManual'
 
 const mono = { fontFamily: 'JetBrains Mono', fontSize: 11 }
 const monoSm = { fontFamily: 'JetBrains Mono', fontSize: 10 }
@@ -253,10 +255,19 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
   const isTablet = windowWidth < 1080
   const [tabletView, setTabletView] = useState('graph') // 'graph' | 'dossier'
 
+  const [showGuide, setShowGuide] = useState(false)
+
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth)
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setShowGuide(false)
+    }
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   // Look up active adaptive conflicts for macro theaters
@@ -843,6 +854,29 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
             }}
           >
             <Percent size={10} /> 8. DuPont & Float
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowGuide(true)}
+            style={{
+              ...monoXs,
+              padding: '3px 9px',
+              borderRadius: 3,
+              border: '1px solid rgba(45,212,191,0.6)',
+              background: 'rgba(45,212,191,0.15)',
+              color: 'var(--accent)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              boxShadow: '0 0 10px rgba(45,212,191,0.2)'
+            }}
+            title="Open Operational Field Manual & Intuitive Guide"
+          >
+            <BookOpen size={10} /> FIELD GUIDE
           </button>
         </div>
       </div>
@@ -2256,6 +2290,16 @@ function GraphAndGameTheoryEngineComponent({ adaptiveConflicts = [], quotes = {}
         )}
 
       </div>
+
+      {/* Intuitive Field Manual Modal Overlay */}
+      <IntuitiveFieldManual
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+        onSelectView={(view) => {
+          setActiveView(view)
+          setShowGuide(false)
+        }}
+      />
     </div>
   )
 }
